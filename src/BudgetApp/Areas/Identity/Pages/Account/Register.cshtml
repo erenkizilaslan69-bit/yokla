@@ -4,31 +4,35 @@
     ViewData["Title"] = "Kayıt ol";
 }
 
-<h1>@ViewData["Title"]</h1>
-<div class="row">
-    <div class="col-md-5">
+<div class="auth-wrap">
+    <div class="card auth-card">
+        <div class="text-center mb-4">
+            <span class="brand-mark mb-3"><i class="bi bi-wallet2"></i></span>
+            <h1>Hesap oluştur</h1>
+            <p class="text-muted mb-0">Gelir ve giderlerini takip etmeye başla.</p>
+        </div>
         <form id="registerForm" method="post">
-            <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
+            <div asp-validation-summary="ModelOnly" class="text-danger small mb-2" role="alert"></div>
             <div class="mb-3">
                 <label asp-for="Input.Email" class="form-label"></label>
                 <input asp-for="Input.Email" class="form-control" autocomplete="username" aria-required="true" />
-                <span asp-validation-for="Input.Email" class="text-danger"></span>
+                <span asp-validation-for="Input.Email" class="text-danger small"></span>
             </div>
             <div class="mb-3">
                 <label asp-for="Input.Password" class="form-label"></label>
                 <input asp-for="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" />
-                <span asp-validation-for="Input.Password" class="text-danger"></span>
+                <span asp-validation-for="Input.Password" class="text-danger small"></span>
                 <div class="form-text">En az 6 karakter; büyük harf, küçük harf, rakam ve özel karakter içermeli.</div>
             </div>
-            <div class="mb-3">
+            <div class="mb-4">
                 <label asp-for="Input.ConfirmPassword" class="form-label"></label>
                 <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" />
-                <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
+                <span asp-validation-for="Input.ConfirmPassword" class="text-danger small"></span>
             </div>
-            <button id="registerSubmit" type="submit" class="btn btn-primary">Kayıt ol</button>
+            <button id="registerSubmit" type="submit" class="btn btn-primary btn-lg w-100">Kayıt ol</button>
         </form>
-        <p class="mt-3">
-            Zaten hesabın var mı? <a asp-page="./Login" asp-route-returnUrl="@Model.ReturnUrl">Giriş yap</a>
+        <p class="text-center text-muted mt-4 mb-0">
+            Zaten hesabın var mı? <a asp-page="./Login" asp-route-returnUrl="@Model.ReturnUrl" class="fw-semibold">Giriş yap</a>
         </p>
     </div>
 </div>

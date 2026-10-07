@@ -3,31 +3,23 @@
     ViewData["Title"] = "Hedefler";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">Hedefler</h1>
-    <a asp-action="Create" class="btn btn-primary">Yeni hedef</a>
+<div class="page-head">
+    <h1>Hedefler</h1>
+    <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Yeni hedef</a>
 </div>
 
 @if (Model.Count == 0)
 {
-    <p class="text-muted">Henüz hedef yok.</p>
+    @await Html.PartialAsync("_EmptyState", ("bullseye", "Henüz hedef yok", "Almak istediğin bir şey için hedef koy; ay sonlarında artan paranı oraya aktarabilirsin.", (string?)"Hedef oluştur", (string?)"Goals", (string?)"Create"))
 }
 else
 {
-    @foreach (var progress in Model)
-    {
-        <div class="card mb-3">
-            <div class="card-body">
+    <div class="d-grid gap-3">
+        @foreach (var progress in Model)
+        {
+            <div class="card p-3 p-md-4">
                 <partial name="_GoalBar" model="progress" />
-                @if (progress.Goal.IsCompleted)
-                {
-                    <small class="text-success">Hedefe ulaşıldı 🎉</small>
-                }
-                else
-                {
-                    <small class="text-muted">Kalan: @progress.Missing.ToString("C2")</small>
-                }
             </div>
-        </div>
-    }
+        }
+    </div>
 }

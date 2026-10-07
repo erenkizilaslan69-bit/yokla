@@ -3,15 +3,17 @@
     ViewData["Title"] = "Hata";
 }
 
-<h1 class="text-danger">Hata</h1>
-<h2 class="text-danger">İsteğin işlenirken bir sorun oluştu.</h2>
+<div class="auth-wrap text-center">
+    <div class="card auth-card">
+        <div class="mb-3"><span class="empty-icon" style="background: var(--expense-soft); color: var(--expense)"><i class="bi bi-exclamation-triangle-fill"></i></span></div>
+        <h1>Bir sorun oluştu</h1>
+        <p class="text-muted">İsteğin işlenirken beklenmedik bir hata oluştu. Sayfayı yenilemeyi veya ana sayfaya dönmeyi dene.</p>
 
-@if (Model.ShowRequestId)
-{
-    <p>
-        <strong>İstek kimliği:</strong> <code>@Model.RequestId</code>
-    </p>
-}
+        @if (Model.ShowRequestId)
+        {
+            <p class="small text-muted">İstek kimliği: <code>@Model.RequestId</code></p>
+        }
 
-<p>Lütfen sayfayı yenilemeyi veya ana sayfaya dönmeyi dene. Sorun devam ederse yukarıdaki istek kimliğiyle birlikte bildir.</p>
-<a asp-controller="Home" asp-action="Index" class="btn btn-primary">Ana sayfaya dön</a>
+        <a asp-controller="Home" asp-action="Index" class="btn btn-primary btn-lg">Ana sayfaya dön</a>
+    </div>
+</div>

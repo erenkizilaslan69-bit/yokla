@@ -1,73 +1,109 @@
+@using BudgetApp.Models
 @model BudgetApp.Models.AnalysisViewModel
 @{
     ViewData["Title"] = "Analiz";
     var a = Model.Analysis;
+    var maxItem = a.TopItems.Count > 0 ? a.TopItems.Max(i => i.Amount) : 1m;
 }
 
-<h1>Aylık analiz</h1>
+<div class="page-head"><h1>Aylık analiz</h1></div>
 
 <partial name="_MonthPicker" model="Model.Picker" />
 
 @if (a.Categories.Count == 0)
 {
-    <p class="text-muted">Bu ay için gider yok.</p>
+    @await Html.PartialAsync("_EmptyState", ("pie-chart-fill", "Bu ay için gider yok", "Giderlerini ekledikçe kategori dağılımını, en çok harcadığın ürünleri ve tavsiyeleri burada göreceksin.", (string?)"Yeni işlem", (string?)"Transactions", (string?)"Create"))
 }
 else
 {
-    <div class="row">
-        <div class="col-lg-5 mb-4">
-            <h2 class="h5">Kategoriye göre giderler</h2>
-            <div class="text-muted mb-2">Toplam: @a.TotalExpense.ToString("C2")</div>
-            <canvas id="categoryChart" aria-label="Kategoriye göre gider dağılımı" role="img"></canvas>
-        </div>
-        <div class="col-lg-7 mb-4">
-            <h2 class="h5">En çok harcanan ürünler</h2>
-            @if (a.TopItems.Count == 0)
-            {
-                <p class="text-muted">Ürün adı girilmiş gider yok.</p>
-            }
-            else
-            {
-                <table class="table table-sm">
-                    <thead><tr><th>Ürün</th><th class="text-end">Adet</th><th class="text-end">Tutar</th></tr></thead>
-                    <tbody>
-                    @foreach (var item in a.TopItems)
+    <div class="row g-4 mb-4">
+        <div class="col-lg-5">
+            <div class="card p-3 p-md-4 h-100">
+                <h2 class="section-title">Kategoriye göre giderler</h2>
+                <div class="chart-wrap mb-3">
+                    <canvas id="categoryChart" aria-label="Kategoriye göre gider dağılımı" role="img"></canvas>
+                </div>
+                <ul class="legend-list">
+                    @foreach (var c in a.Categories)
                     {
-                        <tr><td>@item.ItemName</td><td class="text-end">@item.Count</td><td class="text-end">@item.Amount.ToString("C2")</td></tr>
+                        var style = CategoryStyle.For(c.Name);
+                        <li>
+                            <span class="dot" style="--cat: @style.Color"></span>
+                            <span class="legend-name">@c.Name</span>
+                            <span class="fw-semibold num">@c.Amount.ToString("C2")</span>
+                            <span class="text-muted small num" style="min-width: 2.75rem; text-align: right">%@((int)Math.Round(c.Amount / a.TotalExpense * 100m, MidpointRounding.AwayFromZero))</span>
+                        </li>
                     }
-                    </tbody>
-                </table>
-            }
+                </ul>
+            </div>
+        </div>
+        <div class="col-lg-7">
+            <div class="card p-3 p-md-4 h-100">
+                <h2 class="section-title">En çok harcanan ürünler</h2>
+                @if (a.TopItems.Count == 0)
+                {
+                    <p class="text-muted mb-0">Ürün adı girilmiş gider yok. İşlem eklerken ürün adını yazarsan burada görünür.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr class="text-muted small"><th>Ürün</th><th class="text-end">Adet</th><th style="width: 22%"></th><th class="text-end">Tutar</th></tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var item in a.TopItems)
+                            {
+                                <tr>
+                                    <td>@item.ItemName</td>
+                                    <td class="text-end text-muted">@item.Count&times;</td>
+                                    <td><div class="mini-bar"><span style="width: @((int)Math.Round(item.Amount / maxItem * 100m))%"></span></div></td>
+                                    <td class="text-end fw-semibold num">@item.Amount.ToString("C2")</td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
         </div>
     </div>
 
-    <h2 class="h5">Geçen aya göre değişim</h2>
-    <table class="table table-sm mb-4">
-        <thead>
-            <tr><th>Kategori</th><th class="text-end">Geçen ay</th><th class="text-end">Bu ay</th><th class="text-end">Fark</th><th class="text-end">%</th></tr>
-        </thead>
-        <tbody>
-        @foreach (var c in a.Changes)
-        {
-            var cls = c.Delta > 0 ? "text-danger" : c.Delta < 0 ? "text-success" : "";
-            <tr>
-                <td>@c.Name</td>
-                <td class="text-end">@c.Previous.ToString("C2")</td>
-                <td class="text-end">@c.Current.ToString("C2")</td>
-                <td class="text-end @cls">@(c.Delta > 0 ? "+" : "")@c.Delta.ToString("C2")</td>
-                <td class="text-end @cls">@(c.Percent is { } p ? $"{(p > 0 ? "+" : "")}{p:N0}%" : "—")</td>
-            </tr>
-        }
-        </tbody>
-    </table>
+    <div class="card p-3 p-md-4 mb-4">
+        <h2 class="section-title">Geçen aya göre değişim</h2>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr class="text-muted small"><th>Kategori</th><th class="text-end">Geçen ay</th><th class="text-end">Bu ay</th><th class="text-end">Fark</th><th class="text-end">%</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var c in a.Changes)
+                {
+                    var cls = c.Delta > 0 ? "up" : c.Delta < 0 ? "down" : "flat";
+                    var icon = c.Delta > 0 ? "arrow-up-right" : c.Delta < 0 ? "arrow-down-right" : "dash";
+                    <tr>
+                        <td><partial name="_CategoryBadge" model="c.Name" /></td>
+                        <td class="text-end num">@c.Previous.ToString("C2")</td>
+                        <td class="text-end num">@c.Current.ToString("C2")</td>
+                        <td class="text-end"><span class="delta @cls num"><i class="bi bi-@icon"></i> @(c.Delta > 0 ? "+" : "")@c.Delta.ToString("C2")</span></td>
+                        <td class="text-end"><span class="delta @cls num">@(c.Percent is { } p ? $"{(p > 0 ? "+" : "")}{p:N0}%" : "—")</span></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-    <h2 class="h5">Tavsiyeler</h2>
-    <ul class="list-group mb-4">
+    <h2 class="section-title">Tavsiyeler</h2>
+    <div class="d-grid gap-2 mb-4">
         @foreach (var tip in a.Advice)
         {
-            <li class="list-group-item">@tip</li>
+            <div class="card tip-card">
+                <span class="tip-icon"><i class="bi bi-lightbulb-fill"></i></span>
+                <div>@tip</div>
+            </div>
         }
-    </ul>
+    </div>
 }
 
 @section Scripts {
@@ -77,19 +113,49 @@ else
         <script>
             const labels = @Json.Serialize(a.Categories.Select(c => c.Name));
             const values = @Json.Serialize(a.Categories.Select(c => c.Amount));
-            const colors = labels.map((_, i) => `hsl(${Math.round(i * 360 / labels.length)}, 65%, 55%)`);
-            new Chart(document.getElementById('categoryChart'), {
-                type: 'pie',
-                data: { labels, datasets: [{ data: values, backgroundColor: colors }] },
-                options: {
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: ctx => `${ctx.label}: ${ctx.parsed.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}`
+            // Same colours as the badges on every other page.
+            const colors = @Json.Serialize(a.Categories.Select(c => CategoryStyle.For(c.Name).Color));
+            const total = '@a.TotalExpense.ToString("C2")';
+            const fontFamily = '"Inter Variable", system-ui, sans-serif';
+            const css = getComputedStyle(document.documentElement);
+
+            // Writes the month's total in the hole of the doughnut.
+            const centerText = {
+                id: 'centerText',
+                afterDraw(chart) {
+                    const { ctx, chartArea: { left, right, top, bottom } } = chart;
+                    const x = (left + right) / 2, y = (top + bottom) / 2;
+                    ctx.save();
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = css.getPropertyValue('--muted').trim() || '#66756F';
+                    ctx.font = '600 12px ' + fontFamily;
+                    ctx.fillText('Toplam gider', x, y - 15);
+                    ctx.fillStyle = css.getPropertyValue('--text').trim() || '#1B2B26';
+                    ctx.font = '800 21px ' + fontFamily;
+                    ctx.fillText(total, x, y + 9);
+                    ctx.restore();
+                }
+            };
+
+            // Wait for the web font so the canvas text uses Inter too.
+            (document.fonts ? document.fonts.ready : Promise.resolve()).then(function () {
+                new Chart(document.getElementById('categoryChart'), {
+                    type: 'doughnut',
+                    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: '#fff', borderWidth: 3, hoverOffset: 6 }] },
+                    options: {
+                        cutout: '68%',
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: ctx => ` ${ctx.label}: ${ctx.parsed.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}`
+                                }
                             }
                         }
-                    }
-                }
+                    },
+                    plugins: [centerText]
+                });
             });
         </script>
     }
