@@ -30,6 +30,14 @@ builder.Services.AddScoped<IAnalysisService, AnalysisService>();
 
 var app = builder.Build();
 
+// Development only: create/upgrade the SQLite file and add the demo account, so `dotnet run` works out of the box.
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.MigrateAsync();
+    await DemoDataSeeder.SeedAsync(scope.ServiceProvider, DateTime.Today);
+}
+
 var trCulture = new CultureInfo("tr-TR");
 app.UseRequestLocalization(new RequestLocalizationOptions
 {
