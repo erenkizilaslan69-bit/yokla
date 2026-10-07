@@ -2,6 +2,7 @@
 @model TransactionsIndexViewModel
 @{
     ViewData["Title"] = "İşlemler";
+    ViewData["HasFab"] = true; // the layout adds bottom room for the mobile "+" button
     var totals = Model.Totals;
 }
 

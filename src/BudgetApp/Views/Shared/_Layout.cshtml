@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="~/lib/bootstrap-icons/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
-<body>
+<body class="@(ViewData["HasFab"] is true ? "has-fab" : "")">
     <header>
         <nav class="navbar navbar-expand-md app-navbar sticky-top">
             <div class="container">
@@ -31,27 +31,35 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="navbar-collapse collapse" id="mainNav">
-                    <ul class="navbar-nav me-auto gap-md-1 ms-md-3">
-                        <li class="nav-item">
-                            <a class="nav-link @Active("Home", "Index")" aria-current="@Current("Home", "Index")" asp-area="" asp-controller="Home" asp-action="Index"><i class="bi bi-grid-1x2-fill"></i>Ana sayfa</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link @Active("Transactions")" aria-current="@Current("Transactions")" asp-area="" asp-controller="Transactions" asp-action="Index"><i class="bi bi-arrow-left-right"></i>İşlemler</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link @Active("Goals")" aria-current="@Current("Goals")" asp-area="" asp-controller="Goals" asp-action="Index"><i class="bi bi-bullseye"></i>Hedefler</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link @Active("Analysis")" aria-current="@Current("Analysis")" asp-area="" asp-controller="Analysis" asp-action="Index"><i class="bi bi-pie-chart-fill"></i>Analiz</a>
-                        </li>
-                    </ul>
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <ul class="navbar-nav me-auto gap-md-1 ms-md-3">
+                            <li class="nav-item">
+                                <a class="nav-link @Active("Home", "Index")" aria-current="@Current("Home", "Index")" asp-area="" asp-controller="Home" asp-action="Index"><i class="bi bi-grid-1x2-fill"></i>Ana sayfa</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @Active("Transactions")" aria-current="@Current("Transactions")" asp-area="" asp-controller="Transactions" asp-action="Index"><i class="bi bi-arrow-left-right"></i>İşlemler</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @Active("Goals")" aria-current="@Current("Goals")" asp-area="" asp-controller="Goals" asp-action="Index"><i class="bi bi-bullseye"></i>Hedefler</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link @Active("Analysis")" aria-current="@Current("Analysis")" asp-area="" asp-controller="Analysis" asp-action="Index"><i class="bi bi-pie-chart-fill"></i>Analiz</a>
+                            </li>
+                        </ul>
+                    }
+                    else
+                    {
+                        @* Signed out: only the sign in / register links on the right. *@
+                        <div class="me-auto"></div>
+                    }
                     <partial name="_LoginPartial" />
                 </div>
             </div>
         </nav>
     </header>
 
-    <main role="main" class="container py-4">
+    <main role="main" class="container app-main">
         @RenderBody()
     </main>
 

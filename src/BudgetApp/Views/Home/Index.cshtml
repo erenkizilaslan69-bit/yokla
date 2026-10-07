@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "Ana sayfa";
     var authenticated = User.Identity?.IsAuthenticated == true;
+    ViewData["HasFab"] = authenticated; // the "+" button only exists for signed-in users
     var userName = User.Identity?.Name?.Split('@')[0];
     var monthTitle = DateTime.Today.ToString("MMMM yyyy", CultureInfo.GetCultureInfo("tr-TR"));
 }

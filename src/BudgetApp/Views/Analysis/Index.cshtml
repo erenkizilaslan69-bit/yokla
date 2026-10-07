@@ -115,7 +115,11 @@ else
             const values = @Json.Serialize(a.Categories.Select(c => c.Amount));
             // Same colours as the badges on every other page.
             const colors = @Json.Serialize(a.Categories.Select(c => CategoryStyle.For(c.Name).Color));
-            const total = '@a.TotalExpense.ToString("C2")';
+            // Numbers go to JavaScript as numbers and are formatted here; passing a pre-formatted string would be
+            // HTML-encoded by Razor, and a canvas does not decode HTML (the lira sign would turn into an entity).
+            const totalAmount = @Json.Serialize(a.TotalExpense);
+            const money = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' });
+            const total = money.format(totalAmount);
             const fontFamily = '"Inter Variable", system-ui, sans-serif';
             const css = getComputedStyle(document.documentElement);
 
@@ -149,7 +153,7 @@ else
                             legend: { display: false },
                             tooltip: {
                                 callbacks: {
-                                    label: ctx => ` ${ctx.label}: ${ctx.parsed.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}`
+                                    label: ctx => ` ${ctx.label}: ${money.format(ctx.parsed)}`
                                 }
                             }
                         }
