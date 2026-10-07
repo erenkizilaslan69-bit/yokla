@@ -8,6 +8,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 {
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Transaction> Transactions => Set<Transaction>();
+    public DbSet<Goal> Goals => Set<Goal>();
+    public DbSet<GoalContribution> GoalContributions => Set<GoalContribution>();
+    public DbSet<MonthClose> MonthCloses => Set<MonthClose>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -21,6 +24,25 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             e.Property(t => t.UserId).IsRequired();
             e.HasIndex(t => new { t.UserId, t.Date });
             e.HasOne(t => t.Category).WithMany().HasForeignKey(t => t.CategoryId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Goal>(e =>
+        {
+            e.Property(g => g.Name).IsRequired().HasMaxLength(100);
+            e.Property(g => g.UserId).IsRequired();
+            e.Property(g => g.TargetAmount).HasColumnType("decimal(18,2)");
+            e.HasIndex(g => g.UserId);
+            e.HasMany(g => g.Contributions).WithOne(c => c.Goal).HasForeignKey(c => c.GoalId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<GoalContribution>()
+            .Property(c => c.Amount).HasColumnType("decimal(18,2)");
+
+        builder.Entity<MonthClose>(e =>
+        {
+            e.Property(m => m.UserId).IsRequired();
+            e.Property(m => m.Remaining).HasColumnType("decimal(18,2)");
+            e.HasIndex(m => new { m.UserId, m.Year, m.Month }).IsUnique();
         });
 
         builder.Entity<Category>().HasData(DefaultCategories());

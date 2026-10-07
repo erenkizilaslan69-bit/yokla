@@ -1,0 +1,23 @@
+@model BudgetApp.Models.GoalFormViewModel
+@{
+    ViewData["Title"] = "Yeni hedef";
+}
+
+<h1>Yeni hedef</h1>
+<div class="col-md-6">
+    <form asp-action="Create" method="post">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <div class="mb-3">
+            <label asp-for="Name" class="form-label"></label>
+            <input asp-for="Name" class="form-control" />
+            <span asp-validation-for="Name" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="TargetAmount" class="form-label"></label>
+            <input asp-for="TargetAmount" type="text" inputmode="decimal" class="form-control" />
+            <span asp-validation-for="TargetAmount" class="text-danger"></span>
+        </div>
+        <button type="submit" class="btn btn-primary">Kaydet</button>
+        <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">İptal</a>
+    </form>
+</div>

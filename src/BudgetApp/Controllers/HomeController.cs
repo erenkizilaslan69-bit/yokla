@@ -1,14 +1,24 @@
 using System.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using BudgetApp.Models;
+using BudgetApp.Services;
+using Microsoft.AspNetCore.Mvc;
 
 namespace BudgetApp.Controllers;
 
-public class HomeController : Controller
+public class HomeController(IGoalService goals, IMonthCloseService monthCloses) : Controller
 {
-    public IActionResult Index()
+    public async Task<IActionResult> Index()
     {
-        return View();
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is null)
+            return View(new HomeViewModel());
+
+        return View(new HomeViewModel
+        {
+            ActiveGoal = await goals.GetActiveAsync(userId),
+            Pending = await monthCloses.GetPendingAsync(userId, DateTime.Today)
+        });
     }
 
     public IActionResult Privacy()

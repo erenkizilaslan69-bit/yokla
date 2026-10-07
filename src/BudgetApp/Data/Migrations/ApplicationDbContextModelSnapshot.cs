@@ -153,6 +153,92 @@ namespace BudgetApp.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("BudgetApp.Models.Goal", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("TargetAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Goals");
+                });
+
+            modelBuilder.Entity("BudgetApp.Models.GoalContribution", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("GoalId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GoalId");
+
+                    b.ToTable("GoalContributions");
+                });
+
+            modelBuilder.Entity("BudgetApp.Models.MonthClose", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("Remaining")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("TransferredGoalId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Year", "Month")
+                        .IsUnique();
+
+                    b.ToTable("MonthCloses");
+                });
+
             modelBuilder.Entity("BudgetApp.Models.Transaction", b =>
                 {
                     b.Property<int>("Id")
@@ -388,6 +474,17 @@ namespace BudgetApp.Data.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("BudgetApp.Models.GoalContribution", b =>
+                {
+                    b.HasOne("BudgetApp.Models.Goal", "Goal")
+                        .WithMany("Contributions")
+                        .HasForeignKey("GoalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Goal");
+                });
+
             modelBuilder.Entity("BudgetApp.Models.Transaction", b =>
                 {
                     b.HasOne("BudgetApp.Models.Category", "Category")
@@ -448,6 +545,11 @@ namespace BudgetApp.Data.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("BudgetApp.Models.Goal", b =>
+                {
+                    b.Navigation("Contributions");
                 });
 #pragma warning restore 612, 618
         }

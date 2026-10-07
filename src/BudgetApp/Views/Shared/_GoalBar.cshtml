@@ -1,0 +1,10 @@
+@model BudgetApp.Services.GoalProgress
+
+<div class="d-flex justify-content-between">
+    <strong>@Model.Goal.Name</strong>
+    <span>@Model.Saved.ToString("C2") / @Model.Goal.TargetAmount.ToString("C2") (%@Model.Percent)</span>
+</div>
+<div class="progress" role="progressbar" aria-label="@Model.Goal.Name hedef ilerlemesi"
+     aria-valuenow="@Model.Percent" aria-valuemin="0" aria-valuemax="100">
+    <div class="progress-bar @(Model.Goal.IsCompleted ? "bg-success" : "")" style="width: @(Model.Percent)%">%@Model.Percent</div>
+</div>

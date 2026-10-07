@@ -19,6 +19,8 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.Requ
 builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IGoalService, GoalService>();
+builder.Services.AddScoped<IMonthCloseService, MonthCloseService>();
 
 var app = builder.Build();
 

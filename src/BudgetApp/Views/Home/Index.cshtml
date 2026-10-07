@@ -1,9 +1,86 @@
+@model BudgetApp.Models.HomeViewModel
 @{
     ViewData["Title"] = "Ana sayfa";
+    var authenticated = User.Identity?.IsAuthenticated == true;
 }
 
-<div class="text-center">
-    <h1 class="display-4">BudgetApp</h1>
-    <p>Gelir ve giderlerini takip et.</p>
-    <a asp-controller="Transactions" asp-action="Index" class="btn btn-primary">İşlemlerime git</a>
-</div>
+@if (TempData["Message"] is string message)
+{
+    <div class="alert alert-success">@message</div>
+}
+
+@if (!authenticated)
+{
+    <div class="text-center">
+        <h1 class="display-4">BudgetApp</h1>
+        <p>Gelir ve giderlerini takip et.</p>
+        <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-primary">Giriş yap</a>
+        <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-outline-primary">Kayıt ol</a>
+    </div>
+}
+else
+{
+    @if (Model.Pending is { } pending)
+    {
+        <div class="card border-primary mb-4">
+            <div class="card-body">
+                @if (pending.Remaining > 0 && Model.TransferAmount is { } amount && Model.ActiveGoal is { } goal)
+                {
+                    <p class="mb-2">
+                        <strong>@Model.PendingMonthName</strong> ayında @pending.Remaining.ToString("C2") artırdın.
+                        @goal.Goal.Name hedefine aktaralım mı?
+                        @if (amount < pending.Remaining)
+                        {
+                            <span class="text-muted">(Hedefe sadece @amount.ToString("C2") kaldığı için o kadarı aktarılır.)</span>
+                        }
+                    </p>
+                    <form asp-controller="MonthClose" asp-action="Close" method="post" class="d-flex gap-2">
+                        <input type="hidden" name="year" value="@pending.Year" />
+                        <input type="hidden" name="month" value="@pending.Month" />
+                        <button type="submit" name="transfer" value="true" class="btn btn-primary">Aktar</button>
+                        <button type="submit" name="transfer" value="false" class="btn btn-outline-secondary">Şimdilik geçme</button>
+                    </form>
+                }
+                else
+                {
+                    <p class="mb-2">
+                        @if (pending.Remaining < 0)
+                        {
+                            <span><strong>@Model.PendingMonthName</strong> ayında @((-pending.Remaining).ToString("C2")) açık verdin.</span>
+                        }
+                        else if (pending.Remaining == 0)
+                        {
+                            <span><strong>@Model.PendingMonthName</strong> ayını başa baş kapattın.</span>
+                        }
+                        else
+                        {
+                            <span><strong>@Model.PendingMonthName</strong> ayında @pending.Remaining.ToString("C2") artırdın. Aktarılacak aktif bir hedefin yok.</span>
+                        }
+                    </p>
+                    <form asp-controller="MonthClose" asp-action="Close" method="post">
+                        <input type="hidden" name="year" value="@pending.Year" />
+                        <input type="hidden" name="month" value="@pending.Month" />
+                        <input type="hidden" name="transfer" value="false" />
+                        <button type="submit" class="btn btn-outline-primary">Tamam</button>
+                    </form>
+                }
+            </div>
+        </div>
+    }
+
+    <div class="card mb-4">
+        <div class="card-body">
+            @if (Model.ActiveGoal is { } active)
+            {
+                <partial name="_GoalBar" model="active" />
+            }
+            else
+            {
+                <p class="mb-2">Henüz bir hedefin yok.</p>
+                <a asp-controller="Goals" asp-action="Create" class="btn btn-primary">Hedef oluştur</a>
+            }
+        </div>
+    </div>
+
+    <a asp-controller="Transactions" asp-action="Index" class="btn btn-outline-primary">İşlemlerime git</a>
+}
