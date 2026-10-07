@@ -1,10 +1,24 @@
+@* Compact goal bar for lists. Model: the goal's progress. *@
 @model BudgetApp.Services.GoalProgress
 
-<div class="d-flex justify-content-between">
-    <strong>@Model.Goal.Name</strong>
-    <span>@Model.Saved.ToString("C2") / @Model.Goal.TargetAmount.ToString("C2") (%@Model.Percent)</span>
-</div>
-<div class="progress" role="progressbar" aria-label="@Model.Goal.Name hedef ilerlemesi"
-     aria-valuenow="@Model.Percent" aria-valuemin="0" aria-valuemax="100">
-    <div class="progress-bar @(Model.Goal.IsCompleted ? "bg-success" : "")" style="width: @(Model.Percent)%">%@Model.Percent</div>
+<div class="goal-compact">
+    <div class="d-flex justify-content-between align-items-baseline mb-2">
+        <strong><i class="bi bi-bullseye text-success me-1"></i>@Model.Goal.Name</strong>
+        <span class="text-muted small">@Model.Saved.ToString("C2") / @Model.Goal.TargetAmount.ToString("C2")</span>
+    </div>
+    <div class="goal-track" role="progressbar" aria-label="@Model.Goal.Name hedef ilerlemesi"
+         aria-valuenow="@Model.Percent" aria-valuemin="0" aria-valuemax="100">
+        <div class="goal-fill" style="--w: @(Model.Percent)%"></div>
+    </div>
+    <div class="d-flex justify-content-between small mt-1">
+        @if (Model.Goal.IsCompleted)
+        {
+            <span class="text-success fw-semibold"><i class="bi bi-trophy-fill me-1"></i>Hedefe ulaşıldı</span>
+        }
+        else
+        {
+            <span class="text-muted">Kalan: @Model.Missing.ToString("C2")</span>
+        }
+        <span class="fw-semibold">%@Model.Percent</span>
+    </div>
 </div>

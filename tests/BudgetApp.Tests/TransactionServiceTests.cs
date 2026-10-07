@@ -108,6 +108,84 @@ public class TransactionServiceTests
     }
 
     [Fact]
+    public async Task GetRecentAsync_ReturnsTheNewestTransactionsAcrossAllMonths()
+    {
+        using var db = new TestDb();
+        var service = NewService(db);
+        await service.CreateAsync(Alice, Expense(1m, new DateTime(2026, 7, 4)));
+        await service.CreateAsync(Alice, Expense(2m, new DateTime(2026, 9, 30)));
+        await service.CreateAsync(Alice, Expense(3m, new DateTime(2026, 10, 2)));
+        await service.CreateAsync(Alice, Expense(4m, new DateTime(2026, 10, 9)));
+        await service.CreateAsync(Alice, Expense(5m, new DateTime(2026, 8, 20)));
+        await service.CreateAsync(Alice, Expense(6m, new DateTime(2026, 10, 12)));
+
+        var recent = await service.GetRecentAsync(Alice, 3);
+
+        Assert.Equal([6m, 4m, 3m], recent.Select(t => t.Amount).ToArray());
+    }
+
+    [Fact]
+    public async Task GetRecentAsync_ReachesBackIntoEarlierMonthsWhenThisMonthIsSparse()
+    {
+        using var db = new TestDb();
+        var service = NewService(db);
+        await service.CreateAsync(Alice, Expense(1m, new DateTime(2026, 8, 20)));
+        await service.CreateAsync(Alice, Expense(2m, new DateTime(2026, 9, 5)));
+        await service.CreateAsync(Alice, Expense(3m, new DateTime(2026, 10, 1)));
+
+        var recent = await service.GetRecentAsync(Alice, 5);
+
+        Assert.Equal([3m, 2m, 1m], recent.Select(t => t.Amount).ToArray());
+    }
+
+    [Fact]
+    public async Task GetRecentAsync_BreaksSameDayTiesByNewestEntryFirst()
+    {
+        using var db = new TestDb();
+        var service = NewService(db);
+        await service.CreateAsync(Alice, Expense(1m, Today));
+        await service.CreateAsync(Alice, Expense(2m, Today));
+        await service.CreateAsync(Alice, Expense(3m, Today));
+
+        var recent = await service.GetRecentAsync(Alice, 2);
+
+        Assert.Equal([3m, 2m], recent.Select(t => t.Amount).ToArray());
+    }
+
+    [Fact]
+    public async Task GetRecentAsync_ReturnsOnlyTheUsersOwnTransactionsWithTheirCategory()
+    {
+        using var db = new TestDb();
+        var service = NewService(db);
+        await service.CreateAsync(Alice, Expense(1m, new DateTime(2026, 10, 1)));
+        await service.CreateAsync(Bob, Expense(99m, new DateTime(2026, 10, 14)));
+
+        var recent = await service.GetRecentAsync(Alice, 5);
+
+        var only = Assert.Single(recent);
+        Assert.Equal(Alice, only.UserId);
+        Assert.Equal("Market", only.Category!.Name);
+    }
+
+    [Fact]
+    public async Task GetRecentAsync_ReturnsEmptyWhenThereAreNoTransactions()
+    {
+        using var db = new TestDb();
+
+        Assert.Empty(await NewService(db).GetRecentAsync(Alice, 5));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-3)]
+    public async Task GetRecentAsync_RejectsACountBelowOne(int count)
+    {
+        using var db = new TestDb();
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => NewService(db).GetRecentAsync(Alice, count));
+    }
+
+    [Fact]
     public async Task GetByMonthAsync_IncludesFirstAndLastDayOfMonth()
     {
         using var db = new TestDb();

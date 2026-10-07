@@ -12,6 +12,7 @@ public record TransactionTotals(decimal Income, decimal Expense)
 public interface ITransactionService
 {
     Task<List<Transaction>> GetByMonthAsync(string userId, int year, int month);
+    Task<List<Transaction>> GetRecentAsync(string userId, int count);
     Task<Transaction?> GetAsync(string userId, int id);
     Task<Transaction> CreateAsync(string userId, Transaction input);
     Task<bool> UpdateAsync(string userId, Transaction input);
@@ -32,6 +33,21 @@ public class TransactionService(ApplicationDbContext db, TimeProvider? timeProvi
             .Where(t => t.UserId == userId && t.Date >= start && t.Date < end)
             .OrderByDescending(t => t.Date)
             .ThenByDescending(t => t.Id)
+            .ToListAsync();
+    }
+
+    /// <summary>The user's newest transactions across all months, newest first.</summary>
+    public Task<List<Transaction>> GetRecentAsync(string userId, int count)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(count, 1);
+
+        return db.Transactions
+            .AsNoTracking()
+            .Include(t => t.Category)
+            .Where(t => t.UserId == userId)
+            .OrderByDescending(t => t.Date)
+            .ThenByDescending(t => t.Id)
+            .Take(count)
             .ToListAsync();
     }
 

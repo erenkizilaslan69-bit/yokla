@@ -1,0 +1,26 @@
+@* One transaction as a card row (phones and the dashboard). Model: the transaction (with Category loaded).
+   ViewData["Actions"] = true shows the edit and delete buttons. *@
+@model BudgetApp.Models.Transaction
+@{
+    var income = Model.Type == BudgetApp.Models.TransactionType.Income;
+    var showActions = ViewData["Actions"] is true;
+    var title = string.IsNullOrWhiteSpace(Model.ItemName) ? Model.Category?.Name : Model.ItemName;
+}
+
+<div class="tx-card">
+    <partial name="_CategoryIcon" model="Model.Category?.Name" />
+    <div class="tx-main">
+        <div class="tx-title">@title</div>
+        <div class="tx-sub">@Model.Category?.Name &middot; @Model.Date.ToString("dd.MM.yyyy")</div>
+    </div>
+    <div class="tx-side">
+        <div class="amount @(income ? "income" : "expense")">@(income ? "+" : "−")@Model.Amount.ToString("C2")</div>
+        @if (showActions)
+        {
+            <div class="tx-actions">
+                <a asp-controller="Transactions" asp-action="Edit" asp-route-id="@Model.Id" class="icon-btn" aria-label="Düzenle" title="Düzenle"><i class="bi bi-pencil-square"></i></a>
+                <a asp-controller="Transactions" asp-action="Delete" asp-route-id="@Model.Id" class="icon-btn danger" aria-label="Sil" title="Sil"><i class="bi bi-trash3"></i></a>
+            </div>
+        }
+    </div>
+</div>

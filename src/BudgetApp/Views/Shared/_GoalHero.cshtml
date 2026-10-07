@@ -1,0 +1,20 @@
+@* Large dashboard goal bar: fills up and counts up on load. Model: the goal's progress. *@
+@model BudgetApp.Services.GoalProgress
+
+<div class="card goal-hero p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-start gap-3 position-relative" style="z-index: 1">
+        <div>
+            <div class="goal-name"><i class="bi bi-bullseye"></i>@Model.Goal.Name</div>
+            <div class="goal-meta mt-1">@Model.Saved.ToString("C2") / @Model.Goal.TargetAmount.ToString("C2")</div>
+        </div>
+        <div class="goal-percent" data-countup="@Model.Percent" data-prefix="%">%@Model.Percent</div>
+    </div>
+    <div class="goal-track mt-3 position-relative" style="z-index: 1" role="progressbar" aria-label="@Model.Goal.Name hedef ilerlemesi"
+         aria-valuenow="@Model.Percent" aria-valuemin="0" aria-valuemax="100">
+        <div class="goal-fill" style="--w: @(Model.Percent)%"></div>
+    </div>
+    <div class="d-flex justify-content-between align-items-center goal-meta mt-2 position-relative" style="z-index: 1">
+        <span>Kalan: <strong class="text-white">@Model.Missing.ToString("C2")</strong></span>
+        <a asp-controller="Goals" asp-action="Index" class="text-white text-decoration-underline">Tüm hedefler</a>
+    </div>
+</div>

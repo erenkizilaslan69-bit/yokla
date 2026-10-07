@@ -5,50 +5,76 @@
     var totals = Model.Totals;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="mb-0">İşlemler</h1>
-    <a asp-action="Create" class="btn btn-primary">Yeni işlem</a>
-</div>
-
 @foreach (var warning in Model.Warnings)
 {
-    <div class="alert alert-warning" role="alert">@warning</div>
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill alert-icon"></i>
+        <div class="alert-body">@warning</div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Kapat"></button>
+    </div>
 }
+
+<div class="page-head">
+    <h1>İşlemler</h1>
+    <a asp-action="Create" class="btn btn-primary d-none d-md-inline-flex align-items-center gap-1"><i class="bi bi-plus-lg"></i>Yeni işlem</a>
+</div>
 
 <partial name="_MonthPicker" model="Model.Picker" />
 
-<div class="row mb-3 text-center">
-    <div class="col-md-4"><div class="card card-body"><small class="text-muted">Gelir</small><strong class="text-success">@totals.Income.ToString("C2")</strong></div></div>
-    <div class="col-md-4"><div class="card card-body"><small class="text-muted">Gider</small><strong class="text-danger">@totals.Expense.ToString("C2")</strong></div></div>
-    <div class="col-md-4"><div class="card card-body"><small class="text-muted">Bakiye</small><strong>@totals.Balance.ToString("C2")</strong></div></div>
+<div class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
+        @await Html.PartialAsync("_StatCard", ("Gelir", totals.Income.ToString("C2"), "arrow-down-circle-fill", "income", (string?)null))
+    </div>
+    <div class="col-6 col-md-4">
+        @await Html.PartialAsync("_StatCard", ("Gider", totals.Expense.ToString("C2"), "arrow-up-circle-fill", "expense", (string?)null))
+    </div>
+    <div class="col-6 col-md-4">
+        @await Html.PartialAsync("_StatCard", ("Bakiye", totals.Balance.ToString("C2"), "coin", "balance", (string?)null))
+    </div>
 </div>
 
 @if (Model.Transactions.Count == 0)
 {
-    <p class="text-muted">Bu ay için işlem yok.</p>
+    @await Html.PartialAsync("_EmptyState", ("inbox", "Bu ay için işlem yok", "Gelir veya giderini ekleyerek başla; uyarılar ve analiz sana göre şekillenir.", (string?)"Yeni işlem", (string?)"Transactions", (string?)"Create"))
 }
 else
 {
-    <table class="table table-hover align-middle">
-        <thead>
-            <tr><th>Tarih</th><th>Kategori</th><th>Ürün</th><th>Not</th><th class="text-end">Tutar</th><th></th></tr>
-        </thead>
-        <tbody>
+    @* Phones: one card row per transaction *@
+    <div class="card d-md-none">
         @foreach (var t in Model.Transactions)
         {
-            var income = t.Type == TransactionType.Income;
-            <tr>
-                <td>@t.Date.ToString("dd.MM.yyyy")</td>
-                <td>@t.Category?.Name</td>
-                <td>@t.ItemName</td>
-                <td>@t.Note</td>
-                <td class="text-end @(income ? "text-success" : "text-danger")">@(income ? "+" : "−")@t.Amount.ToString("C2")</td>
-                <td class="text-end">
-                    <a asp-action="Edit" asp-route-id="@t.Id" class="btn btn-sm btn-outline-secondary">Düzenle</a>
-                    <a asp-action="Delete" asp-route-id="@t.Id" class="btn btn-sm btn-outline-danger">Sil</a>
-                </td>
-            </tr>
+            ViewData["Actions"] = true;
+            <partial name="_TransactionCard" model="t" view-data="ViewData" />
         }
-        </tbody>
-    </table>
+    </div>
+
+    @* Tablets and desktops: a table *@
+    <div class="card d-none d-md-block">
+        <div class="table-responsive">
+            <table class="table tx-table">
+                <thead>
+                    <tr><th class="ps-3">Tarih</th><th>Kategori</th><th>Ürün</th><th>Not</th><th class="text-end">Tutar</th><th></th></tr>
+                </thead>
+                <tbody>
+                @foreach (var t in Model.Transactions)
+                {
+                    var income = t.Type == TransactionType.Income;
+                    <tr>
+                        <td class="ps-3 text-nowrap">@t.Date.ToString("dd.MM.yyyy")</td>
+                        <td><partial name="_CategoryBadge" model="t.Category?.Name" /></td>
+                        <td>@t.ItemName</td>
+                        <td class="text-muted">@t.Note</td>
+                        <td class="text-end amount @(income ? "income" : "expense")">@(income ? "+" : "−")@t.Amount.ToString("C2")</td>
+                        <td class="text-end pe-3 text-nowrap">
+                            <a asp-action="Edit" asp-route-id="@t.Id" class="icon-btn" aria-label="Düzenle" title="Düzenle"><i class="bi bi-pencil-square"></i></a>
+                            <a asp-action="Delete" asp-route-id="@t.Id" class="icon-btn danger" aria-label="Sil" title="Sil"><i class="bi bi-trash3"></i></a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
 }
+
+<a asp-action="Create" class="fab d-md-none" aria-label="Yeni işlem"><i class="bi bi-plus-lg"></i></a>

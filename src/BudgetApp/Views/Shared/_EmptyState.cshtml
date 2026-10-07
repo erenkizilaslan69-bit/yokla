@@ -1,0 +1,12 @@
+@* Friendly placeholder. Model: (Icon, Title, Text, ActionText, Controller, Action); leave ActionText empty for no button. *@
+@model (string Icon, string Title, string Text, string? ActionText, string? Controller, string? Action)
+
+<div class="card empty-state">
+    <div><span class="empty-icon"><i class="bi bi-@Model.Icon"></i></span></div>
+    <h2>@Model.Title</h2>
+    <p>@Model.Text</p>
+    @if (!string.IsNullOrEmpty(Model.ActionText))
+    {
+        <div><a asp-controller="@Model.Controller" asp-action="@Model.Action" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>@Model.ActionText</a></div>
+    }
+</div>

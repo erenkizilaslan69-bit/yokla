@@ -1,121 +1,190 @@
+@using System.Globalization
 @model BudgetApp.Models.HomeViewModel
 @{
     ViewData["Title"] = "Ana sayfa";
     var authenticated = User.Identity?.IsAuthenticated == true;
+    var userName = User.Identity?.Name?.Split('@')[0];
+    var monthTitle = DateTime.Today.ToString("MMMM yyyy", CultureInfo.GetCultureInfo("tr-TR"));
 }
 
 @if (TempData["Message"] is string message)
 {
-    <div class="alert alert-success">@message</div>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill alert-icon"></i>
+        <div class="alert-body">@message</div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Kapat"></button>
+    </div>
 }
 
 @if (!authenticated)
 {
-    <div class="text-center">
-        <h1 class="display-4">BudgetApp</h1>
-        <p>Gelir ve giderlerini takip et.</p>
-        <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-primary">Giriş yap</a>
-        <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-outline-primary">Kayıt ol</a>
+    <div class="auth-wrap text-center">
+        <div class="card auth-card">
+            <div class="mb-3"><span class="brand-mark"><i class="bi bi-wallet2"></i></span></div>
+            <h1>BudgetApp</h1>
+            <p class="text-muted">Gelir ve giderlerini takip et, hedefine ne zaman ulaşacağını gör.</p>
+            <ul class="list-unstyled text-start mx-auto mb-4" style="max-width: 18rem">
+                <li class="mb-2"><i class="bi bi-lightning-charge-fill text-success me-2"></i>Harcamana anında uyarılar</li>
+                <li class="mb-2"><i class="bi bi-pie-chart-fill text-success me-2"></i>Aylık analiz ve tavsiyeler</li>
+                <li><i class="bi bi-bullseye text-success me-2"></i>Hedef barı ve ay sonu devri</li>
+            </ul>
+            <div class="d-grid gap-2">
+                <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-primary btn-lg">Giriş yap</a>
+                <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-outline-primary btn-lg">Kayıt ol</a>
+            </div>
+        </div>
     </div>
 }
 else
 {
+    <div class="page-head">
+        <h1>Merhaba, @userName</h1>
+        <span class="text-muted fw-semibold text-capitalize">@monthTitle</span>
+    </div>
+
     @if (Model.Pending is { } pending)
     {
-        <div class="card border-primary mb-4">
-            <div class="card-body">
-                @if (pending.Remaining > 0 && Model.TransferAmount is { } amount && Model.ActiveGoal is { } goal)
-                {
-                    <p class="mb-2">
-                        <strong>@Model.PendingMonthName</strong> ayında @pending.Remaining.ToString("C2") artırdın.
-                        @goal.Goal.Name hedefine aktaralım mı?
+        <div class="card carry-card p-3 p-md-4 mb-4">
+            <div class="d-flex gap-3 align-items-start">
+                <span class="carry-icon"><i class="bi bi-piggy-bank-fill"></i></span>
+                <div class="flex-grow-1">
+                    @if (pending.Remaining > 0 && Model.TransferAmount is { } amount && Model.ActiveGoal is { } goal)
+                    {
+                        <div class="fw-semibold text-capitalize mb-1">@Model.PendingMonthName devri</div>
+                        <p class="mb-1">
+                            Geçen ay <span class="carry-amount">@pending.Remaining.ToString("C2")</span> artırdın.
+                            <strong>@goal.Goal.Name</strong> hedefine aktaralım mı?
+                        </p>
                         @if (amount < pending.Remaining)
                         {
-                            <span class="text-muted">(Hedefe sadece @amount.ToString("C2") kaldığı için o kadarı aktarılır.)</span>
+                            <p class="small text-muted mb-2">Hedefe sadece @amount.ToString("C2") kaldığı için o kadarı aktarılır.</p>
                         }
-                    </p>
-                    <form asp-controller="MonthClose" asp-action="Close" method="post" class="d-flex gap-2">
-                        <input type="hidden" name="year" value="@pending.Year" />
-                        <input type="hidden" name="month" value="@pending.Month" />
-                        <button type="submit" name="transfer" value="true" class="btn btn-primary">Aktar</button>
-                        <button type="submit" name="transfer" value="false" class="btn btn-outline-secondary">Şimdilik geçme</button>
-                    </form>
+                        <form asp-controller="MonthClose" asp-action="Close" method="post" class="d-flex flex-wrap gap-2 mt-2">
+                            <input type="hidden" name="year" value="@pending.Year" />
+                            <input type="hidden" name="month" value="@pending.Month" />
+                            <button type="submit" name="transfer" value="true" class="btn btn-primary"><i class="bi bi-arrow-right-circle me-1"></i>Aktar</button>
+                            <button type="submit" name="transfer" value="false" class="btn btn-outline-secondary">Şimdilik geçme</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <div class="fw-semibold text-capitalize mb-1">@Model.PendingMonthName özeti</div>
+                        <p class="mb-2">
+                            @if (pending.Remaining < 0)
+                            {
+                                <span>Geçen ay <span class="carry-amount text-danger">@((-pending.Remaining).ToString("C2"))</span> açık verdin.</span>
+                            }
+                            else if (pending.Remaining == 0)
+                            {
+                                <span>Geçen ayı başa baş kapattın.</span>
+                            }
+                            else
+                            {
+                                <span>Geçen ay <span class="carry-amount">@pending.Remaining.ToString("C2")</span> artırdın. Aktarılacak aktif bir hedefin yok.</span>
+                            }
+                        </p>
+                        <form asp-controller="MonthClose" asp-action="Close" method="post">
+                            <input type="hidden" name="year" value="@pending.Year" />
+                            <input type="hidden" name="month" value="@pending.Month" />
+                            <input type="hidden" name="transfer" value="false" />
+                            <button type="submit" class="btn btn-outline-primary">Tamam</button>
+                        </form>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (Model.Totals is { } totals)
+    {
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-md-4">
+                @await Html.PartialAsync("_StatCard", ("Gelir", totals.Income.ToString("C2"), "arrow-down-circle-fill", "income", (string?)"Bu ay"))
+            </div>
+            <div class="col-6 col-md-4">
+                @await Html.PartialAsync("_StatCard", ("Gider", totals.Expense.ToString("C2"), "arrow-up-circle-fill", "expense", (string?)"Bu ay"))
+            </div>
+            <div class="col-6 col-md-4">
+                @if (Model.Projection is { } projection)
+                {
+                    @await Html.PartialAsync("_StatCard", ("Tahmini kalan", projection.Projected.ToString("C2"), "graph-up-arrow", "balance", (string?)"Ay sonunda"))
                 }
                 else
                 {
-                    <p class="mb-2">
-                        @if (pending.Remaining < 0)
-                        {
-                            <span><strong>@Model.PendingMonthName</strong> ayında @((-pending.Remaining).ToString("C2")) açık verdin.</span>
-                        }
-                        else if (pending.Remaining == 0)
-                        {
-                            <span><strong>@Model.PendingMonthName</strong> ayını başa baş kapattın.</span>
-                        }
-                        else
-                        {
-                            <span><strong>@Model.PendingMonthName</strong> ayında @pending.Remaining.ToString("C2") artırdın. Aktarılacak aktif bir hedefin yok.</span>
-                        }
-                    </p>
-                    <form asp-controller="MonthClose" asp-action="Close" method="post">
-                        <input type="hidden" name="year" value="@pending.Year" />
-                        <input type="hidden" name="month" value="@pending.Month" />
-                        <input type="hidden" name="transfer" value="false" />
-                        <button type="submit" class="btn btn-outline-primary">Tamam</button>
-                    </form>
+                    @await Html.PartialAsync("_StatCard", ("Tahmini kalan", "—", "graph-up-arrow", "balance", (string?)"Bu ay henüz işlem yok"))
                 }
+            </div>
+        </div>
+    }
+
+    @if (Model.ActiveGoal is { } active)
+    {
+        <partial name="_GoalHero" model="active" />
+    }
+    else
+    {
+        <div class="mb-4">
+            @await Html.PartialAsync("_EmptyState", ("bullseye", "Henüz bir hedefin yok", "Bir hedef koy; ay sonlarında artan paranı oraya aktaralım ve ne zaman ulaşacağını hesaplayalım.", (string?)"Hedef oluştur", (string?)"Goals", (string?)"Create"))
+        </div>
+    }
+
+    @if (Model.Projection is not null || Model.GoalForecast is not null)
+    {
+        <div class="card p-3 mb-4">
+            <div class="d-flex gap-3 align-items-start">
+                <span class="stat-icon balance flex-shrink-0"><i class="bi bi-stars"></i></span>
+                <div>
+                    @if (Model.Projection is { } p)
+                    {
+                        <p class="mb-1">
+                            @if (p.Projected >= 0)
+                            {
+                                <span>Bu tempoyla ay sonunda tahmini <strong>@p.Projected.ToString("C2")</strong> kalır.</span>
+                            }
+                            else
+                            {
+                                <span>Bu tempoyla ay sonunda tahmini <strong class="text-danger">@((-p.Projected).ToString("C2"))</strong> açık verirsin.</span>
+                            }
+                        </p>
+                    }
+                    @if (Model.GoalForecast is { } gf)
+                    {
+                        <p class="mb-0">
+                            @if (gf.Status == BudgetApp.Services.GoalForecastStatus.Reachable)
+                            {
+                                <span>Bu tempoyla @gf.Goal.Name hedefine <strong>@gf.ReachDate!.Value.ToString("MMMM yyyy")</strong> civarında ulaşırsın.</span>
+                            }
+                            else
+                            {
+                                <span>Bu tempoyla hedefe ulaşmak için harcamaları azaltman gerek.</span>
+                            }
+                        </p>
+                    }
+                </div>
             </div>
         </div>
     }
 
     <div class="card mb-4">
-        <div class="card-body">
-            @if (Model.ActiveGoal is { } active)
-            {
-                <partial name="_GoalBar" model="active" />
-            }
-            else
-            {
-                <p class="mb-2">Henüz bir hedefin yok.</p>
-                <a asp-controller="Goals" asp-action="Create" class="btn btn-primary">Hedef oluştur</a>
-            }
+        <div class="d-flex justify-content-between align-items-center px-3 pt-3 pb-2">
+            <h2 class="section-title mb-0">Son işlemler</h2>
+            <a asp-controller="Transactions" asp-action="Index" class="small fw-semibold">Tümünü gör <i class="bi bi-arrow-right"></i></a>
         </div>
+        @if (Model.Recent.Count == 0)
+        {
+            <div class="text-center text-muted px-3 pb-4 pt-2">
+                <p class="mb-2">Henüz işlem yok.</p>
+                <a asp-controller="Transactions" asp-action="Create" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>İlk işlemini ekle</a>
+            </div>
+        }
+        else
+        {
+            @foreach (var tx in Model.Recent)
+            {
+                <partial name="_TransactionCard" model="tx" />
+            }
+        }
     </div>
 
-    @if (Model.Projection is { } projection || Model.GoalForecast is not null)
-    {
-        <div class="card mb-4">
-            <div class="card-body">
-                @if (Model.Projection is { } p)
-                {
-                    <p class="mb-1">
-                        @if (p.Projected >= 0)
-                        {
-                            <span>Bu tempoyla ay sonunda tahmini <strong>@p.Projected.ToString("C2")</strong> kalır.</span>
-                        }
-                        else
-                        {
-                            <span>Bu tempoyla ay sonunda tahmini <strong class="text-danger">@((-p.Projected).ToString("C2"))</strong> açık verirsin.</span>
-                        }
-                    </p>
-                }
-                @if (Model.GoalForecast is { } gf)
-                {
-                    <p class="mb-0">
-                        @if (gf.Status == BudgetApp.Services.GoalForecastStatus.Reachable)
-                        {
-                            <span>Bu tempoyla @gf.Goal.Name hedefine <strong>@gf.ReachDate!.Value.ToString("MMMM yyyy")</strong> civarında ulaşırsın.</span>
-                        }
-                        else
-                        {
-                            <span>Bu tempoyla hedefe ulaşmak için harcamaları azaltman gerek.</span>
-                        }
-                    </p>
-                }
-            </div>
-        </div>
-    }
-
-    <a asp-controller="Transactions" asp-action="Index" class="btn btn-outline-primary">İşlemlerime git</a>
-    <a asp-controller="Analysis" asp-action="Index" class="btn btn-outline-primary">Aylık analiz</a>
+    <a asp-controller="Transactions" asp-action="Create" class="fab d-md-none" aria-label="Yeni işlem"><i class="bi bi-plus-lg"></i></a>
 }

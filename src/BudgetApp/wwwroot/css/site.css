@@ -449,6 +449,7 @@ a:hover { text-decoration: underline; }
   box-shadow: var(--shadow-sm);
 }
 
+.alert-dismissible { padding-right: 1rem; }
 .alert .alert-icon { font-size: 1.15rem; line-height: 1.4; flex: none; }
 .alert .alert-body { flex: 1; }
 .alert .btn-close { position: static; padding: .35rem; margin: -.1rem -.25rem 0 0; flex: none; }

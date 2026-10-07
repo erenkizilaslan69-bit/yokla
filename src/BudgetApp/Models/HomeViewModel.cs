@@ -15,6 +15,12 @@ public class HomeViewModel
     /// <summary>Goal ETA; null when it cannot be calculated (no goal or no history).</summary>
     public GoalForecast? GoalForecast { get; init; }
 
+    /// <summary>Income, expenses and balance of the current month.</summary>
+    public TransactionTotals? Totals { get; init; }
+
+    /// <summary>The user's newest transactions across all months.</summary>
+    public List<Transaction> Recent { get; init; } = [];
+
     /// <summary>Amount that would be moved to the goal: the remainder, capped at what the goal still needs.</summary>
     public decimal? TransferAmount =>
         Pending?.TargetGoal is not null && ActiveGoal is not null

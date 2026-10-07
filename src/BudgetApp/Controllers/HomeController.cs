@@ -6,8 +6,12 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace BudgetApp.Controllers;
 
-public class HomeController(IGoalService goals, IMonthCloseService monthCloses, IForecastService forecast) : Controller
+public class HomeController(
+    IGoalService goals, IMonthCloseService monthCloses, IForecastService forecast, ITransactionService transactions)
+    : Controller
 {
+    private const int RecentCount = 5;
+
     public async Task<IActionResult> Index()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -20,7 +24,9 @@ public class HomeController(IGoalService goals, IMonthCloseService monthCloses, 
             ActiveGoal = await goals.GetActiveAsync(userId),
             Pending = await monthCloses.GetPendingAsync(userId, today),
             Projection = await forecast.GetProjectedBalanceAsync(userId, today),
-            GoalForecast = await forecast.GetGoalForecastAsync(userId, today)
+            GoalForecast = await forecast.GetGoalForecastAsync(userId, today),
+            Totals = await transactions.GetTotalsAsync(userId, today.Year, today.Month),
+            Recent = await transactions.GetRecentAsync(userId, RecentCount)
         });
     }
 
