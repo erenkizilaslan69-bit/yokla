@@ -11,24 +11,29 @@ public record TransactionTotals(decimal Income, decimal Expense)
 
 public interface ITransactionService
 {
-    Task<List<Transaction>> GetAllAsync(string userId);
+    Task<List<Transaction>> GetByMonthAsync(string userId, int year, int month);
     Task<Transaction?> GetAsync(string userId, int id);
     Task<Transaction> CreateAsync(string userId, Transaction input);
     Task<bool> UpdateAsync(string userId, Transaction input);
     Task<bool> DeleteAsync(string userId, int id);
-    Task<TransactionTotals> GetTotalsAsync(string userId);
+    Task<TransactionTotals> GetTotalsAsync(string userId, int year, int month);
 }
 
-public class TransactionService(ApplicationDbContext db) : ITransactionService
+public class TransactionService(ApplicationDbContext db, TimeProvider? timeProvider = null) : ITransactionService
 {
-    public Task<List<Transaction>> GetAllAsync(string userId) =>
-        db.Transactions
+    private readonly TimeProvider _time = timeProvider ?? TimeProvider.System;
+
+    public Task<List<Transaction>> GetByMonthAsync(string userId, int year, int month)
+    {
+        var (start, end) = MonthRange(year, month);
+        return db.Transactions
             .AsNoTracking()
             .Include(t => t.Category)
-            .Where(t => t.UserId == userId)
+            .Where(t => t.UserId == userId && t.Date >= start && t.Date < end)
             .OrderByDescending(t => t.Date)
             .ThenByDescending(t => t.Id)
             .ToListAsync();
+    }
 
     public Task<Transaction?> GetAsync(string userId, int id) =>
         db.Transactions
@@ -83,12 +88,14 @@ public class TransactionService(ApplicationDbContext db) : ITransactionService
         return true;
     }
 
-    public async Task<TransactionTotals> GetTotalsAsync(string userId)
+    public async Task<TransactionTotals> GetTotalsAsync(string userId, int year, int month)
     {
+        var (start, end) = MonthRange(year, month);
+
         // Amounts are projected first and summed in memory: SQLite cannot aggregate decimal columns reliably.
         var rows = await db.Transactions
             .AsNoTracking()
-            .Where(t => t.UserId == userId)
+            .Where(t => t.UserId == userId && t.Date >= start && t.Date < end)
             .Select(t => new { t.Type, t.Amount })
             .ToListAsync();
 
@@ -102,11 +109,20 @@ public class TransactionService(ApplicationDbContext db) : ITransactionService
         if (input.Amount <= 0)
             throw new ArgumentException("Amount must be greater than zero.", nameof(input));
 
+        if (input.Date.Date > _time.GetLocalNow().Date)
+            throw new ArgumentException("Transaction date cannot be in the future.", nameof(input));
+
         var category = await db.Categories.AsNoTracking().FirstOrDefaultAsync(c => c.Id == input.CategoryId);
         if (category is null)
             throw new ArgumentException("Category does not exist.", nameof(input));
         if (category.Type != input.Type)
             throw new ArgumentException("Category type does not match the transaction type.", nameof(input));
+    }
+
+    private static (DateTime Start, DateTime End) MonthRange(int year, int month)
+    {
+        var start = new DateTime(year, month, 1);
+        return (start, start.AddMonths(1));
     }
 
     private static string? Clean(string? value) =>

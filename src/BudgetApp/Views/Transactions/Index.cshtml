@@ -1,14 +1,29 @@
 @using BudgetApp.Models
-@using BudgetApp.Services
-@model List<Transaction>
+@model TransactionsIndexViewModel
 @{
     ViewData["Title"] = "İşlemler";
-    var totals = (TransactionTotals)ViewBag.Totals;
+    var totals = Model.Totals;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="mb-0">İşlemler</h1>
     <a asp-action="Create" class="btn btn-primary">Yeni işlem</a>
+</div>
+
+<div class="d-flex justify-content-center align-items-center gap-3 mb-3">
+    <a asp-action="Index" asp-route-year="@Model.Previous.Year" asp-route-month="@Model.Previous.Month"
+       class="btn btn-outline-secondary" aria-label="Önceki ay">&laquo;</a>
+    <strong class="text-capitalize fs-5">@Model.Title</strong>
+    @if (Model.IsCurrentMonth)
+    {
+        <span class="btn btn-outline-secondary disabled" aria-disabled="true" aria-label="Sonraki ay">&raquo;</span>
+    }
+    else
+    {
+        <a asp-action="Index" asp-route-year="@Model.Next.Year" asp-route-month="@Model.Next.Month"
+           class="btn btn-outline-secondary" aria-label="Sonraki ay">&raquo;</a>
+        <a asp-action="Index" class="btn btn-link">Bu ay</a>
+    }
 </div>
 
 <div class="row mb-3 text-center">
@@ -17,9 +32,9 @@
     <div class="col-md-4"><div class="card card-body"><small class="text-muted">Bakiye</small><strong>@totals.Balance.ToString("C2")</strong></div></div>
 </div>
 
-@if (Model.Count == 0)
+@if (Model.Transactions.Count == 0)
 {
-    <p class="text-muted">Henüz işlem yok. İlk işlemini ekle!</p>
+    <p class="text-muted">Bu ay için işlem yok.</p>
 }
 else
 {
@@ -28,7 +43,7 @@ else
             <tr><th>Tarih</th><th>Kategori</th><th>Ürün</th><th>Not</th><th class="text-end">Tutar</th><th></th></tr>
         </thead>
         <tbody>
-        @foreach (var t in Model)
+        @foreach (var t in Model.Transactions)
         {
             var income = t.Type == TransactionType.Income;
             <tr>

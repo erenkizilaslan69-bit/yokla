@@ -12,10 +12,23 @@ public class TransactionsController(ITransactionService transactions, ICategoryS
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(int? year, int? month)
     {
-        ViewBag.Totals = await transactions.GetTotalsAsync(UserId);
-        return View(await transactions.GetAllAsync(UserId));
+        var today = DateTime.Today;
+        // Fall back to the current month for missing or out-of-range values; never show future months.
+        var valid = year is >= 2000 && month is >= 1 and <= 12
+            && new DateTime(year.Value, month.Value, 1) <= new DateTime(today.Year, today.Month, 1);
+        var y = valid ? year!.Value : today.Year;
+        var m = valid ? month!.Value : today.Month;
+
+        return View(new TransactionsIndexViewModel
+        {
+            Year = y,
+            Month = m,
+            IsCurrentMonth = y == today.Year && m == today.Month,
+            Transactions = await transactions.GetByMonthAsync(UserId, y, m),
+            Totals = await transactions.GetTotalsAsync(UserId, y, m)
+        });
     }
 
     public async Task<IActionResult> Create()
@@ -29,7 +42,7 @@ public class TransactionsController(ITransactionService transactions, ICategoryS
     public async Task<IActionResult> Create(TransactionFormViewModel model)
     {
         if (ModelState.IsValid && await TrySaveAsync(model, isNew: true))
-            return RedirectToAction(nameof(Index));
+            return RedirectToMonthOf(model);
 
         await FillCategoriesAsync(model);
         return View(model);
@@ -66,7 +79,7 @@ public class TransactionsController(ITransactionService transactions, ICategoryS
             if (await transactions.GetAsync(UserId, id) is null)
                 return NotFound();
             if (await TrySaveAsync(model, isNew: false))
-                return RedirectToAction(nameof(Index));
+                return RedirectToMonthOf(model);
         }
 
         await FillCategoriesAsync(model);
@@ -115,10 +128,15 @@ public class TransactionsController(ITransactionService transactions, ICategoryS
         }
         catch (ArgumentException)
         {
+            // Amount, date and required fields are already validated by the model; only the category can still mismatch.
             ModelState.AddModelError(nameof(model.CategoryId), "Kategori seçilen türle uyumlu değil.");
             return false;
         }
     }
+
+    /// <summary>After saving, show the month the transaction belongs to so it is visible in the list.</summary>
+    private RedirectToActionResult RedirectToMonthOf(TransactionFormViewModel model) =>
+        RedirectToAction(nameof(Index), new { year = model.Date!.Value.Year, month = model.Date.Value.Month });
 
     private async Task FillCategoriesAsync(TransactionFormViewModel model)
     {

@@ -18,6 +18,7 @@ public class TransactionFormViewModel
     [Display(Name = "Tarih")]
     [Required(ErrorMessage = "Tarih zorunlu.")]
     [DataType(DataType.Date)]
+    [NotInFuture]
     public DateTime? Date { get; set; } = DateTime.Today;
 
     [Display(Name = "Kategori")]
