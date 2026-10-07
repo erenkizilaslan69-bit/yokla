@@ -1,0 +1,48 @@
+@using BudgetApp.Models
+@using BudgetApp.Services
+@model List<Transaction>
+@{
+    ViewData["Title"] = "İşlemler";
+    var totals = (TransactionTotals)ViewBag.Totals;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">İşlemler</h1>
+    <a asp-action="Create" class="btn btn-primary">Yeni işlem</a>
+</div>
+
+<div class="row mb-3 text-center">
+    <div class="col-md-4"><div class="card card-body"><small class="text-muted">Gelir</small><strong class="text-success">@totals.Income.ToString("C2")</strong></div></div>
+    <div class="col-md-4"><div class="card card-body"><small class="text-muted">Gider</small><strong class="text-danger">@totals.Expense.ToString("C2")</strong></div></div>
+    <div class="col-md-4"><div class="card card-body"><small class="text-muted">Bakiye</small><strong>@totals.Balance.ToString("C2")</strong></div></div>
+</div>
+
+@if (Model.Count == 0)
+{
+    <p class="text-muted">Henüz işlem yok. İlk işlemini ekle!</p>
+}
+else
+{
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr><th>Tarih</th><th>Kategori</th><th>Ürün</th><th>Not</th><th class="text-end">Tutar</th><th></th></tr>
+        </thead>
+        <tbody>
+        @foreach (var t in Model)
+        {
+            var income = t.Type == TransactionType.Income;
+            <tr>
+                <td>@t.Date.ToString("dd.MM.yyyy")</td>
+                <td>@t.Category?.Name</td>
+                <td>@t.ItemName</td>
+                <td>@t.Note</td>
+                <td class="text-end @(income ? "text-success" : "text-danger")">@(income ? "+" : "−")@t.Amount.ToString("C2")</td>
+                <td class="text-end">
+                    <a asp-action="Edit" asp-route-id="@t.Id" class="btn btn-sm btn-outline-secondary">Düzenle</a>
+                    <a asp-action="Delete" asp-route-id="@t.Id" class="btn btn-sm btn-outline-danger">Sil</a>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}

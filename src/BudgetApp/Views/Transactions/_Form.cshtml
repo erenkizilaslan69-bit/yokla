@@ -1,0 +1,59 @@
+@model BudgetApp.Models.TransactionFormViewModel
+
+<form asp-action="@ViewContext.RouteData.Values["action"]" method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <input type="hidden" asp-for="Id" />
+
+    <div class="mb-3">
+        <label asp-for="Type" class="form-label"></label>
+        <select asp-for="Type" class="form-select" id="typeSelect">
+            <option value="Expense">Gider</option>
+            <option value="Income">Gelir</option>
+        </select>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Amount" class="form-label"></label>
+        <input asp-for="Amount" type="text" inputmode="decimal" class="form-control" />
+        <span asp-validation-for="Amount" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Date" class="form-label"></label>
+        <input asp-for="Date" type="date" class="form-control" />
+        <span asp-validation-for="Date" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="CategoryId" class="form-label"></label>
+        <select asp-for="CategoryId" asp-items="Model.Categories" class="form-select" id="categorySelect">
+            <option value="0">Seçin…</option>
+        </select>
+        <span asp-validation-for="CategoryId" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="ItemName" class="form-label"></label>
+        <input asp-for="ItemName" class="form-control" />
+        <span asp-validation-for="ItemName" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Note" class="form-label"></label>
+        <input asp-for="Note" class="form-control" />
+        <span asp-validation-for="Note" class="text-danger"></span>
+    </div>
+    <button type="submit" class="btn btn-primary">Kaydet</button>
+    <a asp-action="Index" class="btn btn-outline-secondary">İptal</a>
+</form>
+
+<script>
+    // Reload the category list whenever the transaction type changes.
+    document.getElementById('typeSelect').addEventListener('change', async function () {
+        const select = document.getElementById('categorySelect');
+        const res = await fetch('@Url.Action("CategoriesByType", "Transactions")?type=' + encodeURIComponent(this.value));
+        const items = await res.json();
+        select.innerHTML = '<option value="0">Seçin…</option>';
+        for (const c of items) {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.name;
+            select.appendChild(opt);
+        }
+    });
+</script>
