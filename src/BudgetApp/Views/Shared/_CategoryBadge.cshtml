@@ -1,0 +1,6 @@
+@* Coloured pill with the category's icon and name. Model: the category name. *@
+@model string?
+@{
+    var style = BudgetApp.Models.CategoryStyle.For(Model);
+}
+<span class="cat-badge" style="--cat: @style.Color"><i class="bi bi-@style.Icon"></i>@Model</span>
