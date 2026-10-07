@@ -1,0 +1,108 @@
+# BudgetApp
+
+A simple income and expense tracker for students. It records what comes in and what goes out, warns you the moment a purchase looks risky, explains where the month's money went, and tells you when you will reach a savings goal at your current pace.
+
+> **Language note:** the user interface is in **Turkish** (currency TL, dates `dd.MM.yyyy`, `tr-TR` culture). The app is designed for **Turkish university students** — the default categories and the demo data reflect things like KYK scholarships, dorm rent and family support. Code, identifiers and commit messages are in English.
+
+## Features
+
+- **Income and expense tracking** — amount, category, date, optional item name and note. List, edit and delete, with a month picker (previous / next month) and per-month income, expense and balance totals. Future-dated entries are rejected.
+- **Savings goal bar** — create a goal (e.g. headphones, 4.500 TL) and watch the bar fill.
+- **Month-end carry-over** — in a new month the home page offers to move last month's surplus to the goal with one click (never more than the goal still needs). A month can only be closed once.
+- **Instant warnings** — right after an expense is saved, the page shows warnings based on four rules: an unusually large single expense, too much "unnecessary" spending, a category running well ahead of last month, and a projected negative month-end balance.
+- **Monthly analysis** — Chart.js pie chart by category, the 10 most expensive items, change versus the previous month, and 2–3 rule-based tips.
+- **Forecast** — projected month-end balance and "at this pace you reach your goal around *month year*".
+- **Accounts** — registration and login with ASP.NET Core Identity; every user only ever sees their own data.
+
+The exact formulas and thresholds are documented in [docs/rules.md](docs/rules.md) and the data model in [docs/model.md](docs/model.md) (both written in Turkish).
+
+## Screenshots
+
+Screenshots go in [docs/screenshots/](docs/screenshots/). Placeholders:
+
+| Screen | File |
+| --- | --- |
+| Home: goal bar, carry-over card, forecast | `docs/screenshots/home.png` |
+| Transactions with month picker and totals | `docs/screenshots/transactions.png` |
+| Instant warnings after saving an expense | `docs/screenshots/warnings.png` |
+| Monthly analysis with pie chart and tips | `docs/screenshots/analysis.png` |
+
+<!-- Once the images exist, replace the table with e.g. ![Home](docs/screenshots/home.png) -->
+
+## Tech stack
+
+- ASP.NET Core MVC on **.NET 10**
+- Entity Framework Core with **SQLite** (a single file, no database server)
+- ASP.NET Core Identity for authentication
+- Razor views, Bootstrap, and [Chart.js](https://www.chartjs.org/) 4 (vendored under `wwwroot/lib/chartjs`, so the app works offline)
+- xUnit for tests
+
+## Architecture
+
+```
+src/BudgetApp
+├── Models/          Entities (Category, Transaction, Goal, GoalContribution, MonthClose) and view models
+├── Data/            ApplicationDbContext, EF Core migrations, development demo-data seeder
+├── Services/        All business logic: transactions, goals, month close, warnings, analysis, forecast
+├── Controllers/     Thin MVC controllers: read the request, call a service, return a view
+├── Views/           Razor views (Turkish UI)
+├── Areas/Identity/  Login, register and logout pages
+└── Localization/    Turkish Identity and model-binding messages
+tests/BudgetApp.Tests    xUnit tests for the services (in-memory SQLite with the real schema)
+docs/                    Data model and business rules
+```
+
+Design decisions worth knowing:
+
+- **Money is always `decimal`** (`decimal(18,2)` in the database), never `double` or `float`.
+- **Controllers stay thin.** Calculations live in `Services`, each of which has tests. Services take "today" as a parameter, so date-dependent rules are tested with a fixed clock.
+- **Per-user isolation.** Every query filters by `UserId`; asking for someone else's record behaves like "not found".
+- **No LLM and no external API.** The warnings, tips and forecasts are plain, deterministic rules, so every number can be traced back to the data.
+
+## Getting started
+
+Requirements: the [.NET 10 SDK](https://dotnet.microsoft.com/download) and Git.
+
+```bash
+git clone <repository-url>
+cd <repository-folder>
+
+dotnet run --project src/BudgetApp
+```
+
+The app listens on `http://localhost:5277` (and `https://localhost:7138`). In the **Development** environment (the default when launched through `dotnet run`) it creates the SQLite database file, applies the migrations and adds a demo account, so no extra setup is needed.
+
+To manage the database manually instead:
+
+```bash
+dotnet tool install --global dotnet-ef        # once
+dotnet ef database update --project src/BudgetApp
+```
+
+Run the tests:
+
+```bash
+dotnet test
+```
+
+## Demo account
+
+In Development only, a demo user is created on first start with about three months of realistic student data: KYK scholarship and family support, rent, bills, subscriptions, groceries with item names, coffee, transport and entertainment, a "Kulaklık" (headphones) goal, and month-close records for the two oldest months. The most recent month is deliberately left open so the carry-over card shows up on the home page.
+
+| | |
+| --- | --- |
+| E-mail | `demo@budgetapp.local` |
+| Password | `Demo123!` |
+
+The dates are generated relative to the current day, so the data always looks fresh. The demo account is never created outside the Development environment.
+
+## Future improvements
+
+- **Receipt scanning** — upload a photo of a receipt, let a vision-capable LLM extract the line items, review them in an editable table and save them as transactions (the data model already stores one transaction per item).
+- **LLM-written tips** — keep all numbers computed by the services and let an LLM only phrase the advice sentences more naturally.
+- **Mobile app** — a companion app for entering expenses on the go.
+- **Change password and profile pages** — currently only registration, login and logout exist; the Identity management pages are not included.
+- **E-mail confirmation and password reset** — needs an e-mail sender; accounts are active immediately today.
+- **Push notifications** for warnings and month-end reminders.
+- **Bank integration** to import transactions automatically.
+- **Investment module** for longer-term goals.
