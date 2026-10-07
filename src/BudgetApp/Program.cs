@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using BudgetApp.Data;
+using BudgetApp.Localization;
 using BudgetApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,8 +16,10 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 // No email sender is configured, so accounts are usable immediately after registration.
 builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = false)
+    .AddErrorDescriber<TurkishIdentityErrorDescriber>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+    TurkishValidationMessages.Apply(options.ModelBindingMessageProvider));
 builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IGoalService, GoalService>();
