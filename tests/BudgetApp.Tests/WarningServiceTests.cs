@@ -362,6 +362,36 @@ public class WarningServiceTests
     }
 
     [Fact]
+    public async Task Rule4_DoesNotFireWhenThereIsNoIncomeThisMonth()
+    {
+        using var t = new TestDb();
+        var saved = AddExpense(t.Context, Alice, 400m, new DateTime(2026, 10, 10), Market);
+
+        Assert.False(Has(await Check(t, saved), WarningRule.NegativeForecast));
+    }
+
+    [Fact]
+    public async Task Rule4_IgnoresIncomeFromOtherMonthsAndOtherUsers()
+    {
+        using var t = new TestDb();
+        AddIncome(t.Context, Alice, 9000m, new DateTime(2026, 9, 1)); // last month's income does not count
+        AddIncome(t.Context, Bob, 9000m, new DateTime(2026, 10, 1));  // neither does somebody else's
+        var saved = AddExpense(t.Context, Alice, 400m, new DateTime(2026, 10, 10), Market);
+
+        Assert.False(Has(await Check(t, saved), WarningRule.NegativeForecast));
+    }
+
+    [Fact]
+    public async Task Rule4_FiresAsSoonAsAnIncomeIsRecordedThisMonth()
+    {
+        using var t = new TestDb();
+        AddIncome(t.Context, Alice, 100m, new DateTime(2026, 10, 1));
+        var saved = AddExpense(t.Context, Alice, 400m, new DateTime(2026, 10, 10), Market);
+
+        Assert.True(Has(await Check(t, saved), WarningRule.NegativeForecast));
+    }
+
+    [Fact]
     public async Task Rule4_FiresForFixedExpensesThatAlreadyExceedIncome()
     {
         using var t = new TestDb();

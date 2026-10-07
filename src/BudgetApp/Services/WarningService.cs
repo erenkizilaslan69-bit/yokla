@@ -107,11 +107,12 @@ public class WarningService(ApplicationDbContext db, IForecastService forecast) 
             $"{Tr.Money(lastMonth)} idi (%{Tr.Percent(thisMonth / lastMonth - 1m)} fazla).");
     }
 
-    // Rule 4: the month-end projection is below zero.
+    // Rule 4: the month-end projection is below zero. Without any income record this month the projection
+    // would just be "all spending is a deficit", so the rule stays quiet until an income is entered.
     private async Task<Warning?> NegativeForecast(string userId, DateTime today)
     {
         var projection = await forecast.GetProjectedBalanceAsync(userId, today);
-        if (projection is null || projection.Projected >= 0)
+        if (projection is null || projection.Income <= 0 || projection.Projected >= 0)
             return null;
 
         return new Warning(WarningRule.NegativeForecast,

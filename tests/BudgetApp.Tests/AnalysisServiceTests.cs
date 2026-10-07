@@ -103,6 +103,74 @@ public class AnalysisServiceTests
     }
 
     [Fact]
+    public async Task TopItems_ExcludeFixedExpenseCategories()
+    {
+        using var t = new TestDb();
+        AddExpense(t.Context, Alice, 2200m, Oct(1), Rent, "Yurt ücreti");
+        AddExpense(t.Context, Alice, 400m, Oct(2), Bills, "Elektrik");
+        AddExpense(t.Context, Alice, 30m, Oct(3), Market, "Süt");
+
+        var analysis = await Analyze(t);
+
+        Assert.Equal(["Süt"], analysis.TopItems.Select(i => i.ItemName).ToArray());
+    }
+
+    [Fact]
+    public async Task TopItems_FixedExpensesDoNotTakeUpOneOfTheTenSlots()
+    {
+        using var t = new TestDb();
+        for (var i = 1; i <= 10; i++)
+            AddExpense(t.Context, Alice, i * 10m, Oct(2), Market, $"Ürün {i}");
+        AddExpense(t.Context, Alice, 5000m, Oct(1), Rent, "Yurt ücreti");
+
+        var analysis = await Analyze(t);
+
+        Assert.Equal(10, analysis.TopItems.Count);
+        Assert.DoesNotContain(analysis.TopItems, i => i.ItemName == "Yurt ücreti");
+        Assert.Equal("Ürün 10", analysis.TopItems[0].ItemName);
+    }
+
+    [Fact]
+    public async Task TopItems_CountOnlyTheVariablePartWhenANameAlsoAppearsInAFixedCategory()
+    {
+        using var t = new TestDb();
+        AddExpense(t.Context, Alice, 1000m, Oct(1), Bills, "İnternet");
+        AddExpense(t.Context, Alice, 50m, Oct(2), Market, "İnternet");
+
+        var analysis = await Analyze(t);
+
+        var item = Assert.Single(analysis.TopItems);
+        Assert.Equal(50m, item.Amount);
+        Assert.Equal(1, item.Count);
+    }
+
+    [Fact]
+    public async Task TopItems_FixedExpensesStillCountInCategoryTotalsAndChanges()
+    {
+        using var t = new TestDb();
+        AddExpense(t.Context, Alice, 2200m, Oct(1), Rent, "Yurt ücreti");
+
+        var analysis = await Analyze(t);
+
+        Assert.Empty(analysis.TopItems);
+        Assert.Equal(2200m, Assert.Single(analysis.Categories).Amount);
+        Assert.Equal("Kira/Yurt", Assert.Single(analysis.Changes).Name);
+    }
+
+    [Fact]
+    public async Task Advice_FrequentItemTipIgnoresFixedExpenses()
+    {
+        using var t = new TestDb();
+        AddExpense(t.Context, Alice, 400m, Oct(1), Bills, "Elektrik");
+        AddExpense(t.Context, Alice, 400m, Oct(8), Bills, "Elektrik");
+        AddExpense(t.Context, Alice, 400m, Oct(9), Bills, "Elektrik");
+
+        var analysis = await Analyze(t);
+
+        Assert.DoesNotContain(analysis.Advice, a => a.Contains("Elektrik için"));
+    }
+
+    [Fact]
     public async Task TopItems_AreLimitedToTenLargest()
     {
         using var t = new TestDb();

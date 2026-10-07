@@ -17,7 +17,7 @@ Gider kaydedildikten hemen sonra çalışır, tetiklenen uyarılar sayfanın üs
    - Sabit gider kategorilerindeki (IsFixed) harcamalar için kural çalışmaz (kira gibi beklenen ödemeler uyarı üretmez).
 2. **Gereksiz harcama payı:** IsUnnecessary kategorilerin bu ayki toplamı > bu ayki toplam gelirin %20'si.
 3. **Kategori artışı:** Bir kategorinin bu ayın bugününe kadarki toplamı > geçen ayın aynı gününe kadarki toplamının %130'u. (Geçen ay o kategoride harcama yoksa çalışmaz.)
-4. **Eksiye düşme riski:** Tahmini ay sonu kalanı (bkz. 4) < 0. Bu ay hiç işlem yoksa çalışmaz.
+4. **Eksiye düşme riski:** Tahmini ay sonu kalanı (bkz. 4) < 0. Bu ay hiç gelir kaydı yoksa çalışmaz (gelir girilmeden her harcama "açık" görünürdü).
 
 Kural 1 yalnızca gider, kural 2–4 kaydedilen giderin kategorisine göre çalışır (kural 2 sadece gereksiz kategorideki harcamada, kural 3 sadece o kategori için). Uyarılar yalnızca bu ay tarihli işlemler için hesaplanır.
 
@@ -26,7 +26,7 @@ Uyarı metinleri samimi ve kısa olsun, her zaman gerçek rakam içersin. Örnek
 
 ## 3. Aylık analiz (AnalysisService)
 - Kategori bazında toplam gider (pasta grafik).
-- ItemName bazında en çok harcanan 10 ürün.
+- ItemName bazında en çok harcanan 10 ürün (sabit gider kategorileri — IsFixed — hariç).
 - Geçen aya göre kategori değişimi (TL ve %).
 - 2–3 kural tabanlı tavsiye, örneğin:
   - En çok artan gereksiz kategori için: "{Kategori} harcamanı yarıya indirsen hedefine {N} ay erken ulaşırsın."
