@@ -1,0 +1,96 @@
+@model BudgetApp.Models.AnalysisViewModel
+@{
+    ViewData["Title"] = "Analiz";
+    var a = Model.Analysis;
+}
+
+<h1>Aylık analiz</h1>
+
+<partial name="_MonthPicker" model="Model.Picker" />
+
+@if (a.Categories.Count == 0)
+{
+    <p class="text-muted">Bu ay için gider yok.</p>
+}
+else
+{
+    <div class="row">
+        <div class="col-lg-5 mb-4">
+            <h2 class="h5">Kategoriye göre giderler</h2>
+            <div class="text-muted mb-2">Toplam: @a.TotalExpense.ToString("C2")</div>
+            <canvas id="categoryChart" aria-label="Kategoriye göre gider dağılımı" role="img"></canvas>
+        </div>
+        <div class="col-lg-7 mb-4">
+            <h2 class="h5">En çok harcanan ürünler</h2>
+            @if (a.TopItems.Count == 0)
+            {
+                <p class="text-muted">Ürün adı girilmiş gider yok.</p>
+            }
+            else
+            {
+                <table class="table table-sm">
+                    <thead><tr><th>Ürün</th><th class="text-end">Adet</th><th class="text-end">Tutar</th></tr></thead>
+                    <tbody>
+                    @foreach (var item in a.TopItems)
+                    {
+                        <tr><td>@item.ItemName</td><td class="text-end">@item.Count</td><td class="text-end">@item.Amount.ToString("C2")</td></tr>
+                    }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    <h2 class="h5">Geçen aya göre değişim</h2>
+    <table class="table table-sm mb-4">
+        <thead>
+            <tr><th>Kategori</th><th class="text-end">Geçen ay</th><th class="text-end">Bu ay</th><th class="text-end">Fark</th><th class="text-end">%</th></tr>
+        </thead>
+        <tbody>
+        @foreach (var c in a.Changes)
+        {
+            var cls = c.Delta > 0 ? "text-danger" : c.Delta < 0 ? "text-success" : "";
+            <tr>
+                <td>@c.Name</td>
+                <td class="text-end">@c.Previous.ToString("C2")</td>
+                <td class="text-end">@c.Current.ToString("C2")</td>
+                <td class="text-end @cls">@(c.Delta > 0 ? "+" : "")@c.Delta.ToString("C2")</td>
+                <td class="text-end @cls">@(c.Percent is { } p ? $"{(p > 0 ? "+" : "")}{p:N0}%" : "—")</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+
+    <h2 class="h5">Tavsiyeler</h2>
+    <ul class="list-group mb-4">
+        @foreach (var tip in a.Advice)
+        {
+            <li class="list-group-item">@tip</li>
+        }
+    </ul>
+}
+
+@section Scripts {
+    @if (a.Categories.Count > 0)
+    {
+        <script src="~/lib/chartjs/chart.umd.js"></script>
+        <script>
+            const labels = @Json.Serialize(a.Categories.Select(c => c.Name));
+            const values = @Json.Serialize(a.Categories.Select(c => c.Amount));
+            const colors = labels.map((_, i) => `hsl(${Math.round(i * 360 / labels.length)}, 65%, 55%)`);
+            new Chart(document.getElementById('categoryChart'), {
+                type: 'pie',
+                data: { labels, datasets: [{ data: values, backgroundColor: colors }] },
+                options: {
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => `${ctx.label}: ${ctx.parsed.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}`
+                            }
+                        }
+                    }
+                }
+            });
+        </script>
+    }
+}

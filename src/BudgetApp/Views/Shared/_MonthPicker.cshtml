@@ -1,0 +1,17 @@
+@model BudgetApp.Models.MonthPickerViewModel
+
+<div class="d-flex justify-content-center align-items-center gap-3 mb-3">
+    <a asp-controller="@Model.Controller" asp-action="Index" asp-route-year="@Model.Previous.Year" asp-route-month="@Model.Previous.Month"
+       class="btn btn-outline-secondary" aria-label="Önceki ay">&laquo;</a>
+    <strong class="text-capitalize fs-5">@Model.Title</strong>
+    @if (Model.IsCurrentMonth)
+    {
+        <span class="btn btn-outline-secondary disabled" aria-disabled="true" aria-label="Sonraki ay">&raquo;</span>
+    }
+    else
+    {
+        <a asp-controller="@Model.Controller" asp-action="Index" asp-route-year="@Model.Next.Year" asp-route-month="@Model.Next.Month"
+           class="btn btn-outline-secondary" aria-label="Sonraki ay">&raquo;</a>
+        <a asp-controller="@Model.Controller" asp-action="Index" class="btn btn-link">Bu ay</a>
+    }
+</div>

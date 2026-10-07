@@ -23,6 +23,9 @@ namespace BudgetApp.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("IsFixed")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("IsUnnecessary")
                         .HasColumnType("INTEGER");
 
@@ -42,6 +45,7 @@ namespace BudgetApp.Data.Migrations
                         new
                         {
                             Id = 1,
+                            IsFixed = false,
                             IsUnnecessary = false,
                             Name = "KYK Bursu",
                             Type = 0
@@ -49,6 +53,7 @@ namespace BudgetApp.Data.Migrations
                         new
                         {
                             Id = 2,
+                            IsFixed = false,
                             IsUnnecessary = false,
                             Name = "Aile Desteği",
                             Type = 0
@@ -56,6 +61,7 @@ namespace BudgetApp.Data.Migrations
                         new
                         {
                             Id = 3,
+                            IsFixed = false,
                             IsUnnecessary = false,
                             Name = "Part-time İş",
                             Type = 0
@@ -63,6 +69,7 @@ namespace BudgetApp.Data.Migrations
                         new
                         {
                             Id = 4,
+                            IsFixed = false,
                             IsUnnecessary = false,
                             Name = "Diğer Gelir",
                             Type = 0
@@ -70,6 +77,7 @@ namespace BudgetApp.Data.Migrations
                         new
                         {
                             Id = 5,
+                            IsFixed = false,
                             IsUnnecessary = false,
                             Name = "Market",
                             Type = 1
@@ -77,6 +85,7 @@ namespace BudgetApp.Data.Migrations
                         new
                         {
                             Id = 6,
+                            IsFixed = true,
                             IsUnnecessary = false,
                             Name = "Kira/Yurt",
                             Type = 1
@@ -84,6 +93,7 @@ namespace BudgetApp.Data.Migrations
                         new
                         {
                             Id = 7,
+                            IsFixed = true,
                             IsUnnecessary = false,
                             Name = "Faturalar",
                             Type = 1
@@ -91,6 +101,7 @@ namespace BudgetApp.Data.Migrations
                         new
                         {
                             Id = 8,
+                            IsFixed = false,
                             IsUnnecessary = false,
                             Name = "Ulaşım",
                             Type = 1
@@ -98,6 +109,7 @@ namespace BudgetApp.Data.Migrations
                         new
                         {
                             Id = 9,
+                            IsFixed = false,
                             IsUnnecessary = false,
                             Name = "Eğitim/Kırtasiye",
                             Type = 1
@@ -105,6 +117,7 @@ namespace BudgetApp.Data.Migrations
                         new
                         {
                             Id = 10,
+                            IsFixed = false,
                             IsUnnecessary = false,
                             Name = "Sağlık",
                             Type = 1
@@ -112,6 +125,7 @@ namespace BudgetApp.Data.Migrations
                         new
                         {
                             Id = 11,
+                            IsFixed = false,
                             IsUnnecessary = false,
                             Name = "Giyim",
                             Type = 1
@@ -119,6 +133,7 @@ namespace BudgetApp.Data.Migrations
                         new
                         {
                             Id = 12,
+                            IsFixed = true,
                             IsUnnecessary = false,
                             Name = "Abonelikler",
                             Type = 1
@@ -126,6 +141,7 @@ namespace BudgetApp.Data.Migrations
                         new
                         {
                             Id = 13,
+                            IsFixed = false,
                             IsUnnecessary = false,
                             Name = "Diğer Gider",
                             Type = 1
@@ -133,6 +149,7 @@ namespace BudgetApp.Data.Migrations
                         new
                         {
                             Id = 14,
+                            IsFixed = false,
                             IsUnnecessary = true,
                             Name = "Dışarıda Yemek",
                             Type = 1
@@ -140,6 +157,7 @@ namespace BudgetApp.Data.Migrations
                         new
                         {
                             Id = 15,
+                            IsFixed = false,
                             IsUnnecessary = true,
                             Name = "Kafe/Kahve",
                             Type = 1
@@ -147,6 +165,7 @@ namespace BudgetApp.Data.Migrations
                         new
                         {
                             Id = 16,
+                            IsFixed = false,
                             IsUnnecessary = true,
                             Name = "Eğlence",
                             Type = 1

@@ -82,5 +82,40 @@ else
         </div>
     </div>
 
+    @if (Model.Projection is { } projection || Model.GoalForecast is not null)
+    {
+        <div class="card mb-4">
+            <div class="card-body">
+                @if (Model.Projection is { } p)
+                {
+                    <p class="mb-1">
+                        @if (p.Projected >= 0)
+                        {
+                            <span>Bu tempoyla ay sonunda tahmini <strong>@p.Projected.ToString("C2")</strong> kalır.</span>
+                        }
+                        else
+                        {
+                            <span>Bu tempoyla ay sonunda tahmini <strong class="text-danger">@((-p.Projected).ToString("C2"))</strong> açık verirsin.</span>
+                        }
+                    </p>
+                }
+                @if (Model.GoalForecast is { } gf)
+                {
+                    <p class="mb-0">
+                        @if (gf.Status == BudgetApp.Services.GoalForecastStatus.Reachable)
+                        {
+                            <span>Bu tempoyla @gf.Goal.Name hedefine <strong>@gf.ReachDate!.Value.ToString("MMMM yyyy")</strong> civarında ulaşırsın.</span>
+                        }
+                        else
+                        {
+                            <span>Bu tempoyla hedefe ulaşmak için harcamaları azaltman gerek.</span>
+                        }
+                    </p>
+                }
+            </div>
+        </div>
+    }
+
     <a asp-controller="Transactions" asp-action="Index" class="btn btn-outline-primary">İşlemlerime git</a>
+    <a asp-controller="Analysis" asp-action="Index" class="btn btn-outline-primary">Aylık analiz</a>
 }

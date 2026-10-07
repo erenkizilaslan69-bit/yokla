@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using BudgetApp.Models;
 using BudgetApp.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -8,18 +9,17 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 namespace BudgetApp.Controllers;
 
 [Authorize]
-public class TransactionsController(ITransactionService transactions, ICategoryService categories) : Controller
+public class TransactionsController(
+    ITransactionService transactions, ICategoryService categories, IWarningService warningService) : Controller
 {
+    private const string WarningsKey = "Warnings";
+
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
     public async Task<IActionResult> Index(int? year, int? month)
     {
         var today = DateTime.Today;
-        // Fall back to the current month for missing or out-of-range values; never show future months.
-        var valid = year is >= 2000 && month is >= 1 and <= 12
-            && new DateTime(year.Value, month.Value, 1) <= new DateTime(today.Year, today.Month, 1);
-        var y = valid ? year!.Value : today.Year;
-        var m = valid ? month!.Value : today.Month;
+        var (y, m) = MonthPickerViewModel.Resolve(year, month, today);
 
         return View(new TransactionsIndexViewModel
         {
@@ -27,7 +27,8 @@ public class TransactionsController(ITransactionService transactions, ICategoryS
             Month = m,
             IsCurrentMonth = y == today.Year && m == today.Month,
             Transactions = await transactions.GetByMonthAsync(UserId, y, m),
-            Totals = await transactions.GetTotalsAsync(UserId, y, m)
+            Totals = await transactions.GetTotalsAsync(UserId, y, m),
+            Warnings = TakeWarnings()
         });
     }
 
@@ -41,8 +42,18 @@ public class TransactionsController(ITransactionService transactions, ICategoryS
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(TransactionFormViewModel model)
     {
-        if (ModelState.IsValid && await TrySaveAsync(model, isNew: true))
-            return RedirectToMonthOf(model);
+        if (ModelState.IsValid)
+        {
+            var created = await TrySaveAsync(model, isNew: true);
+            if (created is not null)
+            {
+                // Warnings are shown right after an expense is saved, above the transaction list.
+                var warnings = await warningService.CheckAsync(UserId, created, DateTime.Today);
+                if (warnings.Count > 0)
+                    TempData[WarningsKey] = JsonSerializer.Serialize(warnings.Select(w => w.Message));
+                return RedirectToMonthOf(model);
+            }
+        }
 
         await FillCategoriesAsync(model);
         return View(model);
@@ -78,7 +89,7 @@ public class TransactionsController(ITransactionService transactions, ICategoryS
         {
             if (await transactions.GetAsync(UserId, id) is null)
                 return NotFound();
-            if (await TrySaveAsync(model, isNew: false))
+            if (await TrySaveAsync(model, isNew: false) is not null)
                 return RedirectToMonthOf(model);
         }
 
@@ -105,7 +116,8 @@ public class TransactionsController(ITransactionService transactions, ICategoryS
         return Json(list.Select(c => new { id = c.Id, name = c.Name }));
     }
 
-    private async Task<bool> TrySaveAsync(TransactionFormViewModel model, bool isNew)
+    /// <summary>Saves the form; returns the persisted transaction, or null when validation failed.</summary>
+    private async Task<Transaction?> TrySaveAsync(TransactionFormViewModel model, bool isNew)
     {
         var input = new Transaction
         {
@@ -121,22 +133,25 @@ public class TransactionsController(ITransactionService transactions, ICategoryS
         try
         {
             if (isNew)
-                await transactions.CreateAsync(UserId, input);
-            else
-                await transactions.UpdateAsync(UserId, input);
-            return true;
+                return await transactions.CreateAsync(UserId, input);
+
+            await transactions.UpdateAsync(UserId, input);
+            return input;
         }
         catch (ArgumentException)
         {
             // Amount, date and required fields are already validated by the model; only the category can still mismatch.
             ModelState.AddModelError(nameof(model.CategoryId), "Kategori seçilen türle uyumlu değil.");
-            return false;
+            return null;
         }
     }
 
     /// <summary>After saving, show the month the transaction belongs to so it is visible in the list.</summary>
     private RedirectToActionResult RedirectToMonthOf(TransactionFormViewModel model) =>
         RedirectToAction(nameof(Index), new { year = model.Date!.Value.Year, month = model.Date.Value.Month });
+
+    private List<string> TakeWarnings() =>
+        TempData[WarningsKey] is string json ? JsonSerializer.Deserialize<List<string>>(json) ?? [] : [];
 
     private async Task FillCategoriesAsync(TransactionFormViewModel model)
     {

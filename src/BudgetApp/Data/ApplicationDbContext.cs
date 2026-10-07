@@ -51,8 +51,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     private static Category[] DefaultCategories()
     {
         var id = 0;
-        Category C(string name, TransactionType type, bool unnecessary = false) =>
-            new() { Id = ++id, Name = name, Type = type, IsUnnecessary = unnecessary };
+        Category C(string name, TransactionType type, bool unnecessary = false, bool isFixed = false) =>
+            new() { Id = ++id, Name = name, Type = type, IsUnnecessary = unnecessary, IsFixed = isFixed };
 
         return
         [
@@ -61,13 +61,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             C("Part-time İş", TransactionType.Income),
             C("Diğer Gelir", TransactionType.Income),
             C("Market", TransactionType.Expense),
-            C("Kira/Yurt", TransactionType.Expense),
-            C("Faturalar", TransactionType.Expense),
+            C("Kira/Yurt", TransactionType.Expense, isFixed: true),
+            C("Faturalar", TransactionType.Expense, isFixed: true),
             C("Ulaşım", TransactionType.Expense),
             C("Eğitim/Kırtasiye", TransactionType.Expense),
             C("Sağlık", TransactionType.Expense),
             C("Giyim", TransactionType.Expense),
-            C("Abonelikler", TransactionType.Expense),
+            C("Abonelikler", TransactionType.Expense, isFixed: true),
             C("Diğer Gider", TransactionType.Expense),
             C("Dışarıda Yemek", TransactionType.Expense, true),
             C("Kafe/Kahve", TransactionType.Expense, true),

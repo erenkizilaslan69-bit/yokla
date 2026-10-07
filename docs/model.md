@@ -9,10 +9,12 @@ Tüm para alanları `decimal(18,2)`. Tüm kullanıcı verisi `UserId` (Identity 
 | Name | string | |
 | Type | enum (Income, Expense) | |
 | IsUnnecessary | bool | Gereksiz harcama kategorisi mi (uyarı kuralı 2 için) |
+| IsFixed | bool | Sabit gider kategorisi mi (kira, fatura gibi); tahmin formülünde ve uyarı kuralı 1'de kullanılır |
 
 Varsayılan kategoriler (seed):
 - Gelir: KYK Bursu, Aile Desteği, Part-time İş, Diğer Gelir
-- Gider: Market, Kira/Yurt, Faturalar, Ulaşım, Eğitim/Kırtasiye, Sağlık, Giyim, Abonelikler, Diğer Gider
+- Gider: Market, Ulaşım, Eğitim/Kırtasiye, Sağlık, Giyim, Diğer Gider
+- Gider (IsFixed = true): Kira/Yurt, Faturalar, Abonelikler
 - Gider (IsUnnecessary = true): Dışarıda Yemek, Kafe/Kahve, Eğlence
 
 ## Transaction

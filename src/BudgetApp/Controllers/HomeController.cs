@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace BudgetApp.Controllers;
 
-public class HomeController(IGoalService goals, IMonthCloseService monthCloses) : Controller
+public class HomeController(IGoalService goals, IMonthCloseService monthCloses, IForecastService forecast) : Controller
 {
     public async Task<IActionResult> Index()
     {
@@ -14,10 +14,13 @@ public class HomeController(IGoalService goals, IMonthCloseService monthCloses) 
         if (userId is null)
             return View(new HomeViewModel());
 
+        var today = DateTime.Today;
         return View(new HomeViewModel
         {
             ActiveGoal = await goals.GetActiveAsync(userId),
-            Pending = await monthCloses.GetPendingAsync(userId, DateTime.Today)
+            Pending = await monthCloses.GetPendingAsync(userId, today),
+            Projection = await forecast.GetProjectedBalanceAsync(userId, today),
+            GoalForecast = await forecast.GetGoalForecastAsync(userId, today)
         });
     }
 

@@ -10,21 +10,12 @@
     <a asp-action="Create" class="btn btn-primary">Yeni işlem</a>
 </div>
 
-<div class="d-flex justify-content-center align-items-center gap-3 mb-3">
-    <a asp-action="Index" asp-route-year="@Model.Previous.Year" asp-route-month="@Model.Previous.Month"
-       class="btn btn-outline-secondary" aria-label="Önceki ay">&laquo;</a>
-    <strong class="text-capitalize fs-5">@Model.Title</strong>
-    @if (Model.IsCurrentMonth)
-    {
-        <span class="btn btn-outline-secondary disabled" aria-disabled="true" aria-label="Sonraki ay">&raquo;</span>
-    }
-    else
-    {
-        <a asp-action="Index" asp-route-year="@Model.Next.Year" asp-route-month="@Model.Next.Month"
-           class="btn btn-outline-secondary" aria-label="Sonraki ay">&raquo;</a>
-        <a asp-action="Index" class="btn btn-link">Bu ay</a>
-    }
-</div>
+@foreach (var warning in Model.Warnings)
+{
+    <div class="alert alert-warning" role="alert">@warning</div>
+}
+
+<partial name="_MonthPicker" model="Model.Picker" />
 
 <div class="row mb-3 text-center">
     <div class="col-md-4"><div class="card card-body"><small class="text-muted">Gelir</small><strong class="text-success">@totals.Income.ToString("C2")</strong></div></div>

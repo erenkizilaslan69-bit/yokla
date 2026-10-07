@@ -21,6 +21,9 @@ builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IGoalService, GoalService>();
 builder.Services.AddScoped<IMonthCloseService, MonthCloseService>();
+builder.Services.AddScoped<IForecastService, ForecastService>();
+builder.Services.AddScoped<IWarningService, WarningService>();
+builder.Services.AddScoped<IAnalysisService, AnalysisService>();
 
 var app = builder.Build();
 

@@ -27,6 +27,18 @@ public class CategoryServiceTests
     }
 
     [Fact]
+    public async Task GetAllAsync_MarksFixedCategories()
+    {
+        using var db = new TestDb();
+        var all = await new CategoryService(db.Context).GetAllAsync();
+
+        var fixedNames = all.Where(c => c.IsFixed).Select(c => c.Name).OrderBy(n => n).ToList();
+        Assert.Equal(["Abonelikler", "Faturalar", "Kira/Yurt"], fixedNames);
+        Assert.All(all.Where(c => c.IsFixed), c => Assert.Equal(TransactionType.Expense, c.Type));
+        Assert.DoesNotContain(all, c => c.IsFixed && c.IsUnnecessary);
+    }
+
+    [Fact]
     public async Task GetAllAsync_MarksUnnecessaryCategories()
     {
         using var db = new TestDb();

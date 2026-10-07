@@ -9,6 +9,12 @@ public class HomeViewModel
 
     public PendingMonthClose? Pending { get; init; }
 
+    /// <summary>Month-end balance projection; null when there are no transactions this month.</summary>
+    public BalanceProjection? Projection { get; init; }
+
+    /// <summary>Goal ETA; null when it cannot be calculated (no goal or no history).</summary>
+    public GoalForecast? GoalForecast { get; init; }
+
     /// <summary>Amount that would be moved to the goal: the remainder, capped at what the goal still needs.</summary>
     public decimal? TransferAmount =>
         Pending?.TargetGoal is not null && ActiveGoal is not null
