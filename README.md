@@ -16,6 +16,7 @@ A simple income and expense tracker for students. It records what comes in and w
 - **Monthly analysis** — Chart.js pie chart by category, the 10 most expensive items, change versus the previous month, and 2–3 rule-based tips.
 - **Forecast** — projected month-end balance and "at this pace you reach your goal around *month year*". Recurring income and expenses that are still to come this month are included, so a salary due on the 20th no longer makes the first half of the month look like a deficit.
 - **Accounts** — registration and login with ASP.NET Core Identity; every user only ever sees their own data.
+- **Dark theme** — follows the operating system by default; a switch in the navbar chooses light, dark or system and the choice is remembered in the browser.
 
 The exact formulas and thresholds are documented in [docs/rules.md](docs/rules.md) and the data model in [docs/model.md](docs/model.md) (both written in Turkish).
 
@@ -62,6 +63,7 @@ Design decisions worth knowing:
 - **Controllers stay thin.** Calculations live in `Services`, each of which has tests. Services take "today" as a parameter, so date-dependent rules are tested with a fixed clock.
 - **Per-user isolation.** Every query filters by `UserId`; asking for someone else's record behaves like "not found".
 - **No LLM and no external API.** The warnings, tips and forecasts are plain, deterministic rules, so every number can be traced back to the data.
+- **Light and dark theme from one set of variables.** `wwwroot/css/site.css` defines every colour as a CSS variable and redefines them under Bootstrap 5.3's `[data-bs-theme="dark"]`. A few lines of inline script in `<head>` set the theme before the first paint, so the page never flashes in the wrong theme. Each category has a light and a dark tone in `Models/CategoryStyle.cs`; the analysis chart repaints itself when the theme changes.
 
 ## Getting started
 
