@@ -133,17 +133,40 @@ else
         <script>
             const labels = @Json.Serialize(a.Categories.Select(c => c.Name));
             const values = @Json.Serialize(a.Categories.Select(c => c.Amount));
-            // Same colours as the badges on every other page.
-            const colors = @Json.Serialize(a.Categories.Select(c => CategoryStyle.For(c.Name).Color));
+            // Same colours as the badges on every other page, one set per theme.
+            const palettes = {
+                light: @Json.Serialize(a.Categories.Select(c => CategoryStyle.For(c.Name).Color)),
+                dark: @Json.Serialize(a.Categories.Select(c => CategoryStyle.For(c.Name).DarkColor))
+            };
             // Numbers go to JavaScript as numbers and are formatted here; passing a pre-formatted string would be
             // HTML-encoded by Razor, and a canvas does not decode HTML (the lira sign would turn into an entity).
             const totalAmount = @Json.Serialize(a.TotalExpense);
             const money = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' });
             const total = money.format(totalAmount);
             const fontFamily = '"Inter Variable", system-ui, sans-serif';
-            const css = getComputedStyle(document.documentElement);
 
-            // Writes the month's total in the hole of the doughnut.
+            // A canvas does not follow CSS: every colour is read from the theme's variables when it is needed,
+            // so the chart can be repainted when the theme changes.
+            const isDark = () => document.documentElement.getAttribute('data-bs-theme') === 'dark';
+            const token = (name, fallback) =>
+                getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+
+            // Slice colours, the gap between slices (the card's own colour) and the tooltip box.
+            function themeColors() {
+                const dark = isDark();
+                return {
+                    slices: dark ? palettes.dark : palettes.light,
+                    gap: token('--surface', '#FFFFFF'),
+                    // Light theme: Chart.js' usual dark tooltip. Dark theme: a raised panel with a border.
+                    tooltip: dark
+                        ? { backgroundColor: token('--surface-2', '#1E2A26'), titleColor: token('--text', '#E6EFEB'),
+                            bodyColor: token('--text', '#E6EFEB'), borderColor: token('--line-strong', '#3A4B45'), borderWidth: 1 }
+                        : { backgroundColor: 'rgba(0, 0, 0, 0.8)', titleColor: '#fff', bodyColor: '#fff',
+                            borderColor: 'rgba(0, 0, 0, 0)', borderWidth: 0 }
+                };
+            }
+
+            // Writes the month's total in the hole of the doughnut (colours read on every draw).
             const centerText = {
                 id: 'centerText',
                 afterDraw(chart) {
@@ -152,34 +175,48 @@ else
                     ctx.save();
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillStyle = css.getPropertyValue('--muted').trim() || '#66756F';
+                    ctx.fillStyle = token('--muted', '#66756F');
                     ctx.font = '600 12px ' + fontFamily;
                     ctx.fillText('Toplam gider', x, y - 15);
-                    ctx.fillStyle = css.getPropertyValue('--text').trim() || '#1B2B26';
+                    ctx.fillStyle = token('--text', '#1B2B26');
                     ctx.font = '800 21px ' + fontFamily;
                     ctx.fillText(total, x, y + 9);
                     ctx.restore();
                 }
             };
 
+            let chart = null;
+
             // Wait for the web font so the canvas text uses Inter too.
             (document.fonts ? document.fonts.ready : Promise.resolve()).then(function () {
-                new Chart(document.getElementById('categoryChart'), {
+                const colors = themeColors();
+                chart = new Chart(document.getElementById('categoryChart'), {
                     type: 'doughnut',
-                    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: '#fff', borderWidth: 3, hoverOffset: 6 }] },
+                    data: { labels, datasets: [{ data: values, backgroundColor: colors.slices, borderColor: colors.gap, borderWidth: 3, hoverOffset: 6 }] },
                     options: {
                         cutout: '68%',
                         plugins: {
                             legend: { display: false },
-                            tooltip: {
+                            tooltip: Object.assign({}, colors.tooltip, {
                                 callbacks: {
                                     label: ctx => ` ${ctx.label}: ${money.format(ctx.parsed)}`
                                 }
-                            }
+                            })
                         }
                     },
                     plugins: [centerText]
                 });
+            });
+
+            // Fired by site.js when the theme switch is used or the system theme changes: repaint in place.
+            document.addEventListener('themechange', function () {
+                if (!chart) return; // not created yet; it will pick up the current theme when it is
+                const colors = themeColors();
+                const dataset = chart.data.datasets[0];
+                dataset.backgroundColor = colors.slices;
+                dataset.borderColor = colors.gap;
+                Object.assign(chart.options.plugins.tooltip, colors.tooltip);
+                chart.update('none'); // no replay of the opening animation
             });
         </script>
     }
