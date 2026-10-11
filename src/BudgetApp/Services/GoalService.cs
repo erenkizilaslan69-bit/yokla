@@ -33,10 +33,18 @@ public interface IGoalService
     /// needs. Null when the goal does not exist or belongs to someone else.
     /// </summary>
     Task<ManualContributionResult?> AddManualContributionAsync(string userId, int goalId, decimal amount, DateTime date);
+
+    /// <summary>
+    /// The goal the home page should celebrate: the user has no open goal and their most recently completed goal
+    /// was reached within the last 30 days (inclusive). Null otherwise.
+    /// </summary>
+    Task<Goal?> GetCelebrationGoalAsync(string userId, DateTime today);
 }
 
 public class GoalService(ApplicationDbContext db) : IGoalService
 {
+    private const int CelebrationDays = 30;
+
     public async Task<List<GoalProgress>> GetAllAsync(string userId)
     {
         var goals = await db.Goals
@@ -76,6 +84,20 @@ public class GoalService(ApplicationDbContext db) : IGoalService
         db.Goals.Add(goal);
         await db.SaveChangesAsync();
         return goal;
+    }
+
+    public async Task<Goal?> GetCelebrationGoalAsync(string userId, DateTime today)
+    {
+        if (await db.Goals.AnyAsync(g => g.UserId == userId && !g.IsCompleted))
+            return null;
+
+        var oldestToCelebrate = today.Date.AddDays(-CelebrationDays);
+        return await db.Goals
+            .AsNoTracking()
+            .Where(g => g.UserId == userId && g.IsCompleted && g.CompletedAt != null && g.CompletedAt >= oldestToCelebrate)
+            .OrderByDescending(g => g.CompletedAt)
+            .ThenByDescending(g => g.Id)
+            .FirstOrDefaultAsync();
     }
 
     public async Task<ManualContributionResult?> AddManualContributionAsync(
@@ -119,6 +141,7 @@ public class GoalService(ApplicationDbContext db) : IGoalService
         var contribution = new GoalContribution { GoalId = goal.Id, Amount = amount, Date = date.Date, Source = source };
         db.GoalContributions.Add(contribution);
         goal.IsCompleted = saved + amount >= goal.TargetAmount;
+        goal.CompletedAt = goal.IsCompleted ? date.Date : null;
         await db.SaveChangesAsync();
         return contribution;
     }

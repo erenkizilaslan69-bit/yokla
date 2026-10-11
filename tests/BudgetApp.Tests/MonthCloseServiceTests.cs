@@ -418,6 +418,32 @@ public class MonthCloseServiceTests
     }
 
     [Fact]
+    public async Task CloseAsync_StampsCompletedAtWithTheCloseDateWhenTheTransferCompletesTheGoal()
+    {
+        using var t = new TestDb();
+        SeedSeptemberSurplus(t.Context);
+        var goal = AddGoal(t.Context, Alice, 800m); // 840 >= 800
+
+        await new MonthCloseService(t.Context).CloseAsync(Alice, 2026, 9, transfer: true, new DateTime(2026, 10, 15, 21, 5, 0));
+
+        var reloaded = await t.Context.Goals.AsNoTracking().SingleAsync(g => g.Id == goal.Id);
+        Assert.True(reloaded.IsCompleted);
+        Assert.Equal(new DateTime(2026, 10, 15), reloaded.CompletedAt);
+    }
+
+    [Fact]
+    public async Task CloseAsync_LeavesCompletedAtEmptyWhenTheGoalIsStillOpen()
+    {
+        using var t = new TestDb();
+        SeedSeptemberSurplus(t.Context);
+        var goal = AddGoal(t.Context, Alice, 3000m);
+
+        await new MonthCloseService(t.Context).CloseAsync(Alice, 2026, 9, transfer: true, Today);
+
+        Assert.Null((await t.Context.Goals.AsNoTracking().SingleAsync(g => g.Id == goal.Id)).CompletedAt);
+    }
+
+    [Fact]
     public async Task CloseAsync_CompletionCountsEarlierContributions()
     {
         using var t = new TestDb();

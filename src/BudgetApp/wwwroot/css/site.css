@@ -502,6 +502,34 @@ a:hover { text-decoration: underline; }
   color: #c98a0b;
 }
 
+/* ---------- Goal reached (home page) ---------- */
+.celebrate-card {
+  border: 1px solid #f0d58a;
+  background: radial-gradient(circle at 50% -20%, #fff1c2 0%, var(--gold-soft) 45%, #fffdf6 100%);
+  box-shadow: var(--shadow);
+}
+
+.celebrate-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto .85rem;
+  border-radius: 50%;
+  font-size: 2rem;
+  color: #fff;
+  background: linear-gradient(135deg, #f3c34f, var(--gold));
+  box-shadow: 0 8px 20px rgba(224, 165, 38, .45);
+  animation: celebrate-pop .7s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+
+.celebrate-goal { font-size: 1.15rem; font-weight: 700; }
+.celebrate-amount { font-size: 1.9rem; font-weight: 800; letter-spacing: -.02em; color: var(--brand-dark); }
+
+@keyframes celebrate-pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) { .celebrate-icon { animation: none; } }
+
 /* ---------- Empty state ---------- */
 .empty-state { text-align: center; padding: 2.5rem 1.25rem; }
 

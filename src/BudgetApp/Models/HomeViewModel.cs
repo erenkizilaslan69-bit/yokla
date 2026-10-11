@@ -9,6 +9,9 @@ public class HomeViewModel
 
     public PendingMonthClose? Pending { get; init; }
 
+    /// <summary>A goal reached within the last 30 days while no goal is open; the home page celebrates it.</summary>
+    public Goal? Celebration { get; init; }
+
     /// <summary>Month-end balance projection; null when there are no transactions this month.</summary>
     public BalanceProjection? Projection { get; init; }
 

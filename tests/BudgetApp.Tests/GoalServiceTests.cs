@@ -251,6 +251,177 @@ public class GoalServiceTests
         Assert.Null(await new GoalService(t.Context).AddManualContributionAsync(Alice, 999, 10m, Now));
     }
 
+    // ---------- CompletedAt ----------
+
+    [Fact]
+    public async Task AddContributionAsync_StampsCompletedAtWithTheDateOfTheCompletingContribution()
+    {
+        using var t = new TestDb();
+        var service = new GoalService(t.Context);
+        var goal = await service.CreateAsync(Alice, "Kulaklık", 1000m, Now);
+
+        await service.AddContributionAsync(Alice, goal.Id, 400m, GoalContributionSource.Manual, new DateTime(2026, 10, 3, 14, 30, 0));
+        await service.AddContributionAsync(Alice, goal.Id, 600m, GoalContributionSource.Manual, new DateTime(2026, 10, 9, 18, 45, 0));
+
+        var reloaded = await t.Context.Goals.AsNoTracking().SingleAsync();
+        Assert.True(reloaded.IsCompleted);
+        Assert.Equal(new DateTime(2026, 10, 9), reloaded.CompletedAt); // the day, without the time of day
+    }
+
+    [Fact]
+    public async Task AddContributionAsync_LeavesCompletedAtEmptyWhileTheGoalIsOpen()
+    {
+        using var t = new TestDb();
+        var service = new GoalService(t.Context);
+        var goal = await service.CreateAsync(Alice, "Kulaklık", 1000m, Now);
+
+        await service.AddContributionAsync(Alice, goal.Id, 400m, GoalContributionSource.Manual, Now);
+
+        Assert.Null((await t.Context.Goals.AsNoTracking().SingleAsync()).CompletedAt);
+    }
+
+    [Fact]
+    public async Task AddManualContributionAsync_StampsCompletedAtWhenItCompletesTheGoal()
+    {
+        using var t = new TestDb();
+        var service = new GoalService(t.Context);
+        var goal = await service.CreateAsync(Alice, "Kulaklık", 1000m, Now);
+        await service.AddManualContributionAsync(Alice, goal.Id, 900m, new DateTime(2026, 10, 1));
+
+        Assert.Null((await t.Context.Goals.AsNoTracking().SingleAsync()).CompletedAt);
+
+        await service.AddManualContributionAsync(Alice, goal.Id, 5000m, new DateTime(2026, 10, 12)); // capped, completes
+
+        Assert.Equal(new DateTime(2026, 10, 12), (await t.Context.Goals.AsNoTracking().SingleAsync()).CompletedAt);
+    }
+
+    // ---------- GetCelebrationGoalAsync ----------
+
+    private static async Task<Goal> CompleteGoalAsync(TestDb t, string userId, string name, DateTime completedOn)
+    {
+        var service = new GoalService(t.Context);
+        var goal = await service.CreateAsync(userId, name, 500m, completedOn.AddDays(-20));
+        await service.AddContributionAsync(userId, goal.Id, 500m, GoalContributionSource.Manual, completedOn);
+        return goal;
+    }
+
+    [Fact]
+    public async Task GetCelebrationGoalAsync_ReturnsTheGoalCompletedRecentlyWhenThereIsNoOpenGoal()
+    {
+        using var t = new TestDb();
+        var done = await CompleteGoalAsync(t, Alice, "Kulaklık", new DateTime(2026, 10, 10));
+
+        var goal = await new GoalService(t.Context).GetCelebrationGoalAsync(Alice, Now);
+
+        Assert.NotNull(goal);
+        Assert.Equal(done.Id, goal.Id);
+        Assert.Equal("Kulaklık", goal.Name);
+        Assert.Equal(500m, goal.TargetAmount);
+        Assert.Equal(new DateTime(2026, 10, 10), goal.CompletedAt);
+    }
+
+    [Fact]
+    public async Task GetCelebrationGoalAsync_ThirtyDaysAgoStillCountsButThirtyOneDoesNot()
+    {
+        using var t = new TestDb();
+        var service = new GoalService(t.Context);
+        await CompleteGoalAsync(t, Alice, "Kulaklık", Now.AddDays(-30));
+
+        Assert.NotNull(await service.GetCelebrationGoalAsync(Alice, Now));                 // exactly 30 days later
+        Assert.Null(await service.GetCelebrationGoalAsync(Alice, Now.AddDays(1)));         // 31 days later
+    }
+
+    [Fact]
+    public async Task GetCelebrationGoalAsync_CompletedTodayCounts()
+    {
+        using var t = new TestDb();
+        await CompleteGoalAsync(t, Alice, "Kulaklık", Now);
+
+        Assert.NotNull(await new GoalService(t.Context).GetCelebrationGoalAsync(Alice, Now));
+    }
+
+    [Fact]
+    public async Task GetCelebrationGoalAsync_ReturnsNullWhenTheUserHasAnOpenGoal()
+    {
+        using var t = new TestDb();
+        await CompleteGoalAsync(t, Alice, "Eski", new DateTime(2026, 10, 10));
+        await new GoalService(t.Context).CreateAsync(Alice, "Yeni", 3000m, Now);
+
+        Assert.Null(await new GoalService(t.Context).GetCelebrationGoalAsync(Alice, Now));
+    }
+
+    [Fact]
+    public async Task GetCelebrationGoalAsync_ReturnsNullWithoutAnyGoalOrWithOnlyAnOpenGoal()
+    {
+        using var t = new TestDb();
+        var service = new GoalService(t.Context);
+
+        Assert.Null(await service.GetCelebrationGoalAsync(Alice, Now));
+
+        await service.CreateAsync(Alice, "Kulaklık", 1000m, Now);
+        Assert.Null(await service.GetCelebrationGoalAsync(Alice, Now));
+    }
+
+    [Fact]
+    public async Task GetCelebrationGoalAsync_PicksTheMostRecentlyCompletedGoal()
+    {
+        using var t = new TestDb();
+        await CompleteGoalAsync(t, Alice, "Önceki", new DateTime(2026, 9, 25));
+        var latest = await CompleteGoalAsync(t, Alice, "Son", new DateTime(2026, 10, 8));
+        await CompleteGoalAsync(t, Alice, "Ortadaki", new DateTime(2026, 10, 1));
+
+        var goal = await new GoalService(t.Context).GetCelebrationGoalAsync(Alice, Now);
+
+        Assert.Equal(latest.Id, goal!.Id);
+    }
+
+    [Fact]
+    public async Task GetCelebrationGoalAsync_UsesTheLatestCompletedGoalEvenWhenAnOlderOneIsRecent()
+    {
+        using var t = new TestDb();
+        // Only the most recent completion matters: 40 days ago is too old, no matter what else exists.
+        await CompleteGoalAsync(t, Alice, "Eski", Now.AddDays(-40));
+
+        Assert.Null(await new GoalService(t.Context).GetCelebrationGoalAsync(Alice, Now));
+    }
+
+    [Fact]
+    public async Task GetCelebrationGoalAsync_BreaksSameDayTiesByTheNewerGoal()
+    {
+        using var t = new TestDb();
+        await CompleteGoalAsync(t, Alice, "Birinci", new DateTime(2026, 10, 10));
+        var second = await CompleteGoalAsync(t, Alice, "İkinci", new DateTime(2026, 10, 10));
+
+        var goal = await new GoalService(t.Context).GetCelebrationGoalAsync(Alice, Now);
+
+        Assert.Equal(second.Id, goal!.Id);
+    }
+
+    [Fact]
+    public async Task GetCelebrationGoalAsync_IgnoresOtherUsers()
+    {
+        using var t = new TestDb();
+        await CompleteGoalAsync(t, Bob, "Bobun", new DateTime(2026, 10, 10));
+        await new GoalService(t.Context).CreateAsync(Bob, "Bobun açık", 100m, Now);
+        await CompleteGoalAsync(t, Alice, "Benim", new DateTime(2026, 10, 12));
+
+        var goal = await new GoalService(t.Context).GetCelebrationGoalAsync(Alice, Now);
+
+        Assert.Equal("Benim", goal!.Name);
+        Assert.Null(await new GoalService(t.Context).GetCelebrationGoalAsync("nobody", Now));
+    }
+
+    [Fact]
+    public async Task GetCelebrationGoalAsync_SkipsCompletedGoalsWithoutACompletionDate()
+    {
+        using var t = new TestDb();
+        // A legacy row: marked completed but never stamped (the migration backfills real data).
+        t.Context.Goals.Add(new Goal { UserId = Alice, Name = "Eski", TargetAmount = 100m, CreatedAt = Now.AddDays(-5), IsCompleted = true });
+        t.Context.SaveChanges();
+
+        Assert.Null(await new GoalService(t.Context).GetCelebrationGoalAsync(Alice, Now));
+    }
+
     // ---------- GetActiveAsync ----------
 
     [Fact]

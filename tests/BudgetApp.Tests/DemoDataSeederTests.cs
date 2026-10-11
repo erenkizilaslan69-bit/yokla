@@ -124,6 +124,7 @@ public class DemoDataSeederTests
         Assert.Equal("Kulaklık", goal.Name);
         Assert.Equal(Demo, goal.UserId);
         Assert.False(goal.IsCompleted);
+        Assert.Null(goal.CompletedAt);
 
         var closes = await t.Context.MonthCloses.OrderBy(m => m.Month).ToListAsync();
         Assert.Equal([7, 8], closes.Select(c => c.Month).ToArray());

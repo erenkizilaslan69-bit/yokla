@@ -133,6 +133,17 @@ else
     {
         <partial name="_GoalHero" model="active" />
     }
+    else if (Model.Celebration is { } reached)
+    {
+        <div class="card celebrate-card p-4 mb-4 text-center">
+            <span class="celebrate-icon"><i class="bi bi-trophy-fill"></i></span>
+            <h2 class="mb-1">Tebrikler, hedefine ulaştın!</h2>
+            <p class="celebrate-goal mb-1">@reached.Name</p>
+            <div class="celebrate-amount num">@reached.TargetAmount.ToString("C2")</div>
+            <p class="text-muted mb-3">@reached.CompletedAt!.Value.ToString("dd.MM.yyyy") tarihinde tamamlandı.</p>
+            <a asp-controller="Goals" asp-action="Create" class="btn btn-primary btn-lg"><i class="bi bi-plus-lg me-1"></i>Yeni hedef oluştur</a>
+        </div>
+    }
     else
     {
         <div class="mb-4">

@@ -82,6 +82,7 @@ public class MonthCloseService(ApplicationDbContext db) : IMonthCloseService
                         Source = GoalContributionSource.MonthClose
                     });
                     goal.IsCompleted = saved + amount >= goal.TargetAmount;
+                    goal.CompletedAt = goal.IsCompleted ? today.Date : null;
                     close.TransferredGoalId = goal.Id;
                 }
             }

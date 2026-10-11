@@ -38,6 +38,7 @@ Varsayılan kategoriler (seed):
 | TargetAmount | decimal | |
 | CreatedAt | DateTime | |
 | IsCompleted | bool | Katkılar toplamı hedefe ulaşınca true |
+| CompletedAt | DateTime? | Hedefe ulaşıldığı gün (tamamlayan katkının tarihi); hedef açıkken null. Ana sayfadaki kutlama kartı için kullanılır |
 
 ## GoalContribution
 | Alan | Tip | Not |

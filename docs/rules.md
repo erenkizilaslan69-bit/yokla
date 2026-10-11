@@ -14,6 +14,11 @@
 - Kalan ≤ 0: MonthClose kaydedilir, aktarım yapılmaz, kartta "Geçen ay {|Kalan|} TL açık verdin" yazar.
 - Aynı ay iki kez kapatılamaz.
 
+### Tamamlanan hedef için kutlama kartı (GoalService.GetCelebrationGoalAsync)
+- Ana sayfada aktif (tamamlanmamış) hedef yoksa ve kullanıcının en son tamamlanan hedefi son 30 gün içinde (30. gün dahil) tamamlandıysa hedef kartı yerine kutlama kartı gösterilir: hedefin adı, tutarı, tamamlanma tarihi ve "Yeni hedef oluştur" düğmesi.
+- En son tamamlanan hedef 30 günden eskiyse (veya hiç hedef yoksa) normal boş durum ekranı gösterilir. Yeni bir aktif hedef oluşturulunca kutlama kartı kaybolur.
+- Tamamlanma tarihi (`Goal.CompletedAt`) hedefi tamamlayan katkının tarihidir (elle ekleme için o gün, ay sonu devri için devrin yapıldığı gün).
+
 ### Hedefe elle para ekleme (GoalService.AddManualContributionAsync)
 - Hedefler sayfasındaki ve ana sayfadaki hedef kartında, tamamlanmamış her hedef için "Para ekle" formu bulunur.
 - Tutar 2 ondalığa yuvarlanır ve 0'dan büyük olmalıdır.

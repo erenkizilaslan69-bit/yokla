@@ -15,5 +15,8 @@ public class Goal
     /// <summary>True once the contributions total reaches <see cref="TargetAmount"/>.</summary>
     public bool IsCompleted { get; set; }
 
+    /// <summary>The day the goal was reached (the date of the contribution that completed it); null while it is open.</summary>
+    public DateTime? CompletedAt { get; set; }
+
     public List<GoalContribution> Contributions { get; set; } = [];
 }

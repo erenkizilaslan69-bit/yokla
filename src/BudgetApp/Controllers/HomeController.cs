@@ -22,6 +22,7 @@ public class HomeController(
         return View(new HomeViewModel
         {
             ActiveGoal = await goals.GetActiveAsync(userId),
+            Celebration = await goals.GetCelebrationGoalAsync(userId, today),
             Pending = await monthCloses.GetPendingAsync(userId, today),
             Projection = await forecast.GetProjectedBalanceAsync(userId, today),
             GoalForecast = await forecast.GetGoalForecastAsync(userId, today),
