@@ -1,0 +1,22 @@
+@* One-time messages left in TempData by the previous request:
+   Message = success, Notice = heads-up (e.g. an amount was reduced), Error = something was rejected. *@
+@{
+    var items = new (string Key, string Css, string Icon)[]
+    {
+        ("Message", "alert-success", "check-circle-fill"),
+        ("Notice", "alert-warning", "info-circle-fill"),
+        ("Error", "alert-danger", "exclamation-triangle-fill")
+    };
+}
+
+@foreach (var (key, css, icon) in items)
+{
+    if (TempData[key] is string text && !string.IsNullOrWhiteSpace(text))
+    {
+        <div class="alert @css alert-dismissible fade show" role="alert">
+            <i class="bi bi-@icon alert-icon"></i>
+            <div class="alert-body">@text</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Kapat"></button>
+        </div>
+    }
+}

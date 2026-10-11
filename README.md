@@ -7,8 +7,8 @@ A simple income and expense tracker for students. It records what comes in and w
 ## Features
 
 - **Income and expense tracking** — amount, category, date, optional item name and note. List, edit and delete, with a month picker (previous / next month) and per-month income, expense and balance totals. Future-dated entries are rejected.
-- **Savings goal bar** — create a goal (e.g. headphones, 4.500 TL) and watch the bar fill.
-- **Month-end carry-over** — in a new month the home page offers to move last month's surplus to the goal with one click (never more than the goal still needs). A month can only be closed once.
+- **Savings goal bar** — create a goal (e.g. headphones, 4.500 TL) and watch the bar fill. A "Para ekle" (add money) button on each unfinished goal puts money in by hand; amounts above what the goal still needs are reduced automatically.
+- **Month-end carry-over** — in a new month the home page offers to move last month's surplus to the goal with one click (never more than the goal still needs). Money you already added by hand that month is not moved a second time. A month can only be closed once.
 - **Instant warnings** — right after an expense is saved, the page shows warnings based on four rules: an unusually large single expense, too much "unnecessary" spending, a category running well ahead of last month, and a projected negative month-end balance.
 - **Monthly analysis** — Chart.js pie chart by category, the 10 most expensive items, change versus the previous month, and 2–3 rule-based tips.
 - **Forecast** — projected month-end balance and "at this pace you reach your goal around *month year*".

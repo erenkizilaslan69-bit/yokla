@@ -2,12 +2,24 @@
 
 ## 1. Ay sonu devri (MonthCloseService)
 - Kullanıcı yeni ayda uygulamayı açtığında, geçen ay için MonthClose kaydı yoksa ana sayfada bir kart gösterilir.
-- Kalan = geçen ayın gelirleri − geçen ayın giderleri.
-- Kalan > 0 ve aktif bir hedef varsa: "Geçen ay {Kalan} TL artırdın. {Hedef} hedefine aktaralım mı?"
-  - Onay: GoalContribution (Source = MonthClose) oluşur, MonthClose.TransferredGoalId dolar.
+- Kalan = geçen ayın gelirleri − geçen ayın giderleri. `MonthClose.Remaining` her zaman bu gerçek kalanı saklar.
+- **Zaten eklenen** = o ay içinde (ayın 1'i–son günü) kullanıcının herhangi bir hedefine elle eklediği (Source = Manual) katkıların toplamı. MonthClose kaynaklı katkılar sayılmaz.
+- **Aktarılabilir tutar** = max(0, Kalan − Zaten eklenen). Elle eklenen para gider olarak kaydedilmediği için kalanın içinde görünür; aynı para ay sonunda ikinci kez aktarılmasın diye düşülür. Aktarılan tutar ayrıca hedefin eksik tutarıyla sınırlıdır.
+- Aktarılabilir tutar > 0 ve aktif bir hedef varsa:
+  - Zaten eklenen yoksa: "Geçen ay {Kalan} TL artırdın. {Hedef} hedefine aktaralım mı?"
+  - Zaten eklenen varsa: "{Ay} ayında {Kalan} TL artırdın; {Zaten eklenen} TL'sini zaten hedefe eklemiştin. Kalan {Aktarılabilir} TL'yi aktaralım mı?"
+  - Onay: aktarılabilir tutar kadar GoalContribution (Source = MonthClose) oluşur, MonthClose.TransferredGoalId dolar.
   - Ret: MonthClose kaydedilir, aktarım yapılmaz.
+- Kalan > 0 ama aktarılabilir tutar 0 ise (elle eklenenler kalanı karşılıyor): aktarma teklifi çıkmaz, bilgi mesajı gösterilir ("{Ay} ayında {Kalan} TL artırdın; {Zaten eklenen} TL'sini zaten hedefe eklemiştin. Aktarılacak tutar kalmadı."). Ay yine MonthClose ile kapatılır, aktarım yapılmaz.
 - Kalan ≤ 0: MonthClose kaydedilir, aktarım yapılmaz, kartta "Geçen ay {|Kalan|} TL açık verdin" yazar.
 - Aynı ay iki kez kapatılamaz.
+
+### Hedefe elle para ekleme (GoalService.AddManualContributionAsync)
+- Hedefler sayfasındaki ve ana sayfadaki hedef kartında, tamamlanmamış her hedef için "Para ekle" formu bulunur.
+- Tutar 2 ondalığa yuvarlanır ve 0'dan büyük olmalıdır.
+- Tutar hedefin eksik tutarını (hedef − tüm katkılar) aşarsa eksik tutarla sınırlanır ve kullanıcıya bildirilir; hedef tamamlanır.
+- Katkı Source = Manual ile kaydedilir. Tamamlanmış hedefe para eklenemez.
+- Bu katkılar ay sonu devrinde yukarıdaki "zaten eklenen" tutarı oluşturur.
 
 ## 2. Anında uyarılar (WarningService)
 Gider kaydedildikten hemen sonra çalışır, tetiklenen uyarılar sayfanın üstünde gösterilir.

@@ -46,7 +46,7 @@ Varsayılan kategoriler (seed):
 | GoalId | int | |
 | Amount | decimal | |
 | Date | DateTime | |
-| Source | enum (MonthClose, Manual) | |
+| Source | enum (MonthClose, Manual) | Manual: kullanıcının "Para ekle" ile elle eklediği katkı. O ay yapılan Manual katkılar, ay sonu devrinde aktarılabilir tutardan düşülür |
 
 ## MonthClose
 | Alan | Tip | Not |

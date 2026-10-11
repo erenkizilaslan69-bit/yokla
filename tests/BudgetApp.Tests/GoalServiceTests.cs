@@ -117,6 +117,140 @@ public class GoalServiceTests
             () => service.AddContributionAsync(Alice, goal.Id, 10m, GoalContributionSource.Manual, Now));
     }
 
+    // ---------- AddManualContributionAsync ----------
+
+    [Fact]
+    public async Task AddManualContributionAsync_AddsTheFullAmountWhenItFits()
+    {
+        using var t = new TestDb();
+        var service = new GoalService(t.Context);
+        var goal = await service.CreateAsync(Alice, "Kulaklık", 1000m, Now);
+
+        var result = await service.AddManualContributionAsync(Alice, goal.Id, 250m, Now);
+
+        Assert.NotNull(result);
+        Assert.Equal(250m, result.Requested);
+        Assert.Equal(250m, result.Added);
+        Assert.False(result.WasCapped);
+        Assert.False(result.Completed);
+        var contribution = await t.Context.GoalContributions.SingleAsync();
+        Assert.Equal(250m, contribution.Amount);
+        Assert.Equal(GoalContributionSource.Manual, contribution.Source);
+        Assert.Equal(Now.Date, contribution.Date);
+    }
+
+    [Fact]
+    public async Task AddManualContributionAsync_ExactlyTheMissingAmountCompletesTheGoalWithoutCapping()
+    {
+        using var t = new TestDb();
+        var service = new GoalService(t.Context);
+        var goal = await service.CreateAsync(Alice, "Kulaklık", 1000m, Now);
+        await service.AddManualContributionAsync(Alice, goal.Id, 700m, Now);
+
+        var result = await service.AddManualContributionAsync(Alice, goal.Id, 300m, Now);
+
+        Assert.Equal(300m, result!.Added);
+        Assert.False(result.WasCapped);
+        Assert.True(result.Completed);
+        Assert.True((await t.Context.Goals.AsNoTracking().SingleAsync()).IsCompleted);
+    }
+
+    [Fact]
+    public async Task AddManualContributionAsync_CapsTheAmountAtWhatTheGoalStillNeeds()
+    {
+        using var t = new TestDb();
+        var service = new GoalService(t.Context);
+        var goal = await service.CreateAsync(Alice, "Kulaklık", 1000m, Now);
+        await service.AddManualContributionAsync(Alice, goal.Id, 700m, Now); // 300 TL missing
+
+        var result = await service.AddManualContributionAsync(Alice, goal.Id, 500m, Now);
+
+        Assert.Equal(500m, result!.Requested);
+        Assert.Equal(300m, result.Added);
+        Assert.True(result.WasCapped);
+        Assert.True(result.Completed);
+        Assert.Equal("Kulaklık", result.Goal.Name);
+        Assert.Equal(1000m, t.Context.GoalContributions.AsEnumerable().Sum(c => c.Amount)); // exactly the target
+        Assert.True((await t.Context.Goals.AsNoTracking().SingleAsync()).IsCompleted);
+    }
+
+    [Fact]
+    public async Task AddManualContributionAsync_CountsContributionsFromEverySourceWhenWorkingOutTheMissingAmount()
+    {
+        using var t = new TestDb();
+        var service = new GoalService(t.Context);
+        var goal = await service.CreateAsync(Alice, "Kulaklık", 1000m, Now);
+        await service.AddContributionAsync(Alice, goal.Id, 600m, GoalContributionSource.MonthClose, Now);
+        await service.AddContributionAsync(Alice, goal.Id, 100m, GoalContributionSource.Manual, Now); // 300 missing
+
+        var result = await service.AddManualContributionAsync(Alice, goal.Id, 400m, Now);
+
+        Assert.Equal(300m, result!.Added);
+        Assert.True(result.WasCapped);
+    }
+
+    [Fact]
+    public async Task AddManualContributionAsync_RoundsTheAmountToTwoDecimals()
+    {
+        using var t = new TestDb();
+        var service = new GoalService(t.Context);
+        var goal = await service.CreateAsync(Alice, "Kulaklık", 1000m, Now);
+
+        var result = await service.AddManualContributionAsync(Alice, goal.Id, 10.005m, Now);
+
+        Assert.Equal(10.01m, result!.Requested);
+        Assert.Equal(10.01m, result.Added);
+        Assert.Equal(10.01m, (await t.Context.GoalContributions.SingleAsync()).Amount);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-5")]
+    [InlineData("0.004")] // rounds to zero
+    public async Task AddManualContributionAsync_RejectsAmountsThatAreNotPositive(string text)
+    {
+        using var t = new TestDb();
+        var service = new GoalService(t.Context);
+        var goal = await service.CreateAsync(Alice, "Kulaklık", 1000m, Now);
+        var amount = decimal.Parse(text, System.Globalization.CultureInfo.InvariantCulture);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.AddManualContributionAsync(Alice, goal.Id, amount, Now));
+        Assert.Empty(t.Context.GoalContributions);
+    }
+
+    [Fact]
+    public async Task AddManualContributionAsync_RejectsACompletedGoal()
+    {
+        using var t = new TestDb();
+        var service = new GoalService(t.Context);
+        var goal = await service.CreateAsync(Alice, "Kulaklık", 100m, Now);
+        await service.AddManualContributionAsync(Alice, goal.Id, 100m, Now);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.AddManualContributionAsync(Alice, goal.Id, 10m, Now));
+        Assert.Single(t.Context.GoalContributions);
+    }
+
+    [Fact]
+    public async Task AddManualContributionAsync_ReturnsNullForAnotherUsersGoalAndChangesNothing()
+    {
+        using var t = new TestDb();
+        var service = new GoalService(t.Context);
+        var bobs = await service.CreateAsync(Bob, "Laptop", 5000m, Now);
+
+        var result = await service.AddManualContributionAsync(Alice, bobs.Id, 100m, Now);
+
+        Assert.Null(result);
+        Assert.Empty(t.Context.GoalContributions);
+    }
+
+    [Fact]
+    public async Task AddManualContributionAsync_ReturnsNullForAnUnknownGoal()
+    {
+        using var t = new TestDb();
+
+        Assert.Null(await new GoalService(t.Context).AddManualContributionAsync(Alice, 999, 10m, Now));
+    }
+
     // ---------- GetActiveAsync ----------
 
     [Fact]

@@ -459,6 +459,15 @@ a:hover { text-decoration: underline; }
 .alert-warning .alert-icon { color: #c98a0b; }
 .alert-success { background: var(--brand-soft); border-color: #b9e3d3; color: #0a4f3b; }
 .alert-success .alert-icon { color: var(--brand); }
+.alert-danger { background: var(--expense-soft); border-color: #f0c2c2; color: #7a2323; }
+.alert-danger .alert-icon { color: var(--expense); }
+
+/* ---------- "Para ekle" form on goal cards ---------- */
+.add-money { margin-top: .85rem; }
+.add-money .collapse, .add-money .collapsing { margin-top: .75rem; }
+.add-money .form-text { margin-top: .35rem; }
+.goal-hero .add-money .form-text { color: rgba(255, 255, 255, .85); }
+.goal-hero .add-money .btn-light { color: var(--brand-dark); font-weight: 700; }
 
 /* ---------- Analysis ---------- */
 .chart-wrap { position: relative; max-width: 340px; margin: 0 auto; }

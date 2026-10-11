@@ -164,9 +164,11 @@ public static class DemoDataSeeder
             }
         }
 
+        // A manual "Para ekle" in the month that is still open: the carry-over card then offers only the rest
+        // (291,02 - 150,00), which shows that the same money is not moved twice.
         db.GoalContributions.Add(new GoalContribution
         {
-            GoalId = goal.Id, Amount = 150m, Date = middle.AddDays(19), Source = GoalContributionSource.Manual
+            GoalId = goal.Id, Amount = 150m, Date = thisMonth.AddMonths(-1).AddDays(9), Source = GoalContributionSource.Manual
         });
 
         await db.SaveChangesAsync();

@@ -8,15 +8,6 @@
     var monthTitle = DateTime.Today.ToString("MMMM yyyy", CultureInfo.GetCultureInfo("tr-TR"));
 }
 
-@if (TempData["Message"] is string message)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <i class="bi bi-check-circle-fill alert-icon"></i>
-        <div class="alert-body">@message</div>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Kapat"></button>
-    </div>
-}
-
 @if (!authenticated)
 {
     <div class="auth-wrap text-center">
@@ -52,11 +43,23 @@ else
                     @if (pending.Remaining > 0 && Model.TransferAmount is { } amount && Model.ActiveGoal is { } goal)
                     {
                         <div class="fw-semibold text-capitalize mb-1">@Model.PendingMonthName devri</div>
-                        <p class="mb-1">
-                            Geçen ay <span class="carry-amount">@pending.Remaining.ToString("C2")</span> artırdın.
-                            <strong>@goal.Goal.Name</strong> hedefine aktaralım mı?
-                        </p>
-                        @if (amount < pending.Remaining)
+                        @if (pending.AlreadyAdded > 0)
+                        {
+                            @* Part of the surplus was already put into goals by hand: only the rest is offered. *@
+                            <p class="mb-1">
+                                @Model.PendingMonthName ayında <span class="carry-amount">@pending.Remaining.ToString("N2") TL</span> artırdın;
+                                @pending.AlreadyAdded.ToString("N2") TL'sini zaten hedefe eklemiştin.
+                                Kalan <span class="carry-amount">@pending.Transferable.ToString("N2") TL</span>'yi aktaralım mı?
+                            </p>
+                        }
+                        else
+                        {
+                            <p class="mb-1">
+                                Geçen ay <span class="carry-amount">@pending.Remaining.ToString("C2")</span> artırdın.
+                                <strong>@goal.Goal.Name</strong> hedefine aktaralım mı?
+                            </p>
+                        }
+                        @if (amount < pending.Transferable)
                         {
                             <p class="small text-muted mb-2">Hedefe sadece @amount.ToString("C2") kaldığı için o kadarı aktarılır.</p>
                         }
@@ -78,6 +81,14 @@ else
                             else if (pending.Remaining == 0)
                             {
                                 <span>Geçen ayı başa baş kapattın.</span>
+                            }
+                            else if (pending.AlreadyAdded > 0)
+                            {
+                                <span>
+                                    @Model.PendingMonthName ayında <span class="carry-amount">@pending.Remaining.ToString("N2") TL</span> artırdın;
+                                    @pending.AlreadyAdded.ToString("N2") TL'sini zaten hedefe eklemiştin.
+                                    @(pending.Transferable <= 0 ? "Aktarılacak tutar kalmadı." : "Aktarılacak aktif bir hedefin yok.")
+                                </span>
                             }
                             else
                             {

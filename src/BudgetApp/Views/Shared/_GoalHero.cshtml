@@ -17,4 +17,10 @@
         <span>Kalan: <strong class="text-white">@Model.Missing.ToString("C2")</strong></span>
         <a asp-controller="Goals" asp-action="Index" class="text-white text-decoration-underline">Tüm hedefler</a>
     </div>
+    @if (!Model.Goal.IsCompleted)
+    {
+        <div class="position-relative" style="z-index: 1">
+            @await Html.PartialAsync("_AddMoney", (Model, "home", true))
+        </div>
+    }
 </div>

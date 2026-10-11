@@ -161,6 +161,34 @@ public class DemoDataSeederTests
         Assert.NotNull(pending.TargetGoal);
     }
 
+    [Fact]
+    public async Task SeedDataAsync_TheOpenMonthAlreadyHasAManualAddSoOnlyTheRestIsOffered()
+    {
+        using var t = await SeededDb();
+
+        var pending = await new MonthCloseService(t.Context).GetPendingAsync(Demo, Today);
+
+        Assert.Equal(291.02m, pending!.Remaining);
+        Assert.Equal(150m, pending.AlreadyAdded);
+        Assert.Equal(141.02m, pending.Transferable);
+    }
+
+    [Fact]
+    public async Task SeedDataAsync_ClosedMonthsDidNotTransferMoneyThatWasAddedByHandInThatMonth()
+    {
+        using var t = await SeededDb();
+
+        // No manual contribution falls into a month that was closed with a transfer.
+        foreach (var close in await t.Context.MonthCloses.ToListAsync())
+        {
+            var start = new DateTime(close.Year, close.Month, 1);
+            var manualInMonth = t.Context.GoalContributions.AsEnumerable()
+                .Where(c => c.Source == GoalContributionSource.Manual && c.Date >= start && c.Date < start.AddMonths(1))
+                .Sum(c => c.Amount);
+            Assert.Equal(0m, manualInMonth);
+        }
+    }
+
     // ---------- the demo tells a story ----------
 
     [Fact]

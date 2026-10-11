@@ -19,6 +19,10 @@ else
         {
             <div class="card p-3 p-md-4">
                 <partial name="_GoalBar" model="progress" />
+                @if (!progress.Goal.IsCompleted)
+                {
+                    @await Html.PartialAsync("_AddMoney", (progress, "goals", false))
+                }
             </div>
         }
     </div>

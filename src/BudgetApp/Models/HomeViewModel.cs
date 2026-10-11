@@ -21,10 +21,13 @@ public class HomeViewModel
     /// <summary>The user's newest transactions across all months.</summary>
     public List<Transaction> Recent { get; init; } = [];
 
-    /// <summary>Amount that would be moved to the goal: the remainder, capped at what the goal still needs.</summary>
+    /// <summary>
+    /// Amount that would be moved to the goal: the part of the surplus not already added by hand,
+    /// capped at what the goal still needs.
+    /// </summary>
     public decimal? TransferAmount =>
         Pending?.TargetGoal is not null && ActiveGoal is not null
-            ? Math.Min(Pending.Remaining, ActiveGoal.Missing)
+            ? Math.Min(Pending.Transferable, ActiveGoal.Missing)
             : null;
 
     public string? PendingMonthName =>

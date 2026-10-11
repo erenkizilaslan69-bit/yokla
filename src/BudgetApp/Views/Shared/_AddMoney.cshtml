@@ -1,0 +1,28 @@
+@* "Para ekle" button that opens a small amount form inside the goal card.
+   Model: (progress of an unfinished goal, where to return to: "home" or "goals", onDark: true on the green dashboard card). *@
+@model (BudgetApp.Services.GoalProgress Progress, string ReturnTo, bool OnDark)
+@{
+    var goal = Model.Progress.Goal;
+    var panel = $"add-money-{Model.ReturnTo}-{goal.Id}";
+}
+
+<div class="add-money">
+    <button class="btn @(Model.OnDark ? "btn-light" : "btn-outline-primary") btn-sm" type="button"
+            data-bs-toggle="collapse" data-bs-target="#@panel" aria-expanded="false" aria-controls="@panel">
+        <i class="bi bi-plus-circle me-1"></i>Para ekle
+    </button>
+    <div class="collapse" id="@panel">
+        <form asp-controller="Goals" asp-action="AddMoney" method="post">
+            <input type="hidden" name="id" value="@goal.Id" />
+            <input type="hidden" name="returnTo" value="@Model.ReturnTo" />
+            <label class="form-label small mb-1" for="@(panel)-amount">@goal.Name hedefine eklenecek tutar</label>
+            <div class="input-group">
+                <span class="input-group-text">₺</span>
+                <input id="@(panel)-amount" name="amount" type="text" inputmode="decimal" autocomplete="off"
+                       class="form-control" placeholder="0,00" required />
+                <button type="submit" class="btn btn-primary">Ekle</button>
+            </div>
+            <div class="form-text">En fazla @Model.Progress.Missing.ToString("C2") eklenebilir; fazlası otomatik sınırlanır.</div>
+        </form>
+    </div>
+</div>
