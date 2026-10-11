@@ -11,7 +11,7 @@
     <partial name="_CategoryIcon" model="Model.Category?.Name" />
     <div class="tx-main">
         <div class="tx-title">@title</div>
-        <div class="tx-sub">@Model.Category?.Name &middot; @Model.Date.ToString("dd.MM.yyyy")</div>
+        <div class="tx-sub">@Model.Category?.Name &middot; @Model.Date.ToString("dd.MM.yyyy") <partial name="_RecurringMark" model="Model" /></div>
     </div>
     <div class="tx-side">
         <div class="amount @(income ? "income" : "expense")">@(income ? "+" : "−")@Model.Amount.ToString("C2")</div>

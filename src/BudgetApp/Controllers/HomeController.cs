@@ -7,7 +7,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace BudgetApp.Controllers;
 
 public class HomeController(
-    IGoalService goals, IMonthCloseService monthCloses, IForecastService forecast, ITransactionService transactions)
+    IGoalService goals, IMonthCloseService monthCloses, IForecastService forecast, ITransactionService transactions,
+    IRecurringTransactionService recurring)
     : Controller
 {
     private const int RecentCount = 5;
@@ -27,7 +28,8 @@ public class HomeController(
             Projection = await forecast.GetProjectedBalanceAsync(userId, today),
             GoalForecast = await forecast.GetGoalForecastAsync(userId, today),
             Totals = await transactions.GetTotalsAsync(userId, today.Year, today.Month),
-            Recent = await transactions.GetRecentAsync(userId, RecentCount)
+            Recent = await transactions.GetRecentAsync(userId, RecentCount),
+            Upcoming = await recurring.GetPendingAsync(userId, today)
         });
     }
 

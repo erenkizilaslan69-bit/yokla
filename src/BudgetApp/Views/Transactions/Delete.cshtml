@@ -11,6 +11,18 @@
         <i class="bi bi-exclamation-triangle-fill alert-icon"></i>
         <div class="alert-body">Bu işlemi silmek istediğine emin misin? Bu işlem geri alınamaz.</div>
     </div>
+    @if (ViewBag.Recurring is BudgetApp.Models.RecurringTransaction definition)
+    {
+        var definitionName = string.IsNullOrWhiteSpace(definition.ItemName) ? definition.Category?.Name : definition.ItemName;
+        <div class="alert alert-success mb-3" role="note">
+            <i class="bi bi-arrow-repeat alert-icon"></i>
+            <div class="alert-body">
+                Bu işlem <a asp-controller="Recurring" asp-action="Edit" asp-route-id="@definition.Id" class="fw-semibold">@definitionName</a>
+                tekrarlayan tanımından oluştu. Silersen bu ay yeniden oluşmaz, gelecek aylarda oluşmaya devam eder.
+                Tamamen durdurmak için <a asp-controller="Recurring" asp-action="Index" class="fw-semibold">tanımı durdur</a>.
+            </div>
+        </div>
+    }
     <dl class="row mb-4">
         <dt class="col-sm-4">Tür</dt>
         <dd class="col-sm-8">@(income ? "Gelir" : "Gider")</dd>

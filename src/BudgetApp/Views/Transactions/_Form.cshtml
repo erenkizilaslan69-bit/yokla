@@ -42,6 +42,15 @@
             <input asp-for="Note" class="form-control" />
             <span asp-validation-for="Note" class="text-danger small"></span>
         </div>
+        @if (Model.Id == 0)
+        {
+            @* Only when adding: the saved transaction becomes the first occurrence of a monthly definition. *@
+            <div class="form-check form-switch mb-4">
+                <input asp-for="RepeatMonthly" class="form-check-input" role="switch" />
+                <label asp-for="RepeatMonthly" class="form-check-label"></label>
+                <div class="form-text">Kira, burs, abonelik gibi kalemler için: her ay aynı gün otomatik eklenir. Sonradan "Tekrarlayanlar" sayfasından durdurabilirsin.</div>
+            </div>
+        }
         <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Kaydet</button>
             <a asp-action="Index" class="btn btn-outline-secondary">İptal</a>
@@ -49,18 +58,4 @@
     </form>
 </div>
 
-<script>
-    // Reload the category list whenever the transaction type changes.
-    document.getElementById('typeSelect').addEventListener('change', async function () {
-        const select = document.getElementById('categorySelect');
-        const res = await fetch('@Url.Action("CategoriesByType", "Transactions")?type=' + encodeURIComponent(this.value));
-        const items = await res.json();
-        select.innerHTML = '<option value="0">Seçin…</option>';
-        for (const c of items) {
-            const opt = document.createElement('option');
-            opt.value = c.id;
-            opt.textContent = c.name;
-            select.appendChild(opt);
-        }
-    });
-</script>
+<partial name="_TypeCategoryScript" />

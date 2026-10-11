@@ -24,6 +24,9 @@ public class HomeViewModel
     /// <summary>The user's newest transactions across all months.</summary>
     public List<Transaction> Recent { get; init; } = [];
 
+    /// <summary>This month's recurring occurrences that have not been generated yet (already part of the projection).</summary>
+    public List<PendingOccurrence> Upcoming { get; init; } = [];
+
     /// <summary>
     /// Amount that would be moved to the goal: the part of the surplus not already added by hand,
     /// capped at what the goal still needs.

@@ -10,7 +10,8 @@ namespace BudgetApp.Controllers;
 
 [Authorize]
 public class TransactionsController(
-    ITransactionService transactions, ICategoryService categories, IWarningService warningService) : Controller
+    ITransactionService transactions, ICategoryService categories, IWarningService warningService,
+    IRecurringTransactionService recurring) : Controller
 {
     private const string WarningsKey = "Warnings";
 
@@ -47,6 +48,13 @@ public class TransactionsController(
             var created = await TrySaveAsync(model, isNew: true);
             if (created is not null)
             {
+                if (model.RepeatMonthly)
+                {
+                    // "Her ay tekrarla": this transaction is the first occurrence of a new monthly definition.
+                    await recurring.CreateFromTransactionAsync(UserId, created.Id, DateTime.Today);
+                    TempData["Message"] = $"Bu işlem her ayın {created.Date.Day}. günü otomatik eklenecek.";
+                }
+
                 // Warnings are shown right after an expense is saved, above the transaction list.
                 var warnings = await warningService.CheckAsync(UserId, created, DateTime.Today);
                 if (warnings.Count > 0)
@@ -100,7 +108,13 @@ public class TransactionsController(
     public async Task<IActionResult> Delete(int id)
     {
         var entity = await transactions.GetAsync(UserId, id);
-        return entity is null ? NotFound() : View(entity);
+        if (entity is null)
+            return NotFound();
+
+        // For a generated transaction the confirmation page explains what deleting it means for the definition.
+        if (entity.RecurringTransactionId is { } definitionId)
+            ViewBag.Recurring = await recurring.GetAsync(UserId, definitionId);
+        return View(entity);
     }
 
     [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]

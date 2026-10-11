@@ -119,7 +119,8 @@ else
             <div class="col-6 col-md-4">
                 @if (Model.Projection is { } projection)
                 {
-                    @await Html.PartialAsync("_StatCard", ("Tahmini kalan", projection.Projected.ToString("C2"), "graph-up-arrow", "balance", (string?)"Ay sonunda"))
+                    var hasPending = projection.PendingIncome > 0 || projection.PendingExpenses > 0;
+                    @await Html.PartialAsync("_StatCard", ("Tahmini kalan", projection.Projected.ToString("C2"), "graph-up-arrow", "balance", (string?)(hasPending ? "Ay sonunda · bekleyenler dahil" : "Ay sonunda")))
                 }
                 else
                 {
@@ -169,6 +170,24 @@ else
                                 <span>Bu tempoyla ay sonunda tahmini <strong class="text-danger">@((-p.Projected).ToString("C2"))</strong> açık verirsin.</span>
                             }
                         </p>
+                        @if (p.PendingIncome > 0 || p.PendingExpenses > 0)
+                        {
+                            <p class="small text-muted mb-1">
+                                Bu ay henüz gelmemiş tekrarlayan işlemler tahmine dahil:
+                                @if (p.PendingIncome > 0)
+                                {
+                                    <span>@p.PendingIncome.ToString("C2") gelir</span>
+                                }
+                                @if (p.PendingIncome > 0 && p.PendingExpenses > 0)
+                                {
+                                    <span>ve</span>
+                                }
+                                @if (p.PendingExpenses > 0)
+                                {
+                                    <span>@p.PendingExpenses.ToString("C2") gider</span>
+                                }.
+                            </p>
+                        }
                     }
                     @if (Model.GoalForecast is { } gf)
                     {
@@ -185,6 +204,31 @@ else
                     }
                 </div>
             </div>
+        </div>
+    }
+
+    @if (Model.Upcoming.Count > 0)
+    {
+        <div class="card mb-4">
+            <div class="d-flex justify-content-between align-items-center px-3 pt-3 pb-2">
+                <h2 class="section-title mb-0"><i class="bi bi-arrow-repeat text-success me-1"></i>Bu ay bekleyenler</h2>
+                <a asp-controller="Recurring" asp-action="Index" class="small fw-semibold">Yönet <i class="bi bi-arrow-right"></i></a>
+            </div>
+            @foreach (var upcoming in Model.Upcoming)
+            {
+                var definition = upcoming.Definition;
+                var isIncome = definition.Type == BudgetApp.Models.TransactionType.Income;
+                <div class="tx-card">
+                    <partial name="_CategoryIcon" model="definition.Category?.Name" />
+                    <div class="tx-main">
+                        <div class="tx-title">@(string.IsNullOrWhiteSpace(definition.ItemName) ? definition.Category?.Name : definition.ItemName)</div>
+                        <div class="tx-sub">@definition.Category?.Name &middot; @upcoming.DueDate.ToString("dd.MM.yyyy")</div>
+                    </div>
+                    <div class="tx-side">
+                        <div class="amount @(isIncome ? "income" : "expense")">@(isIncome ? "+" : "−")@definition.Amount.ToString("C2")</div>
+                    </div>
+                </div>
+            }
         </div>
     }
 

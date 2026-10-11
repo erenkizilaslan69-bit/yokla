@@ -6,6 +6,9 @@
         controller == c && (a is null || action == a) ? "active" : "";
     string Current(string c, string? a = null) =>
         controller == c && (a is null || action == a) ? "page" : "";
+
+    // "Tekrarlayan işlemler" is reached from the transactions page, so it lights up the same menu item.
+    var inTransactions = controller is "Transactions" or "Recurring";
 }
 <!DOCTYPE html>
 <html lang="tr">
@@ -38,7 +41,7 @@
                                 <a class="nav-link @Active("Home", "Index")" aria-current="@Current("Home", "Index")" asp-area="" asp-controller="Home" asp-action="Index"><i class="bi bi-grid-1x2-fill"></i>Ana sayfa</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link @Active("Transactions")" aria-current="@Current("Transactions")" asp-area="" asp-controller="Transactions" asp-action="Index"><i class="bi bi-arrow-left-right"></i>İşlemler</a>
+                                <a class="nav-link @(inTransactions ? "active" : "")" aria-current="@(inTransactions ? "page" : "")" asp-area="" asp-controller="Transactions" asp-action="Index"><i class="bi bi-arrow-left-right"></i>İşlemler</a>
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link @Active("Goals")" aria-current="@Current("Goals")" asp-area="" asp-controller="Goals" asp-action="Index"><i class="bi bi-bullseye"></i>Hedefler</a>

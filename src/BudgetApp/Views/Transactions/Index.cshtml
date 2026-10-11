@@ -17,7 +17,10 @@
 
 <div class="page-head">
     <h1>İşlemler</h1>
-    <a asp-action="Create" class="btn btn-primary d-none d-md-inline-flex align-items-center gap-1"><i class="bi bi-plus-lg"></i>Yeni işlem</a>
+    <div class="d-flex gap-2">
+        <a asp-controller="Recurring" asp-action="Index" class="btn btn-outline-primary d-inline-flex align-items-center gap-1"><i class="bi bi-arrow-repeat"></i>Tekrarlayanlar</a>
+        <a asp-action="Create" class="btn btn-primary d-none d-md-inline-flex align-items-center gap-1"><i class="bi bi-plus-lg"></i>Yeni işlem</a>
+    </div>
 </div>
 
 <partial name="_MonthPicker" model="Model.Picker" />
@@ -62,7 +65,10 @@ else
                     var income = t.Type == TransactionType.Income;
                     <tr>
                         <td class="ps-3 text-nowrap">@t.Date.ToString("dd.MM.yyyy")</td>
-                        <td><partial name="_CategoryBadge" model="t.Category?.Name" /></td>
+                        <td>
+                            <partial name="_CategoryBadge" model="t.Category?.Name" />
+                            <partial name="_RecurringMark" model="t" />
+                        </td>
                         <td>@t.ItemName</td>
                         <td class="text-muted">@t.Note</td>
                         <td class="text-end amount @(income ? "income" : "expense")">@(income ? "+" : "−")@t.Amount.ToString("C2")</td>

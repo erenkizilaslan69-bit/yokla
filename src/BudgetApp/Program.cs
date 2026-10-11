@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using BudgetApp.Data;
+using BudgetApp.Infrastructure;
 using BudgetApp.Localization;
 using BudgetApp.Services;
 
@@ -19,7 +20,12 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.Requ
     .AddErrorDescriber<TurkishIdentityErrorDescriber>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
 builder.Services.AddControllersWithViews(options =>
-    TurkishValidationMessages.Apply(options.ModelBindingMessageProvider));
+{
+    TurkishValidationMessages.Apply(options.ModelBindingMessageProvider);
+    // Generates due recurring transactions before every action (see RecurringGenerationFilter).
+    options.Filters.AddService<RecurringGenerationFilter>();
+});
+builder.Services.AddScoped<RecurringGenerationFilter>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IGoalService, GoalService>();

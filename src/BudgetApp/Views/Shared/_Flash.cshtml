@@ -1,9 +1,11 @@
 @* One-time messages left in TempData by the previous request:
-   Message = success, Notice = heads-up (e.g. an amount was reduced), Error = something was rejected. *@
+   Recurring = transactions that were just generated automatically, Message = success,
+   Notice = heads-up (e.g. an amount was reduced), Error = something was rejected. *@
 @{
     var items = new (string Key, string Css, string Icon)[]
     {
         ("Message", "alert-success", "check-circle-fill"),
+        (BudgetApp.Infrastructure.RecurringGenerationFilter.FlashKey, "alert-success", "arrow-repeat"),
         ("Notice", "alert-warning", "info-circle-fill"),
         ("Error", "alert-danger", "exclamation-triangle-fill")
     };

@@ -1,0 +1,15 @@
+@* Reloads the category list (#categorySelect) whenever the transaction type (#typeSelect) changes. *@
+<script>
+    document.getElementById('typeSelect').addEventListener('change', async function () {
+        const select = document.getElementById('categorySelect');
+        const res = await fetch('@Url.Action("CategoriesByType", "Transactions")?type=' + encodeURIComponent(this.value));
+        const items = await res.json();
+        select.innerHTML = '<option value="0">Seçin…</option>';
+        for (const c of items) {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.name;
+            select.appendChild(opt);
+        }
+    });
+</script>

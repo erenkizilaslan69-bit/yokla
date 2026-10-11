@@ -28,6 +28,29 @@ Varsayılan kategoriler (seed):
 | CategoryId | int | |
 | ItemName | string? | Ürün adı (ör. "Süt 1 L"); fişten gelen satırlarda dolu |
 | Note | string? | |
+| RecurringTransactionId | int? | İşlem bir tekrarlayan tanımdan oluştuysa o tanım. Tanım silinince null olur (işlem kalır) |
+| RecurringPeriod | DateTime? | Hangi ayın oluşumu olduğu (ayın 1'i). İşlemin tarihi değiştirilse de aynı kalır |
+
+(RecurringTransactionId, RecurringPeriod) benzersiz olmalı: bir tanım için bir ayda en fazla bir işlem oluşur.
+
+## RecurringTransaction
+Her ay aynı gün tekrarlanan gelir veya gider tanımı (kira, burs, abonelik). İşlemleri uygulama oluşturur; kurallar için bkz. docs/rules.md bölüm 5.
+
+| Alan | Tip | Not |
+| --- | --- | --- |
+| Id | int | |
+| UserId | string | |
+| Type | enum (Income, Expense) | |
+| Amount | decimal | Her zaman pozitif |
+| CategoryId | int | Türü Type ile uyumlu olmalı |
+| ItemName | string? | Oluşan işlemlere kopyalanır |
+| Note | string? | |
+| DayOfMonth | int | 1–31; o günü olmayan aylarda ayın son günü kullanılır |
+| StartDate | DateTime | Vadesi bu tarihten önce olan işlem oluşmaz. Devam ettirilince bugüne çekilir |
+| EndDate | DateTime? | Vadesi bu tarihten sonra olan işlem oluşmaz |
+| IsActive | bool | Kullanıcı durdurduysa false |
+| LastGeneratedPeriod | DateTime? | En son işlenen ay (ayın 1'i); o ay ve öncesi yeniden oluşturulmaz |
+| CreatedAt | DateTime | |
 
 ## Goal
 | Alan | Tip | Not |

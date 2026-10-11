@@ -1,0 +1,91 @@
+@using BudgetApp.Models
+@using BudgetApp.Services
+@model RecurringIndexViewModel
+@{
+    ViewData["Title"] = "Tekrarlayan işlemler";
+    var summary = Model.Summary;
+}
+
+<div class="page-head">
+    <div>
+        <a asp-controller="Transactions" asp-action="Index" class="small fw-semibold"><i class="bi bi-arrow-left"></i> İşlemler</a>
+        <h1>Tekrarlayan işlemler</h1>
+    </div>
+    <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Yeni tekrarlayan</a>
+</div>
+
+<p class="text-muted">Her ay aynı gün tekrarlanan gelir ve giderlerin. Günü geldiğinde işlem kendiliğinden eklenir; henüz gelmeyenler ay sonu tahminine dahil edilir.</p>
+
+@if (Model.Items.Count == 0)
+{
+    @await Html.PartialAsync("_EmptyState", ("arrow-repeat", "Henüz tekrarlayan işlem yok", "Kira, burs, aile desteği, abonelik gibi her ay tekrarlanan kalemleri bir kez tanımla; her ay elle girmek zorunda kalma.", (string?)"Yeni tekrarlayan", (string?)"Recurring", (string?)"Create"))
+}
+else
+{
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-4">
+            @await Html.PartialAsync("_StatCard", ("Aylık gelir", summary.MonthlyIncome.ToString("C2"), "arrow-down-circle-fill", "income", (string?)"Tekrarlayan"))
+        </div>
+        <div class="col-6 col-md-4">
+            @await Html.PartialAsync("_StatCard", ("Aylık gider", summary.MonthlyExpense.ToString("C2"), "arrow-up-circle-fill", "expense", (string?)"Tekrarlayan"))
+        </div>
+        <div class="col-6 col-md-4">
+            @await Html.PartialAsync("_StatCard", ("Aylık net", summary.Net.ToString("C2"), "coin", "balance", (string?)"Gelir − gider"))
+        </div>
+    </div>
+
+    <div class="card">
+        @foreach (var item in Model.Items)
+        {
+            var d = item.Definition;
+            var income = d.Type == TransactionType.Income;
+            var title = string.IsNullOrWhiteSpace(d.ItemName) ? d.Category?.Name : d.ItemName;
+            <div class="tx-card @(item.Status == RecurringStatus.Active ? "" : "is-muted")">
+                <partial name="_CategoryIcon" model="d.Category?.Name" />
+                <div class="tx-main">
+                    <div class="tx-title">
+                        @title
+                        @if (item.Status == RecurringStatus.Paused)
+                        {
+                            <span class="status-badge paused">Durduruldu</span>
+                        }
+                        else if (item.Status == RecurringStatus.Ended)
+                        {
+                            <span class="status-badge ended">Bitti</span>
+                        }
+                    </div>
+                    <div class="tx-sub">
+                        @d.Category?.Name &middot; Her ayın @d.DayOfMonth. günü@(d.DayOfMonth > 28 ? " (kısa aylarda son gün)" : "")
+                        @if (item.NextDueDate is { } next)
+                        {
+                            <span>&middot; Sonraki: @next.ToString("dd.MM.yyyy")</span>
+                        }
+                        @if (d.EndDate is { } end && item.Status != RecurringStatus.Ended)
+                        {
+                            <span>&middot; Bitiş: @end.ToString("dd.MM.yyyy")</span>
+                        }
+                    </div>
+                </div>
+                <div class="tx-side">
+                    <div class="amount @(income ? "income" : "expense")">@(income ? "+" : "−")@d.Amount.ToString("C2")</div>
+                    <div class="tx-actions">
+                        <a asp-action="Edit" asp-route-id="@d.Id" class="icon-btn" aria-label="Düzenle" title="Düzenle"><i class="bi bi-pencil-square"></i></a>
+                        @if (item.Status == RecurringStatus.Active)
+                        {
+                            <form asp-action="Pause" asp-route-id="@d.Id" method="post">
+                                <button type="submit" class="icon-btn" aria-label="Durdur" title="Durdur"><i class="bi bi-pause-fill"></i></button>
+                            </form>
+                        }
+                        else if (item.Status == RecurringStatus.Paused)
+                        {
+                            <form asp-action="Resume" asp-route-id="@d.Id" method="post">
+                                <button type="submit" class="icon-btn" aria-label="Devam ettir" title="Devam ettir"><i class="bi bi-play-fill"></i></button>
+                            </form>
+                        }
+                        <a asp-action="Delete" asp-route-id="@d.Id" class="icon-btn danger" aria-label="Sil" title="Sil"><i class="bi bi-trash3"></i></a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

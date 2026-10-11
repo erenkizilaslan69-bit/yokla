@@ -190,6 +190,70 @@ public class DemoDataSeederTests
         }
     }
 
+    // ---------- recurring definitions ----------
+
+    [Fact]
+    public async Task SeedDataAsync_CreatesRecurringDefinitionsAndLinksTheirMonthlyTransactions()
+    {
+        using var t = await SeededDb(); // 15 October
+
+        var definitions = await t.Context.RecurringTransactions.Include(r => r.Category).ToListAsync();
+        Assert.Equal(8, definitions.Count);
+        Assert.All(definitions, d =>
+        {
+            Assert.Equal(Demo, d.UserId);
+            Assert.True(d.IsActive);
+        });
+        foreach (var category in new[] { "Aile Desteği", "KYK Bursu", "Part-time İş", "Kira/Yurt", "Faturalar", "Abonelikler" })
+            Assert.Contains(definitions, d => d.Category!.Name == category);
+
+        // Three completed months each, plus October for everything whose day has already come (all but the part-time pay).
+        var linked = await t.Context.Transactions.Where(x => x.RecurringTransactionId != null).ToListAsync();
+        foreach (var d in definitions)
+        {
+            var expected = d.Category!.Name == "Part-time İş" ? 3 : 4;
+            Assert.Equal(expected, linked.Count(x => x.RecurringTransactionId == d.Id));
+        }
+        Assert.All(linked, x => Assert.Equal(new DateTime(x.Date.Year, x.Date.Month, 1), x.RecurringPeriod));
+    }
+
+    [Theory]
+    [InlineData(2026, 10, 3)]
+    [InlineData(2026, 10, 8)]
+    [InlineData(2026, 10, 15)]
+    [InlineData(2026, 10, 28)]
+    [InlineData(2026, 11, 1)]
+    [InlineData(2027, 1, 2)]
+    public async Task SeedDataAsync_LeavesNothingForGenerationToDuplicate(int year, int month, int day)
+    {
+        var today = new DateTime(year, month, day);
+        using var t = await SeededDb(today);
+        var before = t.Context.Transactions.Count();
+
+        var created = await new RecurringTransactionService(t.Context).GenerateDueAsync(Demo, today);
+
+        Assert.Empty(created);
+        Assert.Equal(before, t.Context.Transactions.Count());
+    }
+
+    [Fact]
+    public async Task SeedDataAsync_TheRestOfTheMonthArrivesOnItsOwn()
+    {
+        using var t = await SeededDb(); // 15 October: only the part-time pay of the 20th is still to come
+        var service = new RecurringTransactionService(t.Context);
+
+        var pending = Assert.Single(await service.GetPendingAsync(Demo, Today));
+        Assert.Equal(new DateTime(2026, 10, 20), pending.DueDate);
+        Assert.Equal(1500m, pending.Definition.Amount);
+        Assert.Equal(1500m, (await new ForecastService(t.Context).GetProjectedBalanceAsync(Demo, Today))!.PendingIncome);
+
+        var onThe20th = Assert.Single(await service.GenerateDueAsync(Demo, new DateTime(2026, 10, 20)));
+        Assert.Equal((TransactionType.Income, 1500m), (onThe20th.Type, onThe20th.Amount));
+
+        var firstOfNovember = await service.GenerateDueAsync(Demo, new DateTime(2026, 11, 1));
+        Assert.Equal([3000m, 3500m], firstOfNovember.Select(x => x.Amount).OrderBy(a => a).ToArray()); // rent and family support
+    }
+
     // ---------- the demo tells a story ----------
 
     [Fact]

@@ -33,5 +33,9 @@ public class TransactionFormViewModel
     [StringLength(500)]
     public string? Note { get; set; }
 
+    /// <summary>Only used when adding: also create a monthly recurring definition from this transaction.</summary>
+    [Display(Name = "Her ay tekrarla")]
+    public bool RepeatMonthly { get; set; }
+
     public List<SelectListItem> Categories { get; set; } = [];
 }

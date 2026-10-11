@@ -378,6 +378,25 @@ a:hover { text-decoration: underline; }
 .tx-card .tx-side { text-align: right; flex: none; }
 .tx-card .tx-actions { display: flex; gap: .25rem; justify-content: flex-end; margin-top: .25rem; }
 
+/* Recurring definitions: marker on generated transactions, state badge and dimmed rows in the list. */
+.recurring-mark { color: var(--brand); font-size: .85rem; margin-left: .25rem; vertical-align: middle; }
+.recurring-mark:hover { color: var(--brand-dark); text-decoration: none; }
+
+.status-badge {
+  display: inline-block;
+  margin-left: .35rem;
+  padding: .1rem .5rem;
+  border-radius: 999px;
+  font-size: .7rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.status-badge.paused { background: var(--gold-soft); color: var(--gold-dark); }
+.status-badge.ended { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+.tx-card.is-muted .tx-title, .tx-card.is-muted .amount, .tx-card.is-muted .cat-icon { opacity: .6; }
+.tx-actions form { display: inline-flex; margin: 0; }
+
 .icon-btn {
   display: inline-grid;
   place-items: center;

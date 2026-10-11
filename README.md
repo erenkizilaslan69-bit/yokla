@@ -7,11 +7,12 @@ A simple income and expense tracker for students. It records what comes in and w
 ## Features
 
 - **Income and expense tracking** — amount, category, date, optional item name and note. List, edit and delete, with a month picker (previous / next month) and per-month income, expense and balance totals. Future-dated entries are rejected.
+- **Recurring transactions** — define rent, scholarships, subscriptions and other monthly items once; the app adds the transaction on its due day (day 31 falls on the last day of shorter months). Definitions can be paused, resumed, edited or deleted, and a "repeat every month" switch on the new-transaction form creates one from a regular entry. There is no background job: due items are generated when the user opens a page, at most once per month.
 - **Savings goal bar** — create a goal (e.g. headphones, 4.500 TL) and watch the bar fill. A "Para ekle" (add money) button on each unfinished goal puts money in by hand; amounts above what the goal still needs are reduced automatically.
 - **Month-end carry-over** — in a new month the home page offers to move last month's surplus to the goal with one click (never more than the goal still needs). Money you already added by hand that month is not moved a second time. A month can only be closed once.
 - **Instant warnings** — right after an expense is saved, the page shows warnings based on four rules: an unusually large single expense, too much "unnecessary" spending, a category running well ahead of last month, and a projected negative month-end balance.
 - **Monthly analysis** — Chart.js pie chart by category, the 10 most expensive items, change versus the previous month, and 2–3 rule-based tips.
-- **Forecast** — projected month-end balance and "at this pace you reach your goal around *month year*".
+- **Forecast** — projected month-end balance and "at this pace you reach your goal around *month year*". Recurring income and expenses that are still to come this month are included, so a salary due on the 20th no longer makes the first half of the month look like a deficit.
 - **Accounts** — registration and login with ASP.NET Core Identity; every user only ever sees their own data.
 
 The exact formulas and thresholds are documented in [docs/rules.md](docs/rules.md) and the data model in [docs/model.md](docs/model.md) (both written in Turkish).
@@ -43,7 +44,8 @@ Screenshots go in [docs/screenshots/](docs/screenshots/). Placeholders:
 src/BudgetApp
 ├── Models/          Entities (Category, Transaction, Goal, GoalContribution, MonthClose) and view models
 ├── Data/            ApplicationDbContext, EF Core migrations, development demo-data seeder
-├── Services/        All business logic: transactions, goals, month close, warnings, analysis, forecast
+├── Services/        All business logic: transactions, recurring definitions, goals, month close, warnings, analysis, forecast
+├── Infrastructure/  The filter that generates due recurring transactions before each request
 ├── Controllers/     Thin MVC controllers: read the request, call a service, return a view
 ├── Views/           Razor views (Turkish UI)
 ├── Areas/Identity/  Login, register and logout pages
@@ -94,7 +96,7 @@ In Development only, a demo user is created on first start with about three mont
 | E-mail | `demo@budgetapp.local` |
 | Password | `Demo123!` |
 
-The dates are generated relative to the current day, so the data always looks fresh. The demo account is never created outside the Development environment.
+The monthly items (rent, scholarship, family support, bills, subscriptions, part-time pay) are set up as recurring definitions, so they keep arriving on their own after the first start. The dates are generated relative to the current day, so the data always looks fresh. The demo account is never created outside the Development environment.
 
 ## Future improvements
 

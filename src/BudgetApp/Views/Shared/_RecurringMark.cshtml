@@ -1,0 +1,9 @@
+@* Small ↻ marker for a transaction that was generated from a recurring definition; links to that definition.
+   Renders nothing for manual transactions (and after the definition has been deleted). *@
+@model BudgetApp.Models.Transaction
+
+@if (Model.RecurringTransactionId is { } definitionId)
+{
+    <a asp-controller="Recurring" asp-action="Edit" asp-route-id="@definitionId" class="recurring-mark"
+       title="Tekrarlayan işlemden otomatik oluştu" aria-label="Tekrarlayan işlemden otomatik oluştu"><i class="bi bi-arrow-repeat"></i></a>
+}
