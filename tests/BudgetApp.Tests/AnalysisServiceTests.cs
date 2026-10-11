@@ -171,6 +171,20 @@ public class AnalysisServiceTests
     }
 
     [Fact]
+    public async Task TopItems_ExcludeExpensesGeneratedFromRecurringDefinitions()
+    {
+        using var t = new TestDb();
+        AddGeneratedExpense(t.Context, Alice, 400m, Oct(1), Transport, "Aylık abonman"); // recurring, variable category
+        AddExpense(t.Context, Alice, 30m, Oct(3), Market, "Süt");
+
+        var analysis = await Analyze(t);
+
+        Assert.Equal(["Süt"], analysis.TopItems.Select(i => i.ItemName).ToArray());
+        Assert.Equal(430m, analysis.TotalExpense);                                      // still part of the totals
+        Assert.Contains(analysis.Categories, c => c.Name == "Ulaşım" && c.Amount == 400m);
+    }
+
+    [Fact]
     public async Task TopItems_AreLimitedToTenLargest()
     {
         using var t = new TestDb();

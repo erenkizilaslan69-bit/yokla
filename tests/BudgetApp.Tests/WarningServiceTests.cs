@@ -401,6 +401,71 @@ public class WarningServiceTests
         Assert.True(Has(await Check(t, saved, new DateTime(2026, 10, 2)), WarningRule.NegativeForecast));
     }
 
+    // ---------- recurring definitions ----------
+
+    [Fact]
+    public async Task Rule4_DoesNotFireWhenUpcomingRecurringIncomeCoversTheSpending()
+    {
+        using var t = new TestDb();
+        AddIncome(t.Context, Alice, 1000m, new DateTime(2026, 10, 1));
+        var saved = AddExpense(t.Context, Alice, 400m, new DateTime(2026, 10, 10), Market); // alone: 1000 - 1240 = -240
+        Assert.True(Has(await Check(t, saved), WarningRule.NegativeForecast));
+
+        // The part-time pay of the 20th is known in advance.
+        AddRecurring(t.Context, Alice, TransactionType.Income, 1500m, day: 20, start: new DateTime(2026, 10, 1));
+
+        Assert.False(Has(await Check(t, saved), WarningRule.NegativeForecast));
+    }
+
+    [Fact]
+    public async Task Rule4_FiresWhenOnlyUpcomingRecurringIncomeIsKnownAndItIsNotEnough()
+    {
+        using var t = new TestDb();
+        AddRecurring(t.Context, Alice, TransactionType.Income, 1000m, day: 20, start: new DateTime(2026, 10, 1));
+        var saved = AddExpense(t.Context, Alice, 400m, new DateTime(2026, 10, 10), Market); // 1000 - 400 * 31 / 10 = -240
+
+        var warnings = await Check(t, saved);
+
+        var w = Assert.Single(warnings, x => x.Rule == WarningRule.NegativeForecast);
+        Assert.Contains("240,00", w.Message);
+    }
+
+    [Fact]
+    public async Task Rule4_CountsUpcomingRecurringExpenses()
+    {
+        using var t = new TestDb();
+        AddIncome(t.Context, Alice, 1500m, new DateTime(2026, 10, 1));
+        var saved = AddExpense(t.Context, Alice, 400m, new DateTime(2026, 10, 10), Market); // alone: 1500 - 1240 = +260
+        Assert.False(Has(await Check(t, saved), WarningRule.NegativeForecast));
+
+        AddRecurring(t.Context, Alice, TransactionType.Expense, 300m, day: 25, start: new DateTime(2026, 10, 1), categoryId: Bills);
+
+        Assert.True(Has(await Check(t, saved), WarningRule.NegativeForecast)); // 260 - 300 = -40
+    }
+
+    [Fact]
+    public async Task Rule1_AverageIgnoresExpensesGeneratedFromRecurringDefinitions()
+    {
+        using var t = new TestDb();
+        AddSalary(t);
+        AddGeneratedExpense(t.Context, Alice, 2000m, new DateTime(2026, 10, 1), Transport); // would inflate the average if counted
+        AddExpense(t.Context, Alice, 100m, new DateTime(2026, 10, 5));                      // variable average 10 => limit 30
+        var saved = AddExpense(t.Context, Alice, 40m, new DateTime(2026, 10, 10));
+
+        Assert.True(Has(await Check(t, saved), WarningRule.LargeExpense));
+    }
+
+    [Fact]
+    public async Task Rule1_DoesNotFireForARecurringOccurrence()
+    {
+        using var t = new TestDb();
+        AddSalary(t);
+        SeedDailyAverage(t); // average 90 => limit 270
+        var monthlyPass = AddGeneratedExpense(t.Context, Alice, 3000m, new DateTime(2026, 10, 10), Transport);
+
+        Assert.False(Has(await Check(t, monthlyPass), WarningRule.LargeExpense));
+    }
+
     // ---------- several rules and ordering ----------
 
     [Fact]

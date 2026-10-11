@@ -103,6 +103,125 @@ public class ForecastServiceTests
         Assert.Equal(720m, projection!.Projected);
     }
 
+    // ---------- GetProjectedBalanceAsync: recurring definitions ----------
+
+    private static readonly DateTime Oct11 = new(2026, 10, 11);
+    private static readonly DateTime Oct1 = new(2026, 10, 1);
+
+    [Fact]
+    public async Task GetProjectedBalanceAsync_KnownUpcomingIncomeTurnsAFalseDeficitIntoASurplus()
+    {
+        using var t = new TestDb();
+        // 11 October: 5.500 income so far, rent 3.000, everyday spending 1.100 (scaled: 1.100 * 31 / 11 = 3.100).
+        AddIncome(t.Context, Alice, 5500m, Oct1);
+        AddExpense(t.Context, Alice, 3000m, Oct1, Rent);
+        AddExpense(t.Context, Alice, 1100m, new DateTime(2026, 10, 5), Market);
+        var service = new ForecastService(t.Context);
+
+        var before = await service.GetProjectedBalanceAsync(Alice, Oct11);
+        Assert.Equal(-600m, before!.Projected); // looks like a deficit...
+
+        // ...but the part-time pay arrives on the 20th every month.
+        AddRecurring(t.Context, Alice, BudgetApp.Models.TransactionType.Income, 1500m, day: 20, start: Oct1);
+
+        var after = await service.GetProjectedBalanceAsync(Alice, Oct11);
+        Assert.Equal(1500m, after!.PendingIncome);
+        Assert.Equal(0m, after.PendingExpenses);
+        Assert.Equal(5500m, after.Income);
+        Assert.Equal(7000m, after.KnownIncome);
+        Assert.Equal(900m, after.Projected);
+    }
+
+    [Fact]
+    public async Task GetProjectedBalanceAsync_AddsUpcomingRecurringExpensesAsTheyAre()
+    {
+        using var t = new TestDb();
+        AddIncome(t.Context, Alice, 5000m, Oct1);
+        AddRecurring(t.Context, Alice, BudgetApp.Models.TransactionType.Expense, 190m, day: 12, start: Oct1, categoryId: Bills);
+        AddRecurring(t.Context, Alice, BudgetApp.Models.TransactionType.Expense, 200m, day: 18, start: Oct1, categoryId: Transport);
+
+        var projection = await new ForecastService(t.Context).GetProjectedBalanceAsync(Alice, Oct11);
+
+        Assert.Equal(390m, projection!.PendingExpenses);    // not multiplied by 31/11, whatever the category
+        Assert.Equal(4610m, projection.Projected);
+    }
+
+    [Fact]
+    public async Task GetProjectedBalanceAsync_DoesNotScaleExpensesThatWereGeneratedFromARecurringDefinition()
+    {
+        using var t = new TestDb();
+        AddIncome(t.Context, Alice, 5000m, Oct1);
+        AddGeneratedExpense(t.Context, Alice, 200m, new DateTime(2026, 10, 3), Transport); // monthly pass: variable category
+        AddExpense(t.Context, Alice, 110m, new DateTime(2026, 10, 5), Market);             // scaled: 110 * 31 / 11 = 310
+
+        var projection = await new ForecastService(t.Context).GetProjectedBalanceAsync(Alice, Oct11);
+
+        Assert.Equal(200m, projection!.FixedExpenses);
+        Assert.Equal(110m, projection.VariableExpenses);
+        Assert.Equal(4490m, projection.Projected);
+    }
+
+    [Fact]
+    public async Task GetProjectedBalanceAsync_DoesNotCountAnOccurrenceTwiceOnceItWasGenerated()
+    {
+        using var t = new TestDb();
+        AddIncome(t.Context, Alice, 5000m, Oct1);
+        AddRecurring(t.Context, Alice, BudgetApp.Models.TransactionType.Expense, 3000m, day: 1, start: Oct1, lastGenerated: Oct1);
+        AddGeneratedExpense(t.Context, Alice, 3000m, Oct1, Rent);
+
+        var projection = await new ForecastService(t.Context).GetProjectedBalanceAsync(Alice, Oct11);
+
+        Assert.Equal(0m, projection!.PendingExpenses);
+        Assert.Equal(2000m, projection.Projected);
+    }
+
+    [Fact]
+    public async Task GetProjectedBalanceAsync_IgnoresDefinitionsThatWillNotProduceAnythingThisMonth()
+    {
+        using var t = new TestDb();
+        AddIncome(t.Context, Alice, 5000m, Oct1);
+        var expense = BudgetApp.Models.TransactionType.Expense;
+        AddRecurring(t.Context, Alice, expense, 100m, day: 20, start: Oct1, isActive: false);                       // paused
+        AddRecurring(t.Context, Alice, expense, 100m, day: 20, start: new DateTime(2026, 11, 1));                   // starts next month
+        AddRecurring(t.Context, Alice, expense, 100m, day: 20, start: Oct1, end: new DateTime(2026, 10, 15));       // ended before its day
+        AddRecurring(t.Context, Alice, expense, 100m, day: 5, start: Oct11);                                        // this month's day passed before it started
+        AddRecurring(t.Context, Bob, expense, 100m, day: 20, start: Oct1);                                          // someone else's
+
+        var projection = await new ForecastService(t.Context).GetProjectedBalanceAsync(Alice, Oct11);
+
+        Assert.Equal(0m, projection!.PendingExpenses);
+        Assert.Equal(5000m, projection.Projected);
+    }
+
+    [Fact]
+    public async Task GetProjectedBalanceAsync_IsCalculatedFromUpcomingOccurrencesAloneWhenNothingIsRecordedYet()
+    {
+        using var t = new TestDb();
+        AddRecurring(t.Context, Alice, BudgetApp.Models.TransactionType.Income, 2000m, day: 20, start: Oct1);
+        AddRecurring(t.Context, Alice, BudgetApp.Models.TransactionType.Expense, 500m, day: 25, start: Oct1);
+
+        var projection = await new ForecastService(t.Context).GetProjectedBalanceAsync(Alice, Oct11);
+
+        Assert.NotNull(projection);
+        Assert.Equal(0m, projection.Income);
+        Assert.Equal(2000m, projection.PendingIncome);
+        Assert.Equal(500m, projection.PendingExpenses);
+        Assert.Equal(1500m, projection.Projected);
+    }
+
+    [Fact]
+    public async Task GetProjectedBalanceAsync_HasNoPendingAmountsWithoutRecurringDefinitions()
+    {
+        using var t = new TestDb();
+        AddIncome(t.Context, Alice, 1000m, Oct1);
+
+        var projection = await new ForecastService(t.Context).GetProjectedBalanceAsync(Alice, Oct11);
+
+        Assert.Equal(0m, projection!.PendingIncome);
+        Assert.Equal(0m, projection.PendingExpenses);
+        Assert.Equal(1000m, projection.KnownIncome);
+    }
+
     // ---------- GetGoalForecastAsync ----------
 
     private static readonly DateTime Today = new(2026, 10, 15);

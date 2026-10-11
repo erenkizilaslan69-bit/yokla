@@ -51,12 +51,14 @@ public class WarningService(ApplicationDbContext db, IForecastService forecast) 
     }
 
     // Rule 1: a single variable expense above three times the month's daily average (saved expense excluded).
+    // Fixed categories and recurring occurrences are planned once-a-month amounts: they neither trigger the rule
+    // nor count towards the average.
     private static Warning? LargeExpense(List<MonthRow> rows, MonthRow saved, DateTime today)
     {
-        if (saved.IsFixed || today.Day < LargeExpenseMinDay)
+        if (saved.IsFixedLike || today.Day < LargeExpenseMinDay)
             return null;
 
-        var others = rows.Where(r => r.IsExpense && !r.IsFixed && r.Id != saved.Id).Sum(r => r.Amount);
+        var others = rows.Where(r => r.IsExpense && !r.IsFixedLike && r.Id != saved.Id).Sum(r => r.Amount);
         var dailyAverage = others / today.Day;
         if (dailyAverage <= 0 || saved.Amount <= LargeExpenseFactor * dailyAverage)
             return null;
@@ -107,12 +109,13 @@ public class WarningService(ApplicationDbContext db, IForecastService forecast) 
             $"{Tr.Money(lastMonth)} idi (%{Tr.Percent(thisMonth / lastMonth - 1m)} fazla).");
     }
 
-    // Rule 4: the month-end projection is below zero. Without any income record this month the projection
-    // would just be "all spending is a deficit", so the rule stays quiet until an income is entered.
+    // Rule 4: the month-end projection is below zero. Without any known income this month (recorded, or still
+    // expected from a recurring definition) the projection would just be "all spending is a deficit", so the
+    // rule stays quiet until there is one.
     private async Task<Warning?> NegativeForecast(string userId, DateTime today)
     {
         var projection = await forecast.GetProjectedBalanceAsync(userId, today);
-        if (projection is null || projection.Income <= 0 || projection.Projected >= 0)
+        if (projection is null || projection.KnownIncome <= 0 || projection.Projected >= 0)
             return null;
 
         return new Warning(WarningRule.NegativeForecast,

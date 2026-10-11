@@ -34,6 +34,36 @@ internal static class TestData
         int categoryId = Market, string? itemName = null) =>
         Add(db, userId, TransactionType.Expense, amount, date, categoryId, itemName);
 
+    /// <summary>A recurring definition inserted directly (no validation), e.g. with a start date in the past.</summary>
+    public static RecurringTransaction AddRecurring(ApplicationDbContext db, string userId, TransactionType type, decimal amount,
+        int day, DateTime start, int? categoryId = null, string? itemName = null, bool isActive = true,
+        DateTime? lastGenerated = null, DateTime? end = null)
+    {
+        var definition = new RecurringTransaction
+        {
+            UserId = userId, Type = type, Amount = amount, DayOfMonth = day, StartDate = start, EndDate = end,
+            CategoryId = categoryId ?? (type == TransactionType.Income ? Income : Rent),
+            ItemName = itemName, IsActive = isActive, LastGeneratedPeriod = lastGenerated, CreatedAt = start
+        };
+        db.RecurringTransactions.Add(definition);
+        db.SaveChanges();
+        return definition;
+    }
+
+    /// <summary>An expense that was generated from a recurring definition (marked with its month).</summary>
+    public static Transaction AddGeneratedExpense(ApplicationDbContext db, string userId, decimal amount, DateTime date,
+        int categoryId, string? itemName = null)
+    {
+        var tx = new Transaction
+        {
+            UserId = userId, Type = TransactionType.Expense, Amount = amount, Date = date, CategoryId = categoryId,
+            ItemName = itemName, RecurringPeriod = new DateTime(date.Year, date.Month, 1)
+        };
+        db.Transactions.Add(tx);
+        db.SaveChanges();
+        return tx;
+    }
+
     public static Goal AddGoal(ApplicationDbContext db, string userId, decimal target, string name = "Kulaklık",
         decimal saved = 0m)
     {

@@ -49,9 +49,10 @@ public class AnalysisService(ApplicationDbContext db, IForecastService forecast)
             .ThenBy(c => c.Name)
             .ToList();
 
-        // Fixed expenses (rent, bills, subscriptions) are not "products" and would crowd out the real top items.
+        // Fixed expenses (rent, bills, subscriptions) and recurring occurrences are not "products" and would
+        // crowd out the real top items.
         var topItems = current
-            .Where(r => !r.IsFixed && !string.IsNullOrWhiteSpace(r.ItemName))
+            .Where(r => !r.IsFixedLike && !string.IsNullOrWhiteSpace(r.ItemName))
             .GroupBy(r => r.ItemName!.Trim())
             .Select(g => new ItemTotal(g.Key, g.Sum(r => r.Amount), g.Count()))
             .OrderByDescending(i => i.Amount)

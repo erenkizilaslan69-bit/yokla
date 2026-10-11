@@ -3,8 +3,22 @@ using BudgetApp.Models;
 
 namespace BudgetApp.Services;
 
-/// <summary>Month-end projection: <c>Projected = Income - FixedExpenses - VariableExpenses * daysInMonth / dayOfMonth</c>.</summary>
-public record BalanceProjection(decimal Income, decimal FixedExpenses, decimal VariableExpenses, decimal Projected);
+/// <summary>
+/// Month-end projection:
+/// <c>Projected = (Income + PendingIncome) - (FixedExpenses + PendingExpenses) - VariableExpenses * daysInMonth / dayOfMonth</c>.
+/// <para>
+/// <see cref="FixedExpenses"/> are recorded expenses taken as they are: fixed categories and anything generated from a
+/// recurring definition. <see cref="PendingIncome"/> and <see cref="PendingExpenses"/> are this month's recurring
+/// occurrences that have not been generated yet. Only <see cref="VariableExpenses"/> are extrapolated.
+/// </para>
+/// </summary>
+public record BalanceProjection(
+    decimal Income, decimal FixedExpenses, decimal VariableExpenses, decimal Projected,
+    decimal PendingIncome = 0m, decimal PendingExpenses = 0m)
+{
+    /// <summary>Income recorded so far plus the recurring income still expected this month.</summary>
+    public decimal KnownIncome => Income + PendingIncome;
+}
 
 public enum GoalForecastStatus
 {
@@ -17,7 +31,7 @@ public record GoalForecast(Goal Goal, GoalForecastStatus Status, int Months, Dat
 
 public interface IForecastService
 {
-    /// <summary>Null when the user has no transactions this month.</summary>
+    /// <summary>Null when the user has neither transactions nor upcoming recurring occurrences this month.</summary>
     Task<BalanceProjection?> GetProjectedBalanceAsync(string userId, DateTime today);
 
     /// <summary>
@@ -34,17 +48,22 @@ public class ForecastService(ApplicationDbContext db) : IForecastService
     public async Task<BalanceProjection?> GetProjectedBalanceAsync(string userId, DateTime today)
     {
         var rows = await MonthData.GetMonthAsync(db, userId, today.Year, today.Month);
-        if (rows.Count == 0)
+        var pending = await RecurringQueries.GetPendingAsync(db, userId, today);
+        if (rows.Count == 0 && pending.Count == 0)
             return null;
 
         var income = MonthData.Income(rows);
-        var fixedExpenses = rows.Where(r => r.IsExpense && r.IsFixed).Sum(r => r.Amount);
-        var variableExpenses = rows.Where(r => r.IsExpense && !r.IsFixed).Sum(r => r.Amount);
+        var fixedExpenses = rows.Where(r => r.IsExpense && r.IsFixedLike).Sum(r => r.Amount);
+        var variableExpenses = rows.Where(r => r.IsExpense && !r.IsFixedLike).Sum(r => r.Amount);
+
+        // Recurring occurrences that are still to come this month are certain, so they count as they are.
+        var pendingIncome = pending.Where(p => p.Definition.Type == TransactionType.Income).Sum(p => p.Definition.Amount);
+        var pendingExpenses = pending.Where(p => p.Definition.Type == TransactionType.Expense).Sum(p => p.Definition.Amount);
 
         // Multiply before dividing so round figures stay exact in decimal arithmetic.
         var daysInMonth = DateTime.DaysInMonth(today.Year, today.Month);
-        var projected = income - fixedExpenses - variableExpenses * daysInMonth / today.Day;
-        return new BalanceProjection(income, fixedExpenses, variableExpenses, projected);
+        var projected = income + pendingIncome - fixedExpenses - pendingExpenses - variableExpenses * daysInMonth / today.Day;
+        return new BalanceProjection(income, fixedExpenses, variableExpenses, projected, pendingIncome, pendingExpenses);
     }
 
     public async Task<GoalForecast?> GetGoalForecastAsync(string userId, DateTime today, decimal extraMonthlySaving = 0m)
