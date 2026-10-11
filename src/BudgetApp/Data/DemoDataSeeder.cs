@@ -16,6 +16,15 @@ public static class DemoDataSeeder
     private const string GoalName = "Kulaklık";
     private const decimal GoalTarget = 4500m;
 
+    /// <summary>Monthly limits of the demo user, by category name.</summary>
+    private static readonly (string Category, decimal Limit)[] Budgets =
+    [
+        ("Kafe/Kahve", 500m),
+        ("Dışarıda Yemek", 600m),
+        ("Eğlence", 400m),
+        ("Market", 1500m)
+    ];
+
     /// <summary>One planned transaction; <see cref="Day"/> is the day of the month it happens on.</summary>
     /// <param name="Recurring">Key of the recurring definition this entry is an occurrence of, if any.</param>
     private record Entry(int Day, string Category, TransactionType Type, decimal Amount, string? Item = null, string? Recurring = null);
@@ -76,10 +85,13 @@ public static class DemoDataSeeder
     private static readonly MonthPlan CurrentMonth = new(
         PartTime: 1500m, PartTimeDay: 20, Electricity: 300m,
         CoffeePrice: 95m, CoffeeDays: [3, 6, 9, 12, 15, 18, 21, 24, 27],
+        // Tuned against the demo budgets below, so that from about the 10th to the 18th of the month the analysis page
+        // shows all three bar colours: eating out is at 85% of 600 (gold), entertainment is over its 400 (red),
+        // groceries stay far below 1.500 (green). Coffee moves from green to gold to red as the month goes on.
         Extras:
         [
-            Out(7, "Döner", 160m), Out(13, "Pizza", 220m), Out(19, "Öğle yemeği", 130m), Out(25, "Döner", 160m),
-            Fun(6, "Sinema bileti", 150m), Fun(11, "Steam oyunu", 250m),
+            Out(3, "Döner", 160m), Out(7, "Pizza", 220m), Out(10, "Öğle yemeği", 130m), Out(19, "Döner", 150m),
+            Fun(6, "Sinema bileti", 150m), Fun(9, "Steam oyunu", 300m),
             Edu(9, "Fotokopi", 45m)
         ]);
 
@@ -113,8 +125,8 @@ public static class DemoDataSeeder
 
     /// <summary>
     /// Seeds the last three completed months plus the current month (up to <paramref name="today"/>),
-    /// the recurring definitions behind the monthly items, a goal and the month-close records of the two
-    /// oldest months. Returns false if the user already has data.
+    /// the recurring definitions behind the monthly items, category budgets, a goal and the month-close records of
+    /// the two oldest months. Returns false if the user already has data.
     /// </summary>
     public static async Task<bool> SeedDataAsync(ApplicationDbContext db, string userId, DateTime today)
     {
@@ -201,6 +213,11 @@ public static class DemoDataSeeder
                 });
             }
         }
+
+        // Category limits. No warning state is stored, so the next expense in an over-limit category still shows
+        // the budget warning: a ready-made demo of that rule.
+        foreach (var (category, limit) in Budgets)
+            db.CategoryBudgets.Add(new CategoryBudget { UserId = userId, CategoryId = categoryIds[category], MonthlyLimit = limit });
 
         // A manual "Para ekle" in the month that is still open: the carry-over card then offers only the rest
         // (291,02 - 150,00), which shows that the same money is not moved twice.

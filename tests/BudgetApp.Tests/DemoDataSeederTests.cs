@@ -254,6 +254,88 @@ public class DemoDataSeederTests
         Assert.Equal([3000m, 3500m], firstOfNovember.Select(x => x.Amount).OrderBy(a => a).ToArray()); // rent and family support
     }
 
+    // ---------- category budgets ----------
+
+    [Fact]
+    public async Task SeedDataAsync_CreatesTheFourDemoBudgetsForTheDemoUserOnly()
+    {
+        using var t = new TestDb();
+        TestData.AddBudget(t.Context, Other, TestData.Coffee, 50m);
+
+        await DemoDataSeeder.SeedDataAsync(t.Context, Demo, Today);
+
+        var limits = await t.Context.CategoryBudgets.Include(b => b.Category)
+            .Where(b => b.UserId == Demo).ToDictionaryAsync(b => b.Category!.Name, b => b.MonthlyLimit);
+        Assert.Equal(
+            new Dictionary<string, decimal>
+            {
+                ["Kafe/Kahve"] = 500m, ["Dışarıda Yemek"] = 600m, ["Eğlence"] = 400m, ["Market"] = 1500m
+            },
+            limits);
+        Assert.Equal(50m, Assert.Single(t.Context.CategoryBudgets, b => b.UserId == Other).MonthlyLimit);
+        Assert.All(t.Context.CategoryBudgets.Where(b => b.UserId == Demo), b => Assert.Equal(BudgetLevel.None, b.WarnedLevel));
+    }
+
+    [Fact]
+    public async Task SeedDataAsync_DoesNotDuplicateTheBudgetsOnASecondRun()
+    {
+        using var t = await SeededDb();
+
+        await DemoDataSeeder.SeedDataAsync(t.Context, Demo, Today);
+
+        Assert.Equal(4, t.Context.CategoryBudgets.Count());
+    }
+
+    [Theory]
+    [InlineData(10)]
+    [InlineData(11)]
+    [InlineData(12)]
+    [InlineData(14)]
+    [InlineData(15)]
+    [InlineData(17)]
+    [InlineData(18)]
+    public async Task SeedDataAsync_TheAnalysisPageShowsAllThreeBudgetColoursInTheMiddleOfTheMonth(int day)
+    {
+        var today = new DateTime(2026, 10, day);
+        using var t = await SeededDb(today);
+
+        var progress = await new BudgetService(t.Context).GetProgressAsync(Demo, 2026, 10);
+
+        Assert.Equal(4, progress.Count);
+        var levels = progress.Select(p => p.Level).ToHashSet();
+        Assert.Contains(BudgetLevel.None, levels);        // green: groceries
+        Assert.Contains(BudgetLevel.Approaching, levels); // gold: eating out (or coffee)
+        Assert.Contains(BudgetLevel.Exceeded, levels);    // red: entertainment
+    }
+
+    [Fact]
+    public async Task SeedDataAsync_TheBudgetLevelsOnTheFifteenthMatchTheStory()
+    {
+        using var t = await SeededDb(); // 15 October
+
+        var levels = (await new BudgetService(t.Context).GetProgressAsync(Demo, 2026, 10))
+            .ToDictionary(p => p.Budget.Category!.Name, p => (p.Spent, p.Level));
+
+        Assert.Equal((475m, BudgetLevel.Approaching), levels["Kafe/Kahve"]);   // 95%
+        Assert.Equal((510m, BudgetLevel.Approaching), levels["Dışarıda Yemek"]); // 85%
+        Assert.Equal((450m, BudgetLevel.Exceeded), levels["Eğlence"]);          // 112%
+        Assert.Equal((360m, BudgetLevel.None), levels["Market"]);               // 24%
+    }
+
+    [Fact]
+    public async Task SeedDataAsync_TheNextExpenseInAnOverLimitCategoryShowsTheBudgetWarning()
+    {
+        using var t = await SeededDb();
+        var coffee = await t.Context.Categories.SingleAsync(c => c.Name == "Kafe/Kahve");
+        var saved = TestData.Add(t.Context, Demo, TransactionType.Expense, 95m, Today, coffee.Id, "Latte"); // 570 of 500
+
+        var warning = (await new WarningService(t.Context, new ForecastService(t.Context)).CheckAsync(Demo, saved, Today))
+            .Single(w => w.Rule == WarningRule.CategoryBudget);
+
+        Assert.Contains("aştın", warning.Message);
+        Assert.Contains("570,00 TL / 500,00 TL", warning.Message);
+    }
+
     // ---------- the demo tells a story ----------
 
     [Fact]
@@ -310,8 +392,10 @@ public class DemoDataSeederTests
 
         var warnings = await new WarningService(t.Context, new ForecastService(t.Context)).CheckAsync(Demo, saved, Today);
 
+        // The demo budget for entertainment (400 TL) is long exceeded, so rule 5 joins the other four.
         Assert.Equal(
-            [WarningRule.LargeExpense, WarningRule.UnnecessaryShare, WarningRule.CategoryIncrease, WarningRule.NegativeForecast],
+            [WarningRule.LargeExpense, WarningRule.UnnecessaryShare, WarningRule.CategoryIncrease,
+             WarningRule.NegativeForecast, WarningRule.CategoryBudget],
             warnings.Select(w => w.Rule).ToArray());
         Assert.All(warnings, w => Assert.Contains(",", w.Message)); // every message carries real, formatted numbers
     }

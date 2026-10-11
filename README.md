@@ -91,7 +91,7 @@ dotnet test
 
 ## Demo account
 
-In Development only, a demo user is created on first start with about three months of realistic student data: KYK scholarship and family support, rent, bills, subscriptions, groceries with item names, coffee, transport and entertainment, a "Kulaklık" (headphones) goal, and month-close records for the two oldest months. The most recent month is deliberately left open so the carry-over card shows up on the home page.
+In Development only, a demo user is created on first start with about three months of realistic student data: KYK scholarship and family support, rent, bills, subscriptions, groceries with item names, coffee, transport and entertainment, monthly limits on coffee, eating out, entertainment and groceries (mid-month the analysis page shows all three bar colours), a "Kulaklık" (headphones) goal, and month-close records for the two oldest months. The most recent month is deliberately left open so the carry-over card shows up on the home page.
 
 | | |
 | --- | --- |
