@@ -57,7 +57,7 @@
   --gold: #E0A526;
   --gold-light: #F3C34F;
   --gold-ink: #8A6410;
-  --gold-icon: #C98A0B;
+  --gold-icon: #B67D0A;
   --gold-soft: #FFF4D6;
   --gold-soft-2: #FFFAF0;
   --gold-soft-line: #F0D58A;
@@ -69,7 +69,7 @@
   --surface-2: #F5F8F6;      /* raised or inset areas: input prefix, bar tracks, hovered buttons */
   --surface-hover: #F9FBFA;  /* hovered table row */
   --text: #1B2B26;
-  --muted: #66756F;
+  --muted: #63716B;
   --line: #E3EAE7;
   --line-strong: #CFDAD5;
   --bg-rgb: 245, 248, 246;
@@ -88,9 +88,10 @@
   --cat-icon-ink-mix: 80%;
 
   --bar-ok: var(--brand);
+  --bar-near: #B08018;        /* gold, darkened: plain --gold is too light for a bar on a light track */
   --bar-over: var(--expense);
 
-  --hero-grad: linear-gradient(135deg, #075E47 0%, #0B7A5C 55%, #12936F 100%);
+  --hero-grad: linear-gradient(135deg, #075E47 0%, #0B7A5C 55%, #0F8263 100%);
   --hero-line: transparent;
   --carry-grad: linear-gradient(135deg, var(--gold-soft), var(--gold-soft-2));
   --celebrate-grad: radial-gradient(circle at 50% -20%, #FFF1C2 0%, var(--gold-soft) 45%, #FFFDF6 100%);
@@ -160,6 +161,7 @@
   --cat-icon-ink-mix: 88%;
 
   --bar-ok: #2FB58B;
+  --bar-near: var(--gold);
   --bar-over: #E5665E;
 
   --hero-grad: linear-gradient(135deg, #0A4A39 0%, #0B6B52 55%, #0F8468 100%);
@@ -429,7 +431,7 @@ a:hover { text-decoration: underline; }
 
 /* ---------- Category badge and icon ----------
    --cat is the category's colour, --cat-dark its tone for the dark theme (both written by the views). */
-.cat-badge, .cat-icon, .dot { --cat: #8A97A8; --cat-current: var(--cat); }
+.cat-badge, .cat-icon, .dot { --cat: #8794A6; --cat-current: var(--cat); }
 
 [data-bs-theme="dark"] .cat-badge,
 [data-bs-theme="dark"] .cat-icon,
@@ -537,7 +539,7 @@ a:hover { text-decoration: underline; }
 
 /* The compact variant used in lists on a card. */
 .goal-compact .goal-track { background: var(--brand-soft); height: 12px; }
-.goal-compact .goal-fill { box-shadow: none; }
+.goal-compact .goal-fill { background: var(--bar-near); box-shadow: none; }
 
 /* ---------- Carry-over card ---------- */
 .carry-card {
@@ -760,7 +762,7 @@ a:hover { text-decoration: underline; }
 .budget-row { min-width: 0; }
 .budget-track { height: 10px; border-radius: 999px; background: var(--surface-2); overflow: hidden; border: 1px solid var(--line); }
 .budget-fill { height: 100%; border-radius: inherit; background: var(--bar-ok); transition: width .6s cubic-bezier(.22, 1, .36, 1); }
-.budget-fill.near { background: var(--gold); }
+.budget-fill.near { background: var(--bar-near); }
 .budget-fill.over { background: var(--bar-over); }
 .budget-percent { font-weight: 700; margin-left: .35rem; color: var(--brand-ink); }
 .budget-percent.near { color: var(--gold-ink); }

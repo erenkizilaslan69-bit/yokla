@@ -66,7 +66,7 @@ public class CategoryStyleTests
     public void For_ReturnsTheSameStyleEveryTime()
     {
         Assert.Equal(CategoryStyle.For("Market"), CategoryStyle.For("Market"));
-        Assert.Equal("#E8960C", CategoryStyle.For("Market").Color);
+        Assert.Equal("#CB830A", CategoryStyle.For("Market").Color);
         Assert.Equal("basket3-fill", CategoryStyle.For("Market").Icon);
     }
 
