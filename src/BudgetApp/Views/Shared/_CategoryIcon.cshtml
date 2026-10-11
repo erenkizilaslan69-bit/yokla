@@ -3,4 +3,4 @@
 @{
     var style = BudgetApp.Models.CategoryStyle.For(Model);
 }
-<span class="cat-icon" style="--cat: @style.Color" title="@Model"><i class="bi bi-@style.Icon"></i></span>
+<span class="cat-icon" style="@style.CssVariables" title="@Model"><i class="bi bi-@style.Icon"></i></span>

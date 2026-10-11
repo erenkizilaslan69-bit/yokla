@@ -46,6 +46,23 @@ public class CategoryStyleTests
     }
 
     [Fact]
+    public void DarkColours_AreHexColoursForEveryCategoryAndTheFallback()
+    {
+        var hex = new Regex("^#[0-9A-Fa-f]{6}$");
+
+        Assert.All(CategoryStyle.All.Values, style => Assert.Matches(hex, style.DarkColor));
+        Assert.Matches(hex, CategoryStyle.For("Olmayan Kategori").DarkColor);
+    }
+
+    [Fact]
+    public void DarkColours_AreUniquePerCategorySoChartSlicesStayDistinguishableInTheDarkTheme()
+    {
+        var colours = CategoryStyle.All.Values.Select(s => s.DarkColor.ToUpperInvariant()).ToList();
+
+        Assert.Equal(colours.Count, colours.Distinct().Count());
+    }
+
+    [Fact]
     public void For_ReturnsTheSameStyleEveryTime()
     {
         Assert.Equal(CategoryStyle.For("Market"), CategoryStyle.For("Market"));

@@ -48,7 +48,7 @@ else
                     {
                         var style = CategoryStyle.For(c.Name);
                         <li>
-                            <span class="dot" style="--cat: @style.Color"></span>
+                            <span class="dot" style="@style.CssVariables"></span>
                             <span class="legend-name">@c.Name</span>
                             <span class="fw-semibold num">@c.Amount.ToString("C2")</span>
                             <span class="text-muted small num" style="min-width: 2.75rem; text-align: right">%@((int)Math.Round(c.Amount / a.TotalExpense * 100m, MidpointRounding.AwayFromZero))</span>
