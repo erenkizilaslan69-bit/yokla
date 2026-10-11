@@ -27,6 +27,7 @@ builder.Services.AddScoped<IMonthCloseService, MonthCloseService>();
 builder.Services.AddScoped<IForecastService, ForecastService>();
 builder.Services.AddScoped<IWarningService, WarningService>();
 builder.Services.AddScoped<IAnalysisService, AnalysisService>();
+builder.Services.AddScoped<IRecurringTransactionService, RecurringTransactionService>();
 
 var app = builder.Build();
 

@@ -11,6 +11,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Goal> Goals => Set<Goal>();
     public DbSet<GoalContribution> GoalContributions => Set<GoalContribution>();
     public DbSet<MonthClose> MonthCloses => Set<MonthClose>();
+    public DbSet<RecurringTransaction> RecurringTransactions => Set<RecurringTransaction>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -24,6 +25,24 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             e.Property(t => t.UserId).IsRequired();
             e.HasIndex(t => new { t.UserId, t.Date });
             e.HasOne(t => t.Category).WithMany().HasForeignKey(t => t.CategoryId).OnDelete(DeleteBehavior.Restrict);
+
+            // Deleting a recurring definition keeps its history: generated transactions become ordinary ones.
+            e.HasOne(t => t.RecurringTransaction).WithMany()
+                .HasForeignKey(t => t.RecurringTransactionId).OnDelete(DeleteBehavior.SetNull);
+            // Database-level guarantee: at most one generated transaction per definition per month.
+            e.HasIndex(t => new { t.RecurringTransactionId, t.RecurringPeriod })
+                .IsUnique()
+                .HasFilter("\"RecurringTransactionId\" IS NOT NULL");
+        });
+
+        builder.Entity<RecurringTransaction>(e =>
+        {
+            e.Property(r => r.UserId).IsRequired();
+            e.Property(r => r.Amount).HasColumnType("decimal(18,2)");
+            e.Property(r => r.ItemName).HasMaxLength(200);
+            e.Property(r => r.Note).HasMaxLength(500);
+            e.HasIndex(r => new { r.UserId, r.IsActive });
+            e.HasOne(r => r.Category).WithMany().HasForeignKey(r => r.CategoryId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<Goal>(e =>

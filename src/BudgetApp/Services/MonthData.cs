@@ -8,9 +8,15 @@ namespace BudgetApp.Services;
 /// <summary>A transaction joined with the category flags the calculation services need.</summary>
 internal record MonthRow(
     int Id, DateTime Date, TransactionType Type, decimal Amount,
-    int CategoryId, string CategoryName, bool IsFixed, bool IsUnnecessary, string? ItemName)
+    int CategoryId, string CategoryName, bool IsFixed, bool IsUnnecessary, string? ItemName, bool IsRecurring)
 {
     public bool IsExpense => Type == TransactionType.Expense;
+
+    /// <summary>
+    /// Known once-a-month amounts: fixed categories (rent, bills) and anything generated from a recurring definition,
+    /// whatever its category. These are taken as they are instead of being extrapolated to the end of the month.
+    /// </summary>
+    public bool IsFixedLike => IsFixed || IsRecurring;
 }
 
 internal static class MonthData
@@ -25,13 +31,15 @@ internal static class MonthData
             .Select(t => new
             {
                 t.Id, t.Date, t.Type, t.Amount, t.CategoryId,
-                CategoryName = t.Category!.Name, t.Category.IsFixed, t.Category.IsUnnecessary, t.ItemName
+                CategoryName = t.Category!.Name, t.Category.IsFixed, t.Category.IsUnnecessary, t.ItemName,
+                // RecurringPeriod (not the link) so the row stays "recurring" after its definition is deleted.
+                IsRecurring = t.RecurringPeriod != null
             })
             .ToListAsync();
 
         return rows
             .Select(r => new MonthRow(r.Id, r.Date, r.Type, r.Amount, r.CategoryId, r.CategoryName,
-                r.IsFixed, r.IsUnnecessary, r.ItemName))
+                r.IsFixed, r.IsUnnecessary, r.ItemName, r.IsRecurring))
             .ToList();
     }
 

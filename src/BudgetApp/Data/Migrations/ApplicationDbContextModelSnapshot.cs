@@ -261,6 +261,60 @@ namespace BudgetApp.Data.Migrations
                     b.ToTable("MonthCloses");
                 });
 
+            modelBuilder.Entity("BudgetApp.Models.RecurringTransaction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("CategoryId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DayOfMonth")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ItemName")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastGeneratedPeriod")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("UserId", "IsActive");
+
+                    b.ToTable("RecurringTransactions");
+                });
+
             modelBuilder.Entity("BudgetApp.Models.Transaction", b =>
                 {
                     b.Property<int>("Id")
@@ -284,6 +338,12 @@ namespace BudgetApp.Data.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("RecurringPeriod")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("RecurringTransactionId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("Type")
                         .HasColumnType("INTEGER");
 
@@ -294,6 +354,10 @@ namespace BudgetApp.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CategoryId");
+
+                    b.HasIndex("RecurringTransactionId", "RecurringPeriod")
+                        .IsUnique()
+                        .HasFilter("\"RecurringTransactionId\" IS NOT NULL");
 
                     b.HasIndex("UserId", "Date");
 
@@ -507,7 +571,7 @@ namespace BudgetApp.Data.Migrations
                     b.Navigation("Goal");
                 });
 
-            modelBuilder.Entity("BudgetApp.Models.Transaction", b =>
+            modelBuilder.Entity("BudgetApp.Models.RecurringTransaction", b =>
                 {
                     b.HasOne("BudgetApp.Models.Category", "Category")
                         .WithMany()
@@ -516,6 +580,24 @@ namespace BudgetApp.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("BudgetApp.Models.Transaction", b =>
+                {
+                    b.HasOne("BudgetApp.Models.Category", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("BudgetApp.Models.RecurringTransaction", "RecurringTransaction")
+                        .WithMany()
+                        .HasForeignKey("RecurringTransactionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Category");
+
+                    b.Navigation("RecurringTransaction");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
