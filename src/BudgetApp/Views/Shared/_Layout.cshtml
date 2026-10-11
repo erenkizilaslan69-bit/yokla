@@ -15,8 +15,10 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#0B7A5C" />
     <title>@ViewData["Title"] - BudgetApp</title>
+    <partial name="_ThemeInit" />
     <link rel="preload" href="~/fonts/inter/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/lib/bootstrap-icons/bootstrap-icons.min.css" />
@@ -56,6 +58,7 @@
                         @* Signed out: only the sign in / register links on the right. *@
                         <div class="me-auto"></div>
                     }
+                    <partial name="_ThemeToggle" />
                     <partial name="_LoginPartial" />
                 </div>
             </div>

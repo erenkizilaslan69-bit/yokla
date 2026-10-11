@@ -1,0 +1,23 @@
+@* Sets the theme on <html> before anything is painted, so the page never flashes in the wrong theme.
+   It must stay inline and above the stylesheets: an external or deferred script would run too late.
+   The choice ("light", "dark" or nothing = follow the system) lives in localStorage; wwwroot/js/site.js
+   handles the switch in the navbar and later changes. *@
+<script>
+    (function () {
+        var choice = 'auto';
+        try {
+            var stored = localStorage.getItem('budgetapp-theme');
+            if (stored === 'light' || stored === 'dark') choice = stored;
+        } catch (e) { /* storage blocked: follow the system */ }
+
+        var dark = choice === 'dark' ||
+            (choice === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+        var root = document.documentElement;
+        root.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
+        root.setAttribute('data-theme-choice', choice);
+
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', dark ? '#0F1614' : '#0B7A5C');
+    })();
+</script>

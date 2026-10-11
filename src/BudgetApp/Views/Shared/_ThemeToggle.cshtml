@@ -1,0 +1,27 @@
+@* Theme switch in the navbar: light / dark / follow the system. The buttons are wired up in wwwroot/js/site.js,
+   which also marks the current choice and swaps the icon of the toggle. *@
+<ul class="navbar-nav align-items-md-center">
+    <li class="nav-item dropdown">
+        <button class="nav-link btn btn-link dropdown-toggle theme-toggle" type="button" id="themeToggle"
+                data-bs-toggle="dropdown" aria-expanded="false" aria-label="Tema seç" title="Tema">
+            <i class="bi bi-circle-half" data-theme-icon></i><span class="d-md-none">Tema</span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end theme-menu" aria-labelledby="themeToggle">
+            <li>
+                <button type="button" class="dropdown-item" data-theme-value="light" aria-pressed="false">
+                    <i class="bi bi-sun-fill"></i>Açık<i class="bi bi-check2 theme-check"></i>
+                </button>
+            </li>
+            <li>
+                <button type="button" class="dropdown-item" data-theme-value="dark" aria-pressed="false">
+                    <i class="bi bi-moon-stars-fill"></i>Koyu<i class="bi bi-check2 theme-check"></i>
+                </button>
+            </li>
+            <li>
+                <button type="button" class="dropdown-item" data-theme-value="auto" aria-pressed="false">
+                    <i class="bi bi-circle-half"></i>Sistem<i class="bi bi-check2 theme-check"></i>
+                </button>
+            </li>
+        </ul>
+    </li>
+</ul>
