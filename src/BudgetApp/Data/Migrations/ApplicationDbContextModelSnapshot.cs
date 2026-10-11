@@ -172,6 +172,38 @@ namespace BudgetApp.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("BudgetApp.Models.CategoryBudget", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CategoryId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("MonthlyLimit")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("WarnedLevel")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("WarnedPeriod")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("UserId", "CategoryId")
+                        .IsUnique();
+
+                    b.ToTable("CategoryBudgets");
+                });
+
             modelBuilder.Entity("BudgetApp.Models.Goal", b =>
                 {
                     b.Property<int>("Id")
@@ -558,6 +590,17 @@ namespace BudgetApp.Data.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
+                });
+
+            modelBuilder.Entity("BudgetApp.Models.CategoryBudget", b =>
+                {
+                    b.HasOne("BudgetApp.Models.Category", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Category");
                 });
 
             modelBuilder.Entity("BudgetApp.Models.GoalContribution", b =>

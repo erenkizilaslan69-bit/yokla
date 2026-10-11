@@ -1,0 +1,35 @@
+@* One category limit with a progress bar: green up to 80%, gold up to 100%, red above. Model: the progress. *@
+@model BudgetApp.Services.BudgetProgress
+@{
+    var level = Model.Level switch
+    {
+        BudgetApp.Models.BudgetLevel.Exceeded => "over",
+        BudgetApp.Models.BudgetLevel.Approaching => "near",
+        _ => "ok"
+    };
+    var width = (int)Math.Min(100m, Math.Floor(Model.Percent));
+    var percentText = $"%{(int)Math.Floor(Model.Percent)}";
+    var name = Model.Budget.Category?.Name;
+}
+
+<div class="budget-row">
+    <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
+        <partial name="_CategoryBadge" model="name" />
+        <span class="num small">
+            <strong>@Model.Spent.ToString("C2")</strong> <span class="text-muted">/ @Model.Limit.ToString("C2")</span>
+            <span class="budget-percent @level">@percentText</span>
+        </span>
+    </div>
+    <div class="budget-track" role="progressbar" aria-label="@name bütçe kullanımı"
+         aria-valuenow="@width" aria-valuemin="0" aria-valuemax="100">
+        <div class="budget-fill @level" style="width: @(width)%"></div>
+    </div>
+    @if (Model.Level == BudgetApp.Models.BudgetLevel.Exceeded)
+    {
+        <div class="small text-danger mt-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>@((Model.Spent - Model.Limit).ToString("C2")) aştın</div>
+    }
+    else
+    {
+        <div class="small text-muted mt-1">@Model.Remaining.ToString("C2") kaldı</div>
+    }
+</div>

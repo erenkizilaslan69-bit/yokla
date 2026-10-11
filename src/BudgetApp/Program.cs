@@ -34,6 +34,7 @@ builder.Services.AddScoped<IForecastService, ForecastService>();
 builder.Services.AddScoped<IWarningService, WarningService>();
 builder.Services.AddScoped<IAnalysisService, AnalysisService>();
 builder.Services.AddScoped<IRecurringTransactionService, RecurringTransactionService>();
+builder.Services.AddScoped<IBudgetService, BudgetService>();
 
 var app = builder.Build();
 

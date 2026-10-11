@@ -64,6 +64,14 @@ internal static class TestData
         return tx;
     }
 
+    public static CategoryBudget AddBudget(ApplicationDbContext db, string userId, int categoryId, decimal limit)
+    {
+        var budget = new CategoryBudget { UserId = userId, CategoryId = categoryId, MonthlyLimit = limit };
+        db.CategoryBudgets.Add(budget);
+        db.SaveChanges();
+        return budget;
+    }
+
     public static Goal AddGoal(ApplicationDbContext db, string userId, decimal target, string name = "Kulaklık",
         decimal saved = 0m)
     {

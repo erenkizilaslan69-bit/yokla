@@ -1,5 +1,6 @@
 using BudgetApp.Models;
 using BudgetApp.Services;
+using Microsoft.EntityFrameworkCore;
 using static BudgetApp.Tests.TestData;
 
 namespace BudgetApp.Tests;
@@ -399,6 +400,241 @@ public class WarningServiceTests
         var saved = AddExpense(t.Context, Alice, 1500m, new DateTime(2026, 10, 2), Rent);
 
         Assert.True(Has(await Check(t, saved, new DateTime(2026, 10, 2)), WarningRule.NegativeForecast));
+    }
+
+    // ---------- rule 5: category budget ----------
+
+    private static Warning? BudgetWarning(List<Warning> warnings) =>
+        warnings.SingleOrDefault(w => w.Rule == WarningRule.CategoryBudget);
+
+    [Fact]
+    public async Task Rule5_SaysYouAreApproachingAbove80PercentOfTheLimit()
+    {
+        using var t = new TestDb();
+        AddSalary(t);
+        AddBudget(t.Context, Alice, Coffee, 500m);
+        var saved = AddExpense(t.Context, Alice, 401m, new DateTime(2026, 10, 10), Coffee);
+
+        var warning = BudgetWarning(await Check(t, saved));
+
+        Assert.NotNull(warning);
+        Assert.Contains("Kafe/Kahve", warning.Message);
+        Assert.Contains("%80", warning.Message);
+        Assert.Contains("401,00 TL / 500,00 TL", warning.Message);
+        Assert.Contains("99,00 TL kaldı", warning.Message);
+    }
+
+    [Fact]
+    public async Task Rule5_ExactlyEightyPercentIsStillQuiet()
+    {
+        using var t = new TestDb();
+        AddSalary(t);
+        AddBudget(t.Context, Alice, Coffee, 500m);
+        var saved = AddExpense(t.Context, Alice, 400m, new DateTime(2026, 10, 10), Coffee);
+
+        Assert.Null(BudgetWarning(await Check(t, saved)));
+    }
+
+    [Fact]
+    public async Task Rule5_ExactlyTheLimitIsStillApproachingNotExceeded()
+    {
+        using var t = new TestDb();
+        AddSalary(t);
+        AddBudget(t.Context, Alice, Coffee, 500m);
+        var saved = AddExpense(t.Context, Alice, 500m, new DateTime(2026, 10, 10), Coffee);
+
+        var warning = BudgetWarning(await Check(t, saved));
+
+        Assert.Contains("%100", warning!.Message);
+        Assert.Contains("kullandın", warning.Message);
+        Assert.DoesNotContain("aştın", warning.Message);
+    }
+
+    [Fact]
+    public async Task Rule5_JustBelowTheLimitDoesNotReadAsOneHundredPercent()
+    {
+        using var t = new TestDb();
+        AddSalary(t);
+        AddBudget(t.Context, Alice, Coffee, 1000m);
+        var saved = AddExpense(t.Context, Alice, 999m, new DateTime(2026, 10, 10), Coffee);
+
+        Assert.Contains("%99", BudgetWarning(await Check(t, saved))!.Message);
+    }
+
+    [Fact]
+    public async Task Rule5_SaysYouExceededTheLimitAbove100PercentWithTheAmountOver()
+    {
+        using var t = new TestDb();
+        AddSalary(t);
+        AddBudget(t.Context, Alice, Coffee, 500m);
+        var saved = AddExpense(t.Context, Alice, 540m, new DateTime(2026, 10, 10), Coffee);
+
+        var warning = BudgetWarning(await Check(t, saved));
+
+        Assert.Contains("aştın", warning!.Message);
+        Assert.Contains("540,00 TL / 500,00 TL", warning.Message);
+        Assert.Contains("40,00 TL fazla", warning.Message);
+    }
+
+    [Fact]
+    public async Task Rule5_EachLevelIsReportedOnlyOncePerMonth()
+    {
+        using var t = new TestDb();
+        AddSalary(t);
+        AddBudget(t.Context, Alice, Coffee, 500m);
+        var date = new DateTime(2026, 10, 10);
+
+        var first = AddExpense(t.Context, Alice, 410m, date, Coffee);      // 82%: approaching
+        Assert.Contains("kullandın", BudgetWarning(await Check(t, first))!.Message);
+
+        var second = AddExpense(t.Context, Alice, 20m, date, Coffee);      // 86%: already told
+        Assert.Null(BudgetWarning(await Check(t, second)));
+
+        var third = AddExpense(t.Context, Alice, 100m, date, Coffee);      // 106%: now exceeded
+        Assert.Contains("aştın", BudgetWarning(await Check(t, third))!.Message);
+
+        var fourth = AddExpense(t.Context, Alice, 50m, date, Coffee);      // still exceeded: no repeat
+        Assert.Null(BudgetWarning(await Check(t, fourth)));
+        var fifth = AddExpense(t.Context, Alice, 5m, date, Coffee);
+        Assert.Null(BudgetWarning(await Check(t, fifth)));
+    }
+
+    [Fact]
+    public async Task Rule5_JumpingStraightOverTheLimitGivesOnlyTheExceededWarning()
+    {
+        using var t = new TestDb();
+        AddSalary(t);
+        AddBudget(t.Context, Alice, Coffee, 500m);
+        var big = AddExpense(t.Context, Alice, 600m, new DateTime(2026, 10, 10), Coffee);
+
+        Assert.Contains("aştın", BudgetWarning(await Check(t, big))!.Message);
+
+        var next = AddExpense(t.Context, Alice, 10m, new DateTime(2026, 10, 10), Coffee);
+        Assert.Null(BudgetWarning(await Check(t, next)));
+    }
+
+    [Fact]
+    public async Task Rule5_RemembersWhatWasReported()
+    {
+        using var t = new TestDb();
+        AddSalary(t);
+        var budget = AddBudget(t.Context, Alice, Coffee, 500m);
+        var saved = AddExpense(t.Context, Alice, 410m, new DateTime(2026, 10, 10), Coffee);
+
+        await Check(t, saved);
+
+        var stored = t.Context.CategoryBudgets.AsNoTracking().Single(b => b.Id == budget.Id);
+        Assert.Equal(BudgetLevel.Approaching, stored.WarnedLevel);
+        Assert.Equal(new DateTime(2026, 10, 1), stored.WarnedPeriod);
+    }
+
+    [Fact]
+    public async Task Rule5_AWarningFromAnEarlierMonthDoesNotSilenceThisMonth()
+    {
+        using var t = new TestDb();
+        AddSalary(t);
+        var budget = AddBudget(t.Context, Alice, Coffee, 500m);
+        budget.WarnedPeriod = new DateTime(2026, 9, 1);
+        budget.WarnedLevel = BudgetLevel.Exceeded;
+        t.Context.SaveChanges();
+        var saved = AddExpense(t.Context, Alice, 450m, new DateTime(2026, 10, 10), Coffee);
+
+        var warning = BudgetWarning(await Check(t, saved));
+
+        Assert.Contains("kullandın", warning!.Message);
+    }
+
+    [Fact]
+    public async Task Rule5_ChangingTheLimitMakesTheWarningsPossibleAgain()
+    {
+        using var t = new TestDb();
+        AddSalary(t);
+        AddBudget(t.Context, Alice, Coffee, 500m);
+        var saved = AddExpense(t.Context, Alice, 540m, new DateTime(2026, 10, 10), Coffee);
+        Assert.Contains("aştın", BudgetWarning(await Check(t, saved))!.Message);
+
+        await new BudgetService(t.Context).SetAsync(Alice, Coffee, 600m);     // 540 / 600 = 90%
+        var next = AddExpense(t.Context, Alice, 10m, new DateTime(2026, 10, 10), Coffee);
+
+        Assert.Contains("kullandın", BudgetWarning(await Check(t, next))!.Message);
+    }
+
+    [Fact]
+    public async Task Rule5_OnlyLooksAtTheSavedExpensesCategoryAndUser()
+    {
+        using var t = new TestDb();
+        AddSalary(t);
+        AddBudget(t.Context, Alice, Coffee, 100m);
+        AddBudget(t.Context, Bob, Market, 10m);
+        AddExpense(t.Context, Alice, 5000m, new DateTime(2026, 10, 3), Coffee);          // Coffee is far over, but...
+        var saved = AddExpense(t.Context, Alice, 50m, new DateTime(2026, 10, 10), Market); // ...this is Market (no limit for Alice)
+
+        Assert.Null(BudgetWarning(await Check(t, saved)));
+    }
+
+    [Fact]
+    public async Task Rule5_NeedsALimitForTheCategory()
+    {
+        using var t = new TestDb();
+        AddSalary(t);
+        var saved = AddExpense(t.Context, Alice, 5000m, new DateTime(2026, 10, 10), Coffee);
+
+        Assert.Null(BudgetWarning(await Check(t, saved)));
+    }
+
+    [Fact]
+    public async Task Rule5_CountsRecurringExpensesInTheCategoryTotal()
+    {
+        using var t = new TestDb();
+        AddSalary(t);
+        AddBudget(t.Context, Alice, Bills, 500m);
+        AddGeneratedExpense(t.Context, Alice, 450m, new DateTime(2026, 10, 1), Bills, "İnternet"); // generated: no warning of its own
+        var saved = AddExpense(t.Context, Alice, 60m, new DateTime(2026, 10, 10), Bills, "Su");     // 510 in total
+
+        Assert.Contains("aştın", BudgetWarning(await Check(t, saved))!.Message);
+    }
+
+    [Fact]
+    public async Task Rule5_IgnoresSpendingOfOtherMonths()
+    {
+        using var t = new TestDb();
+        AddSalary(t);
+        AddBudget(t.Context, Alice, Coffee, 500m);
+        AddExpense(t.Context, Alice, 450m, new DateTime(2026, 9, 28), Coffee);
+        var saved = AddExpense(t.Context, Alice, 100m, new DateTime(2026, 10, 10), Coffee);
+
+        Assert.Null(BudgetWarning(await Check(t, saved)));
+    }
+
+    [Fact]
+    public async Task Rule5_AnOldExpenseDoesNotWarnOrChangeTheWarningState()
+    {
+        using var t = new TestDb();
+        AddSalary(t);
+        var budget = AddBudget(t.Context, Alice, Coffee, 500m);
+        var old = AddExpense(t.Context, Alice, 900m, new DateTime(2026, 9, 5), Coffee);
+
+        Assert.Empty(await Check(t, old));
+        var stored = t.Context.CategoryBudgets.AsNoTracking().Single(b => b.Id == budget.Id);
+        Assert.Equal(BudgetLevel.None, stored.WarnedLevel);
+    }
+
+    [Fact]
+    public async Task Rule5_SitsAfterTheOtherRulesInTheWarningList()
+    {
+        using var t = new TestDb();
+        AddIncome(t.Context, Alice, 1000m, new DateTime(2026, 10, 1));
+        AddBudget(t.Context, Alice, EatingOut, 300m);
+        AddExpense(t.Context, Alice, 30m, new DateTime(2026, 9, 8), EatingOut);
+        AddExpense(t.Context, Alice, 90m, new DateTime(2026, 10, 5), EatingOut);
+        var saved = AddExpense(t.Context, Alice, 400m, new DateTime(2026, 10, 10), EatingOut);
+
+        var rules = (await Check(t, saved)).Select(w => w.Rule).ToList();
+
+        Assert.Equal(
+            [WarningRule.LargeExpense, WarningRule.UnnecessaryShare, WarningRule.CategoryIncrease,
+             WarningRule.NegativeForecast, WarningRule.CategoryBudget],
+            rules);
     }
 
     // ---------- recurring definitions ----------

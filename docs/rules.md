@@ -37,7 +37,11 @@ Gider kaydedildikten hemen sonra çalışır, tetiklenen uyarılar sayfanın üs
 3. **Kategori artışı:** Bir kategorinin bu ayın bugününe kadarki toplamı > geçen ayın aynı gününe kadarki toplamının %130'u. (Geçen ay o kategoride harcama yoksa çalışmaz.)
 4. **Eksiye düşme riski:** Tahmini ay sonu kalanı (bkz. 4) < 0. Bu ay bilinen gelir yoksa çalışmaz (gelir girilmeden her harcama "açık" görünürdü). Bilinen gelir = kayıtlı gelir + bu ay henüz gelmemiş tekrarlayan gelir.
 
-Kural 1 yalnızca gider, kural 2–4 kaydedilen giderin kategorisine göre çalışır (kural 2 sadece gereksiz kategorideki harcamada, kural 3 sadece o kategori için). Uyarılar yalnızca bu ay tarihli işlemler için hesaplanır.
+5. **Kategori bütçesi:** Kaydedilen giderin kategorisinde kullanıcının aylık limiti varsa ve kategorinin bu ayki toplamı (otomatik oluşan tekrarlayan giderler dahil) limitin %80'ini geçtiyse "yaklaşıyorsun", %100'ünü geçtiyse "aştın" uyarısı çıkar (bkz. 6). Tam %80 ve tam %100 sınırın içindedir: %80'de uyarı yok, %100'de hâlâ "yaklaşıyorsun".
+
+Kural 1 yalnızca gider, kural 2–5 kaydedilen giderin kategorisine göre çalışır (kural 2 sadece gereksiz kategorideki harcamada, kural 3 sadece o kategori için). Uyarılar yalnızca bu ay tarihli işlemler için hesaplanır.
+
+Kural 1–4 hesaplanır ve gösterilir, hiçbir şey saklamaz. Kural 5 ise hatırlar: bir bütçe seviyesi aynı ay içinde bir kez bildirilir (bkz. 6), bu yüzden `WarningService.CheckAsync` bütçe satırını günceller.
 
 Uyarılar kullanıcının kendi kaydettiği giderde çalışır. Tekrarlayan tanımdan otomatik oluşan işlemlerde çalışmaz; onlar için tek bir "şu işlemler eklendi" bildirimi gösterilir (bkz. 5).
 
@@ -69,6 +73,24 @@ Uyarı metinleri samimi ve kısa olsun, her zaman gerçek rakam içersin. Örnek
   - Ortalama devir ≤ 0 ise: "Bu tempoyla hedefe ulaşmak için harcamaları azaltman gerek."
   - Aktif hedef yoksa veya hiç geçmiş ay verisi yoksa hesaplanmaz ve cümle gösterilmez.
 - Ana sayfada tek cümle: "Bu tempoyla {Hedef} hedefine {Ay Yıl} civarında ulaşırsın."
+
+## 6. Kategori bütçeleri (BudgetService, WarningService kural 5)
+Kullanıcı bir gider kategorisine aylık limit koyar (ör. Kafe/Kahve 500 TL). Kategori başına en fazla bir limit vardır; gelir kategorilerine limit konamaz. Limit 0'dan büyük olmalı ve 2 ondalığa yuvarlanır.
+
+**Kullanım düzeyi.** Kategorinin o ayki gider toplamı ÷ limit:
+- ≤ %80 → sorun yok (yeşil çubuk)
+- > %80 ve ≤ %100 → "yaklaşıyorsun" (altın çubuk)
+- > %100 → "aştın" (kırmızı çubuk)
+
+**Uyarı (kural 5).** Gider kaydedildiğinde o kategorinin düzeyi hesaplanır; düzey, o ay için daha önce bildirilen düzeyden yüksekse uyarı verilir ve hatırlanır (`WarnedPeriod`, `WarnedLevel`).
+- Bir ayda en fazla iki uyarı çıkar: önce "yaklaşıyorsun", sonra "aştın"; her biri bir kez. Doğrudan limitin üstüne çıkılırsa yalnızca "aştın" gösterilir.
+- Ay değişince hatırlanan düzey eskimiş olur; uyarılar yeniden mümkündür.
+- Limit değiştirilirse hatırlanan düzey sıfırlanır (aynı değer yeniden kaydedilirse sıfırlanmaz).
+- Harcama silinip toplam düşse de uyarı geri alınmaz ve aynı ayda aynı düzey yeniden bildirilmez.
+- Yalnızca bu ay tarihli, kullanıcının kendi kaydettiği giderde çalışır; otomatik oluşan tekrarlayan işlemler uyarı üretmez ama toplama girer.
+- Örnek: "Kafe/Kahve bütçenin %84'ünü kullandın: 420,00 TL / 500,00 TL. Ay bitmeden 80,00 TL kaldı." ve "Kafe/Kahve bütçeni aştın: 540,00 TL / 500,00 TL (40,00 TL fazla)."
+
+**Gösterim.** Analiz sayfasında limiti olan her kategori için, seçili ayın harcamasıyla ilerleme çubuğu gösterilir (harcaması olmayanlar dahil; geçmiş aya bakılınca o ayın harcaması güncel limitle karşılaştırılır). Limitler `/Budgets` sayfasından eklenir, değiştirilir ve silinir.
 
 ## 5. Tekrarlayan işlemler (RecurringTransactionService)
 Kira, burs, aile desteği, abonelik gibi her ay aynı gün tekrarlanan gelir ve giderler bir kez tanımlanır; işlemleri uygulama oluşturur. Yalnızca aylık tekrar vardır.

@@ -12,6 +12,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<GoalContribution> GoalContributions => Set<GoalContribution>();
     public DbSet<MonthClose> MonthCloses => Set<MonthClose>();
     public DbSet<RecurringTransaction> RecurringTransactions => Set<RecurringTransaction>();
+    public DbSet<CategoryBudget> CategoryBudgets => Set<CategoryBudget>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -62,6 +63,15 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             e.Property(m => m.UserId).IsRequired();
             e.Property(m => m.Remaining).HasColumnType("decimal(18,2)");
             e.HasIndex(m => new { m.UserId, m.Year, m.Month }).IsUnique();
+        });
+
+        builder.Entity<CategoryBudget>(e =>
+        {
+            e.Property(b => b.UserId).IsRequired();
+            e.Property(b => b.MonthlyLimit).HasColumnType("decimal(18,2)");
+            // One limit per category per user.
+            e.HasIndex(b => new { b.UserId, b.CategoryId }).IsUnique();
+            e.HasOne(b => b.Category).WithMany().HasForeignKey(b => b.CategoryId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<Category>().HasData(DefaultCategories());

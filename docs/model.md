@@ -52,6 +52,20 @@ Her ay aynı gün tekrarlanan gelir veya gider tanımı (kira, burs, abonelik). 
 | LastGeneratedPeriod | DateTime? | En son işlenen ay (ayın 1'i); o ay ve öncesi yeniden oluşturulmaz |
 | CreatedAt | DateTime | |
 
+## CategoryBudget
+Kullanıcının bir gider kategorisi için koyduğu aylık limit. Kurallar için bkz. docs/rules.md bölüm 6.
+
+| Alan | Tip | Not |
+| --- | --- | --- |
+| Id | int | |
+| UserId | string | |
+| CategoryId | int | Yalnızca gider kategorisi |
+| MonthlyLimit | decimal | Her zaman pozitif |
+| WarnedPeriod | DateTime? | En son uyarı verilen ayın 1'i |
+| WarnedLevel | enum (None, Approaching, Exceeded) | O ay verilmiş en yüksek uyarı; aynı uyarı aynı ay tekrarlanmasın diye. Limit değişince sıfırlanır |
+
+(UserId, CategoryId) benzersiz olmalı: kategori başına tek limit.
+
 ## Goal
 | Alan | Tip | Not |
 | --- | --- | --- |

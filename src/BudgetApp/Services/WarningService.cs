@@ -1,5 +1,6 @@
 using BudgetApp.Data;
 using BudgetApp.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace BudgetApp.Services;
 
@@ -8,7 +9,9 @@ public enum WarningRule
     LargeExpense = 1,
     UnnecessaryShare = 2,
     CategoryIncrease = 3,
-    NegativeForecast = 4
+    NegativeForecast = 4,
+    /// <summary>The category's monthly limit is nearly used up or exceeded (either message is rule 5).</summary>
+    CategoryBudget = 5
 }
 
 public record Warning(WarningRule Rule, string Message);
@@ -41,7 +44,41 @@ public class WarningService(ApplicationDbContext db, IForecastService forecast) 
         AddIfNotNull(warnings, UnnecessaryShare(rows, savedRow));
         AddIfNotNull(warnings, await CategoryIncrease(userId, rows, savedRow, today));
         AddIfNotNull(warnings, await NegativeForecast(userId, today));
+        AddIfNotNull(warnings, await CategoryBudgetLimit(userId, rows, savedRow, today));
         return warnings;
+    }
+
+    // Rule 5: the category's total this month is above 80% (approaching) or above 100% (exceeded) of its monthly limit.
+    // Unlike rules 1-4 this one is remembered: each level is reported once per month, so the budget row is updated.
+    private async Task<Warning?> CategoryBudgetLimit(string userId, List<MonthRow> rows, MonthRow saved, DateTime today)
+    {
+        var budget = await db.CategoryBudgets.FirstOrDefaultAsync(b => b.UserId == userId && b.CategoryId == saved.CategoryId);
+        if (budget is null)
+            return null;
+
+        var spent = rows.Where(r => r.IsExpense && r.CategoryId == saved.CategoryId).Sum(r => r.Amount);
+        var level = BudgetMath.LevelFor(spent, budget.MonthlyLimit);
+        if (level == BudgetLevel.None)
+            return null;
+
+        var period = new DateTime(today.Year, today.Month, 1);
+        var alreadyWarned = budget.WarnedPeriod == period ? budget.WarnedLevel : BudgetLevel.None;
+        if (level <= alreadyWarned)
+            return null;
+
+        budget.WarnedPeriod = period;
+        budget.WarnedLevel = level;
+        await db.SaveChangesAsync();
+
+        var limit = budget.MonthlyLimit;
+        if (level == BudgetLevel.Exceeded)
+            return new Warning(WarningRule.CategoryBudget,
+                $"{saved.CategoryName} bütçeni aştın: {Tr.Money(spent)} / {Tr.Money(limit)} ({Tr.Money(spent - limit)} fazla).");
+
+        var usedPercent = (int)Math.Floor(spent / limit * 100m); // rounding down: 99,6% must not read as "%100"
+        return new Warning(WarningRule.CategoryBudget,
+            $"{saved.CategoryName} bütçenin %{usedPercent}'ini kullandın: {Tr.Money(spent)} / {Tr.Money(limit)}. " +
+            $"Ay bitmeden {Tr.Money(limit - spent)} kaldı.");
     }
 
     private static void AddIfNotNull(List<Warning> list, Warning? warning)

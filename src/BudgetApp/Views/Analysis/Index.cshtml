@@ -10,6 +10,26 @@
 
 <partial name="_MonthPicker" model="Model.Picker" />
 
+<div class="card p-3 p-md-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="section-title mb-0">Kategori bütçeleri</h2>
+        <a asp-controller="Budgets" asp-action="Index" class="small fw-semibold">Limitleri yönet <i class="bi bi-arrow-right"></i></a>
+    </div>
+    @if (Model.Budgets.Count == 0)
+    {
+        <p class="text-muted mb-0">Henüz limit koymadın. Kafe, dışarıda yemek gibi kategorilere aylık limit koyarsan burada ilerlemesini görür, sınıra yaklaşınca uyarı alırsın.</p>
+    }
+    else
+    {
+        <div class="d-grid gap-3">
+            @foreach (var budget in Model.Budgets)
+            {
+                <partial name="_BudgetBar" model="budget" />
+            }
+        </div>
+    }
+</div>
+
 @if (a.Categories.Count == 0)
 {
     @await Html.PartialAsync("_EmptyState", ("pie-chart-fill", "Bu ay için gider yok", "Giderlerini ekledikçe kategori dağılımını, en çok harcadığın ürünleri ve tavsiyeleri burada göreceksin.", (string?)"Yeni işlem", (string?)"Transactions", (string?)"Create"))

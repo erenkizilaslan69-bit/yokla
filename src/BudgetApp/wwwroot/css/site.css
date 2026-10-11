@@ -549,6 +549,22 @@ a:hover { text-decoration: underline; }
 
 @media (prefers-reduced-motion: reduce) { .celebrate-icon { animation: none; } }
 
+/* ---------- Category budgets ---------- */
+.budget-row { min-width: 0; }
+.budget-track { height: 10px; border-radius: 999px; background: var(--bg); overflow: hidden; border: 1px solid var(--line); }
+.budget-fill { height: 100%; border-radius: inherit; background: var(--brand); transition: width .6s cubic-bezier(.22, 1, .36, 1); }
+.budget-fill.near { background: var(--gold); }
+.budget-fill.over { background: var(--expense); }
+.budget-percent { font-weight: 700; margin-left: .35rem; color: var(--brand); }
+.budget-percent.near { color: var(--gold-dark); }
+.budget-percent.over { color: var(--expense); }
+.budget-item { display: flex; align-items: flex-start; gap: .75rem; padding: 1rem 1.1rem; border-bottom: 1px solid var(--line); }
+.budget-item:last-child { border-bottom: 0; }
+.budget-actions { display: flex; gap: .15rem; flex: none; }
+.budget-actions form { display: inline-flex; margin: 0; }
+
+@media (prefers-reduced-motion: reduce) { .budget-fill { transition: none; } }
+
 /* ---------- Empty state ---------- */
 .empty-state { text-align: center; padding: 2.5rem 1.25rem; }
 
