@@ -17,8 +17,12 @@
 
 <div class="page-head">
     <h1>İşlemler</h1>
-    <div class="d-flex gap-2">
+    <div class="d-flex flex-wrap gap-2">
         <a asp-controller="Recurring" asp-action="Index" class="btn btn-outline-primary d-inline-flex align-items-center gap-1"><i class="bi bi-arrow-repeat"></i>Tekrarlayanlar</a>
+        <a asp-action="ExportCsv" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
+           class="btn btn-outline-primary d-inline-flex align-items-center gap-1" title="@Model.Picker.Title işlemlerini Excel için CSV olarak indir">
+            <i class="bi bi-download"></i>CSV indir
+        </a>
         <a asp-action="Create" class="btn btn-primary d-none d-md-inline-flex align-items-center gap-1"><i class="bi bi-plus-lg"></i>Yeni işlem</a>
     </div>
 </div>

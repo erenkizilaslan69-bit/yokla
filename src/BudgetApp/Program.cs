@@ -35,6 +35,7 @@ builder.Services.AddScoped<IWarningService, WarningService>();
 builder.Services.AddScoped<IAnalysisService, AnalysisService>();
 builder.Services.AddScoped<IRecurringTransactionService, RecurringTransactionService>();
 builder.Services.AddScoped<IBudgetService, BudgetService>();
+builder.Services.AddScoped<ITransactionCsvExporter, TransactionCsvExporter>();
 
 var app = builder.Build();
 

@@ -92,6 +92,20 @@ Kullanıcı bir gider kategorisine aylık limit koyar (ör. Kafe/Kahve 500 TL). 
 
 **Gösterim.** Analiz sayfasında limiti olan her kategori için, seçili ayın harcamasıyla ilerleme çubuğu gösterilir (harcaması olmayanlar dahil; geçmiş aya bakılınca o ayın harcaması güncel limitle karşılaştırılır). Limitler `/Budgets` sayfasından eklenir, değiştirilir ve silinir.
 
+## 7. CSV dışa aktarma (TransactionCsvExporter)
+İşlemler sayfasındaki "CSV indir" düğmesi, **seçili ayın** işlemlerini Türkçe Excel'de doğrudan açılacak biçimde indirir (dosya adı `islemler-2026-10.csv`).
+
+- **Biçim:** UTF-8 + BOM (Excel'in ü, ş, ğ, ı harflerini doğru okuması için); ayraç noktalı virgül (`;`); satır sonu CRLF; ondalık virgül.
+- **Sütunlar:** `Tarih;Tür;Kategori;Ürün;Not;Tutar`
+  - Tarih `gg.aa.yyyy`; Tür "Gelir" veya "Gider".
+  - Tutar her zaman pozitiftir (yönü Tür sütunu belirler), iki ondalıkla ve binlik ayırıcı olmadan yazılır (`1234,50`); para simgesi yoktur, böylece Excel sayı olarak okur.
+  - Biçim sunucunun kültüründen bağımsızdır (hep tr-TR).
+- **Sıra:** Eskiden yeniye (ekrandaki liste ise yeniden eskiye). O ay işlem yoksa dosyada yalnızca başlık satırı olur.
+- **Kaçışlar:** Ayraç, çift tırnak veya satır sonu içeren alan çift tırnak içine alınır, içindeki tırnaklar ikiye katlanır.
+- **Formül koruması:** Alan `=`, `+`, `-`, `@` (veya sekme/satır başı) ile başlıyorsa başına `'` konur; yoksa Excel hücreyi formül gibi çalıştırır. Dosya başkasıyla paylaşılırsa bu bir güvenlik riskidir. Sonuç olarak "-5 indirim" gibi bir not dosyada `'-5 indirim` görünür.
+- Yalnızca kullanıcının kendi işlemleri; geçersiz veya gelecek bir ay istenirse içinde bulunulan ay indirilir. Tekrarlayan tanımdan oluşan işlemler de dahildir.
+- Not: Bölgesel ayarı Türkçe olmayan bir Excel `;` ayracını sütunlara bölmeyebilir; bu durumda "Veri → Metinden/CSV'den" ile içe aktarılır.
+
 ## 5. Tekrarlayan işlemler (RecurringTransactionService)
 Kira, burs, aile desteği, abonelik gibi her ay aynı gün tekrarlanan gelir ve giderler bir kez tanımlanır; işlemleri uygulama oluşturur. Yalnızca aylık tekrar vardır.
 

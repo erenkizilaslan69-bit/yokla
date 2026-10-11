@@ -11,7 +11,7 @@ namespace BudgetApp.Controllers;
 [Authorize]
 public class TransactionsController(
     ITransactionService transactions, ICategoryService categories, IWarningService warningService,
-    IRecurringTransactionService recurring) : Controller
+    IRecurringTransactionService recurring, ITransactionCsvExporter csvExporter) : Controller
 {
     private const string WarningsKey = "Warnings";
 
@@ -31,6 +31,15 @@ public class TransactionsController(
             Totals = await transactions.GetTotalsAsync(UserId, y, m),
             Warnings = TakeWarnings()
         });
+    }
+
+    /// <summary>Downloads the shown month as a CSV file for Turkish Excel.</summary>
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> ExportCsv(int? year, int? month)
+    {
+        var (y, m) = MonthPickerViewModel.Resolve(year, month, DateTime.Today);
+        var bytes = await csvExporter.ExportMonthAsync(UserId, y, m);
+        return File(bytes, "text/csv; charset=utf-8", $"islemler-{y}-{m:00}.csv");
     }
 
     public async Task<IActionResult> Create()
