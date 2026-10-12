@@ -58,9 +58,7 @@ public static class DemoDataSeeder
         [
             Out(6, "Döner", 140m), Out(15, "Pizza", 150m), Out(21, "Öğle yemeği", 130m), Out(26, "Döner", 140m),
             Fun(9, "Sinema bileti", 150m),
-            // After the part-time pay, not in the tight first days: the month keeps its weekly allowances and gets
-            // the best report card of the three.
-            Edu(22, "Ders kitabı", 200m)
+            Edu(4, "Ders kitabı", 200m)
         ]);
 
     private static readonly MonthPlan MiddleMonth = new(

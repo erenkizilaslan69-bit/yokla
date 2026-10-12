@@ -1,8 +1,0 @@
-@* A level (Pekiyi … Zayıf) as a coloured badge. Model: the level (null = not graded) and an optional size class.
-   Pekiyi and İyi are green, Orta and Geçer gold, Zayıf red. *@
-@using BudgetApp.Services
-@model (string? Level, string? Size)
-@{
-    var tone = Model.Level is null ? "none" : GradeScale.Rank(Model.Level) switch { >= 3 => "good", 0 => "low", _ => "mid" };
-}
-<span class="grade @tone @Model.Size">@(Model.Level ?? "—")</span>

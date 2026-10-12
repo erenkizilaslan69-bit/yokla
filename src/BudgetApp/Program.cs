@@ -37,8 +37,6 @@ builder.Services.AddScoped<IRecurringTransactionService, RecurringTransactionSer
 builder.Services.AddScoped<IBudgetService, BudgetService>();
 builder.Services.AddScoped<ITransactionCsvExporter, TransactionCsvExporter>();
 builder.Services.AddScoped<IDailyAllowanceService, DailyAllowanceService>();
-builder.Services.AddScoped<IReportCardService, ReportCardService>();
-
 var app = builder.Build();
 
 // Development only: create/upgrade the SQLite file and add the demo account, so `dotnet run` works out of the box.
