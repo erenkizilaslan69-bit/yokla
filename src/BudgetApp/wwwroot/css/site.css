@@ -56,6 +56,7 @@
 
   --gold: #E0A526;
   --gold-light: #F3C34F;
+  --on-gold: #5F4508;         /* icon on a gold fill: white is too faint on gold; the fill is the same in both themes */
   --gold-ink: #8A6410;
   --gold-icon: #B67D0A;
   --gold-soft: #FFF4D6;
@@ -595,7 +596,7 @@ a:hover { text-decoration: underline; }
   border-radius: 14px;
   font-size: 1.4rem;
   background: var(--gold);
-  color: #fff;
+  color: var(--on-gold);
 }
 
 .carry-amount { font-weight: 800; font-size: 1.25rem; font-variant-numeric: tabular-nums; }
@@ -782,7 +783,7 @@ a:hover { text-decoration: underline; }
   margin: 0 auto .85rem;
   border-radius: 50%;
   font-size: 2rem;
-  color: #fff;
+  color: var(--on-gold);
   background: linear-gradient(135deg, var(--gold-light), var(--gold));
   box-shadow: 0 8px 20px rgba(224, 165, 38, .45);
   animation: celebrate-pop .7s cubic-bezier(.34, 1.56, .64, 1) both;
