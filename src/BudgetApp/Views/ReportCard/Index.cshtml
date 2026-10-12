@@ -103,10 +103,43 @@
             </ul>
         }
     </div>
+
+    <div class="card p-3 p-md-4 mb-4">
+        <h2 class="section-title">Karneni paylaş</h2>
+        <div class="report-share">
+            <canvas id="report-canvas" class="report-canvas" role="img" aria-label="@monthTitle karnesinin paylaşılabilir görseli"></canvas>
+            <div>
+                <p class="mb-2">Hikâye boyutunda (1080 × 1920) bir görsel. İçinde yalnızca notlar ve yüzdeler var; <strong>hiçbir tutar görünmez</strong>.</p>
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-primary" data-report-download><i class="bi bi-download me-1"></i>Görseli indir</button>
+                    <button type="button" class="btn btn-outline-primary" data-report-share hidden><i class="bi bi-share-fill me-1"></i>Paylaş</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Everything the picture is drawn from. On purpose there is no amount of money and no user name in here. *@
+    <script type="application/json" id="report-data">@Json.Serialize(new
+    {
+        month = monthTitle,
+        file = $"karne-{card.Year}-{card.Month:00}.png",
+        letter = card.Letter,
+        points = card.Points,
+        comparison = card.Comparison?.Text,
+        courses = card.Courses.Select(c => new { name = c.Name, value = c.Value, letter = c.Letter }),
+        categories = card.Categories.Select(c => new { name = c.Category, value = "%" + c.UsagePercent.ToString("0", tr), letter = c.Letter })
+    })</script>
 }
 else
 {
     @await Html.PartialAsync("_EmptyState", ("mortarboard", "Bu ay not verilmedi", card.Reason ?? "", (string?)null, (string?)null, (string?)null))
+}
+
+@section Scripts {
+    @if (card.IsGraded)
+    {
+        <script src="~/js/report-card-image.js" asp-append-version="true"></script>
+    }
 }
 
 @if (Model.History.Count > 0)
