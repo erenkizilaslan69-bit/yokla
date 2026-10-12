@@ -407,6 +407,61 @@ public class DemoDataSeederTests
         Assert.Equal(1442.04m, allowance.Available);
     }
 
+    // ---------- report cards ----------
+
+    // The coffee habit that grows month after month shows in the grades: BB, then CC, then FD.
+    [Theory]
+    [InlineData(3)]
+    [InlineData(15)]
+    [InlineData(28)]
+    public async Task ReportCards_OfTheLastThreeMonthsAllDiffer(int day)
+    {
+        var today = new DateTime(2026, 10, day);
+        using var t = await SeededDb(today);
+        var service = new ReportCardService(t.Context);
+
+        var july = await service.GetAsync(Demo, 2026, 7, today);
+        var august = await service.GetAsync(Demo, 2026, 8, today);
+        var september = await service.GetAsync(Demo, 2026, 9, today);
+
+        Assert.Equal(("BB", 81), (july.Letter, july.Points));
+        Assert.Equal(("CC", 73), (august.Letter, august.Points));
+        Assert.Equal(("FD", 56), (september.Letter, september.Points));
+
+        var history = await service.GetHistoryAsync(Demo, today);
+        Assert.Equal(["FD", "CC", "BB"], history.Select(h => h.Letter));
+    }
+
+    [Fact]
+    public async Task ReportCard_OfLastMonthShowsEveryKindOfGradeAndSaysWhatToChange()
+    {
+        using var t = await SeededDb();
+
+        var card = await new ReportCardService(t.Context).GetAsync(Demo, 2026, 9, Today);
+
+        Assert.Equal(["%4", "2/4 limit içinde", "%27", "13/30 gün"], card.Courses.Select(c => c.Value));
+        Assert.Equal(["DC", "FD", "FF", "FF"], card.Courses.Select(c => c.Letter));
+        Assert.Equal(["Kafe/Kahve", "Eğlence", "Dışarıda Yemek", "Market"], card.Categories.Select(c => c.Category));
+        Assert.Equal(["FF", "FD", "CC", "AA"], card.Categories.Select(c => c.Letter));
+        Assert.Equal("Ağustos'ta CC almıştın, Eylül'de FD aldın: 3 basamak düştün.", card.Comparison!.Text);
+        Assert.Equal(
+            [
+                "Kafe/Kahve limitini 490,00 TL aştın. Limitte kalsaydın genel notun FD yerine DC olurdu.",
+                "Gereksiz harcama payın %27. 540,00 TL daha az harcasaydın %20'ye inerdi; genel notun FD yerine DC olurdu."
+            ],
+            card.Suggestions.Select(s => s.Text));
+    }
+
+    [Fact]
+    public async Task ReportCard_IsNotGivenForTheMonthThatIsStillRunning()
+    {
+        using var t = await SeededDb();
+
+        var card = await new ReportCardService(t.Context).GetAsync(Demo, 2026, 10, Today);
+
+        Assert.Equal(ReportCardStatus.NotFinished, card.Status);
+    }
+
     // ---------- the demo tells a story ----------
 
     [Fact]
