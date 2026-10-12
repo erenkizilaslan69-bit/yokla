@@ -64,7 +64,5 @@ internal static class Tr
 
     public static string Money(decimal value) => value.ToString("N2", Culture) + " TL";
 
-    public static string MonthYear(DateTime date) => date.ToString("MMMM yyyy", Culture);
-
     public static int Percent(decimal ratio) => (int)Math.Round(ratio * 100m, MidpointRounding.AwayFromZero);
 }
