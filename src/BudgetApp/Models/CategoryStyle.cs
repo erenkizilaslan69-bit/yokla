@@ -18,6 +18,8 @@ public record CategoryStyle(string Icon, string Color, string DarkColor)
         ["KYK Bursu"] = new("mortarboard-fill", "#0B7A5C", "#34C79A"),
         ["Aile Desteği"] = new("house-heart-fill", "#2F9E78", "#8FD9A8"),
         ["Part-time İş"] = new("briefcase-fill", "#1F8A9E", "#4FC3D9"),
+        ["Maaş"] = new("cash-coin", "#2E7D32", "#6FCF7A"),
+        ["Serbest Çalışma"] = new("laptop-fill", "#2A7AB8", "#6DB6EE"),
         ["Diğer Gelir"] = new("plus-circle-fill", "#53A383", "#A6D8C3"),
 
         // Expenses

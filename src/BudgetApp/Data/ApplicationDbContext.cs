@@ -100,7 +100,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             C("Diğer Gider", TransactionType.Expense),
             C("Dışarıda Yemek", TransactionType.Expense, true),
             C("Kafe/Kahve", TransactionType.Expense, true),
-            C("Eğlence", TransactionType.Expense, true)
+            C("Eğlence", TransactionType.Expense, true),
+            // Added later, for users with a job. New categories go at the end: the ids above are already in use.
+            C("Maaş", TransactionType.Income),
+            C("Serbest Çalışma", TransactionType.Income)
         ];
     }
 }

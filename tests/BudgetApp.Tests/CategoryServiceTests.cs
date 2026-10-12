@@ -11,11 +11,52 @@ public class CategoryServiceTests
         using var db = new TestDb();
         var all = await new CategoryService(db.Context).GetAllAsync();
 
-        Assert.Equal(16, all.Count);
+        Assert.Equal(18, all.Count);
+    }
+
+    [Fact]
+    public async Task GetByTypeAsync_OffersIncomeForEveryKindOfUserWithTheCatchAllLast()
+    {
+        using var db = new TestDb();
+        var income = await new CategoryService(db.Context).GetByTypeAsync(TransactionType.Income);
+
+        Assert.Equal(["Maaş", "Serbest Çalışma", "Part-time İş", "KYK Bursu", "Aile Desteği", "Diğer Gelir"],
+            income.Select(c => c.Name));
+    }
+
+    [Fact]
+    public async Task GetAllAsync_ListsIncomeFirstInTheSameOrderThenExpensesByTheirIds()
+    {
+        using var db = new TestDb();
+        var service = new CategoryService(db.Context);
+        var all = await service.GetAllAsync();
+
+        Assert.Equal((await service.GetByTypeAsync(TransactionType.Income)).Select(c => c.Id), all.Take(6).Select(c => c.Id));
+        var expenses = all.Skip(6).ToList();
+        Assert.All(expenses, c => Assert.Equal(TransactionType.Expense, c.Type));
+        Assert.Equal(expenses.Select(c => c.Id).OrderBy(id => id), expenses.Select(c => c.Id));
+        Assert.Equal("Market", expenses[0].Name);
+    }
+
+    [Fact]
+    public async Task TheCategoriesAddedLaterDoNotMoveTheIdsOfTheOlderOnes()
+    {
+        using var db = new TestDb();
+        var all = await new CategoryService(db.Context).GetAllAsync();
+
+        Assert.Equal(("KYK Bursu", "Market", "Eğlence"),
+            (all.Single(c => c.Id == 1).Name, all.Single(c => c.Id == 5).Name, all.Single(c => c.Id == 16).Name));
+        Assert.Equal(("Maaş", "Serbest Çalışma"), (all.Single(c => c.Id == 17).Name, all.Single(c => c.Id == 18).Name));
+        Assert.All(all.Where(c => c.Id > 16), c =>
+        {
+            Assert.Equal(TransactionType.Income, c.Type);
+            Assert.False(c.IsFixed);
+            Assert.False(c.IsUnnecessary);
+        });
     }
 
     [Theory]
-    [InlineData(TransactionType.Income, 4)]
+    [InlineData(TransactionType.Income, 6)]
     [InlineData(TransactionType.Expense, 12)]
     public async Task GetByTypeAsync_ReturnsOnlyRequestedType(TransactionType type, int expectedCount)
     {

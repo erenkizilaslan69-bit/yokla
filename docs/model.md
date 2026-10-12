@@ -12,7 +12,7 @@ Tüm para alanları `decimal(18,2)`. Tüm kullanıcı verisi `UserId` (Identity 
 | IsFixed | bool | Sabit gider kategorisi mi (kira, fatura gibi); tahmin formülünde ve uyarı kuralı 1'de kullanılır |
 
 Varsayılan kategoriler (seed):
-- Gelir: KYK Bursu, Aile Desteği, Part-time İş, Diğer Gelir
+- Gelir: Maaş, Serbest Çalışma, Part-time İş, KYK Bursu, Aile Desteği, Diğer Gelir (formlarda bu sırayla sunulur; Maaş ve Serbest Çalışma sonradan eklendiği için Id'leri 17 ve 18'dir, eski kategorilerin Id'leri değişmez)
 - Gider: Market, Ulaşım, Eğitim/Kırtasiye, Sağlık, Giyim, Diğer Gider
 - Gider (IsFixed = true): Kira/Yurt, Faturalar, Abonelikler
 - Gider (IsUnnecessary = true): Dışarıda Yemek, Kafe/Kahve, Eğlence

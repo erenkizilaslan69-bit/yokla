@@ -169,6 +169,22 @@ namespace BudgetApp.Data.Migrations
                             IsUnnecessary = true,
                             Name = "Eğlence",
                             Type = 1
+                        },
+                        new
+                        {
+                            Id = 17,
+                            IsFixed = false,
+                            IsUnnecessary = false,
+                            Name = "Maaş",
+                            Type = 0
+                        },
+                        new
+                        {
+                            Id = 18,
+                            IsFixed = false,
+                            IsUnnecessary = false,
+                            Name = "Serbest Çalışma",
+                            Type = 0
                         });
                 });
 
