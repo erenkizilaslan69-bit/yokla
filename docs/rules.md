@@ -48,9 +48,9 @@ Kural 1–4 hesaplanır ve gösterilir, hiçbir şey saklamaz. Kural 5 ise hatı
 Uyarılar kullanıcının kendi kaydettiği giderde çalışır. Tekrarlayan tanımdan otomatik oluşan işlemlerde çalışmaz; onlar için tek bir "şu işlemler eklendi" bildirimi gösterilir (bkz. 5).
 
 Uyarı metinleri samimi ve kısa olsun, her zaman gerçek rakam içersin. Örnek:
-"Bu ay dışarıda yemeğe 1.200 TL gitti, geçen ayın iki katı. Frene basmanın tam zamanı."
+"Bu ay dışarıda yemeğe 1.200 TL gitti, geçen ayın iki katı. Bu hızla ay sonunda menüde makarna var."
 
-Metinler belirli bir kesime (öğrenci, çalışan) değil herkese hitap eder; "burs", "yurt" gibi yalnızca bir kesime özgü örnekler kullanılmaz.
+Metinler belirli bir kesime (öğrenci, çalışan) değil herkese hitap eder; "burs", "yurt" gibi yalnızca bir kesime özgü örnekler kullanılmaz. "Makarna" esprileri ("Menüde makarna var", "makarna günleri") bir kesime özgü değildir, uygulamanın üslubunun parçasıdır ve kalır.
 
 ## 3. Aylık analiz (AnalysisService)
 - Kategori bazında toplam gider (pasta grafik).

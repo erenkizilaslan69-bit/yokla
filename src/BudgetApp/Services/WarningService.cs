@@ -156,6 +156,6 @@ public class WarningService(ApplicationDbContext db, IForecastService forecast) 
             return null;
 
         return new Warning(WarningRule.NegativeForecast,
-            $"Bu hızla ay sonunda {Tr.Money(-projection.Projected)} açık verirsin. Frene basmanın tam zamanı.");
+            $"Bu hızla ay sonunda {Tr.Money(-projection.Projected)} açık verirsin. Menüde makarna var.");
     }
 }

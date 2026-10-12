@@ -70,7 +70,7 @@ Gider kaydedildiği anda `WarningService` şu kurallara bakar ve uyarıyı sayfa
 3. Bir kategori, geçen ayın aynı gününe göre %30'dan fazla öndeyse.
 4. Mevcut harcama hızıyla ay sonunda eksiye düşülecekse.
 
-Uyarı metinleri samimi olabilir: "Bu ay dışarıda yemeğe 1.200 TL gitti, geçen ayın iki katı. Frene basmanın tam zamanı."
+Uyarı metinleri samimi olabilir: "Bu ay dışarıda yemeğe 1.200 TL gitti, geçen ayın iki katı. Bu hızla ay sonunda menüde makarna var."
 
 ### Aylık analiz ve tavsiye
 
