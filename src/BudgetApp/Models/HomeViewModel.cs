@@ -5,6 +5,9 @@ namespace BudgetApp.Models;
 
 public class HomeViewModel
 {
+    /// <summary>Today's spending allowance; null for a user without any transaction.</summary>
+    public DailyAllowance? Allowance { get; init; }
+
     public GoalProgress? ActiveGoal { get; init; }
 
     public PendingMonthClose? Pending { get; init; }

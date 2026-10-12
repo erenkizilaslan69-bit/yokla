@@ -1,0 +1,119 @@
+@* "How much can I spend today?" card at the top of the dashboard. Model: the allowance (see DailyAllowanceService).
+   Three looks: is-ok (today's share is not used up), is-over (today's spending went above it), is-deficit
+   (nothing is left until the next income). *@
+@using BudgetApp.Services
+@model DailyAllowance
+@{
+    var css = Model.Status switch
+    {
+        AllowanceStatus.Deficit => "is-deficit",
+        AllowanceStatus.OverToday => "is-over",
+        _ => "is-ok"
+    };
+    var daysText = Model.DaysLeft == 1 ? "yarın" : $"{Model.DaysLeft} gün kaldı";
+    // Share of today's allowance that is already spent, for the bar (only shown while within the allowance).
+    var used = Model.DailyAmount > 0 ? (int)Math.Min(100m, Math.Floor(Model.SpentToday / Model.DailyAmount * 100m)) : 0;
+}
+
+<div class="card allowance-card @css p-3 p-md-4 mb-4">
+    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+        <div>
+            <div class="allowance-label"><i class="bi bi-wallet2"></i>Bugünkü harcama hakkın</div>
+            @switch (Model.Status)
+            {
+                case AllowanceStatus.Deficit:
+                    <div class="allowance-amount num">@((-Model.Available).ToString("C2")) <span class="allowance-unit">açık</span></div>
+                    break;
+                case AllowanceStatus.OverToday:
+                    <div class="allowance-amount num">@((-Model.RemainingToday).ToString("C2")) <span class="allowance-unit">aştın</span></div>
+                    break;
+                default:
+                    <div class="allowance-amount num">@Model.RemainingToday.ToString("C2") <span class="allowance-unit">kaldı</span></div>
+                    break;
+            }
+        </div>
+        <div class="allowance-next">
+            @if (Model.HasRecurringIncome)
+            {
+                <i class="bi bi-calendar-event"></i>
+                <span><strong>@Model.NextIncomeName</strong> &middot; @daysText</span>
+                <span class="allowance-date">@Model.NextIncomeDate!.Value.ToString("dd.MM.yyyy")</span>
+            }
+            else
+            {
+                <i class="bi bi-calendar-event"></i>
+                <span><strong>Ay sonu</strong> &middot; @(Model.DaysLeft == 1 ? "bugün son gün" : $"{Model.DaysLeft} gün var")</span>
+            }
+        </div>
+    </div>
+
+    <p class="allowance-text mt-2 mb-0">
+        @switch (Model.Status)
+        {
+            case AllowanceStatus.Deficit:
+                <span>
+                    Sonraki gelire kadar <strong>@((-Model.Available).ToString("C2"))</strong> açığın var.
+                    Bugün cüzdanı mümkünse hiç açma; makarna günleri.
+                    @if (Model.SpentToday > 0)
+                    {
+                        <span>Bugün şimdiden <strong>@Model.SpentToday.ToString("C2")</strong> harcadın.</span>
+                    }
+                </span>
+                break;
+            case AllowanceStatus.OverToday:
+                <span>
+                    Bugün <strong>@Model.DailyAmount.ToString("C2")</strong> hakkın vardı, <strong>@Model.SpentToday.ToString("C2")</strong> harcadın.
+                    @if (Model.TomorrowAmount is { } tomorrow)
+                    {
+                        <span>Fark yarından düşer; yarınki hakkın: <strong>@tomorrow.ToString("C2")</strong>.</span>
+                    }
+                </span>
+                break;
+            default:
+                if (Model.SpentToday > 0)
+                {
+                    <span>
+                        Bugün <strong>@Model.DailyAmount.ToString("C2")</strong> hakkın var,
+                        <strong>@Model.SpentToday.ToString("C2")</strong> harcadın,
+                        <strong>@Model.RemainingToday.ToString("C2")</strong> kaldı.
+                    </span>
+                }
+                else
+                {
+                    <span>Bugün <strong>@Model.DailyAmount.ToString("C2")</strong> hakkın var, henüz harcama yapmadın.</span>
+                }
+                break;
+        }
+    </p>
+
+    @if (Model.Status == AllowanceStatus.Ok)
+    {
+        <div class="allowance-track mt-3" role="progressbar" aria-label="Bugünkü hakkın kullanılan kısmı"
+             aria-valuenow="@used" aria-valuemin="0" aria-valuemax="100">
+            <div class="allowance-fill" style="width: @(used)%"></div>
+        </div>
+    }
+
+    <div class="allowance-foot mt-2">
+        @if (Model.Status != AllowanceStatus.Deficit)
+        {
+            <span>Sonraki gelire kadar kullanılabilir: <strong>@Model.Available.ToString("C2")</strong></span>
+        }
+        @if (Model.UpcomingExpenses > 0)
+        {
+            <span>&middot; bu tarihe kadar gelecek @Model.UpcomingExpenses.ToString("C2") tekrarlayan gider ayrıldı</span>
+        }
+        @if (Model.Status == AllowanceStatus.Ok && Model.SpentToday > 0 && Model.TomorrowAmount is { } next)
+        {
+            <span>&middot; bugün başka harcamazsan yarın @next.ToString("C2")</span>
+        }
+    </div>
+
+    @if (!Model.HasRecurringIncome)
+    {
+        <div class="allowance-hint mt-2">
+            <i class="bi bi-lightbulb-fill"></i>
+            <span>Gelirini <a asp-controller="Recurring" asp-action="Create" class="fw-semibold">tekrarlayan işlem</a> olarak eklersen daha doğru hesaplarım.</span>
+        </div>
+    }
+</div>

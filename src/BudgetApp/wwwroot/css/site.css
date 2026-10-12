@@ -471,6 +471,43 @@ a:hover { text-decoration: underline; }
   flex: none;
 }
 
+/* ---------- Dashboard: daily allowance ----------
+   One card, three looks. Only tokens are used, so the dark theme needs nothing extra. */
+.allowance-card { border-left: 6px solid var(--brand); box-shadow: var(--shadow); }
+.allowance-label { display: flex; align-items: center; gap: .45rem; color: var(--muted); font-weight: 600; font-size: .85rem; }
+.allowance-amount { font-size: 2.1rem; font-weight: 800; letter-spacing: -.03em; line-height: 1.15; color: var(--brand-ink); }
+.allowance-unit { font-size: 1rem; font-weight: 600; letter-spacing: 0; color: var(--muted); }
+.allowance-next { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; font-size: .9rem; color: var(--text); }
+.allowance-next .bi { color: var(--brand-ink); }
+.allowance-date { color: var(--muted); }
+.allowance-foot, .allowance-hint { color: var(--muted); font-size: .82rem; }
+.allowance-hint { display: flex; gap: .45rem; align-items: baseline; }
+.allowance-hint .bi { color: var(--gold-icon); }
+.allowance-track { height: 8px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; }
+.allowance-fill { height: 100%; border-radius: inherit; background: var(--bar-ok); }
+
+/* Today's spending went above today's share. */
+.allowance-card.is-over { border-color: var(--gold-soft-line); border-left-color: var(--gold); background: var(--gold-soft); }
+.allowance-card.is-over .allowance-amount { color: var(--gold-ink); }
+.allowance-card.is-over .allowance-text { color: var(--gold-soft-ink); }
+.allowance-card.is-over .allowance-next .bi { color: var(--gold-ink); }
+
+/* Nothing left until the next income. */
+.allowance-card.is-deficit { border-color: var(--expense-soft-line); border-left-color: var(--bar-over); background: var(--expense-soft); }
+.allowance-card.is-deficit .allowance-amount,
+.allowance-card.is-deficit .allowance-text { color: var(--expense-soft-ink); }
+.allowance-card.is-deficit .allowance-next .bi { color: var(--expense-soft-ink); }
+
+/* Muted grey is too weak on the tinted cards: small print takes the tint's own text colour there. */
+.allowance-card.is-over .allowance-label, .allowance-card.is-over .allowance-unit, .allowance-card.is-over .allowance-date,
+.allowance-card.is-over .allowance-foot, .allowance-card.is-over .allowance-hint { color: var(--gold-soft-ink); }
+.allowance-card.is-deficit .allowance-label, .allowance-card.is-deficit .allowance-unit, .allowance-card.is-deficit .allowance-date,
+.allowance-card.is-deficit .allowance-foot, .allowance-card.is-deficit .allowance-hint { color: var(--expense-soft-ink); }
+.allowance-card.is-over .allowance-hint .bi, .allowance-card.is-deficit .allowance-hint .bi { color: inherit; }
+.allowance-card.is-over a, .allowance-card.is-deficit a { color: inherit; text-decoration: underline; }
+
+@media (max-width: 767.98px) { .allowance-amount { font-size: 1.8rem; } }
+
 /* ---------- Dashboard: stat cards ---------- */
 .stat-card { padding: 1.1rem 1.25rem; height: 100%; }
 .stat-card .stat-top { display: flex; align-items: center; gap: .6rem; color: var(--muted); font-weight: 600; font-size: .85rem; }

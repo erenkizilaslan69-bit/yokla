@@ -92,6 +92,38 @@ Kullanıcı bir gider kategorisine aylık limit koyar (ör. Kafe/Kahve 500 TL). 
 
 **Gösterim.** Analiz sayfasında limiti olan her kategori için, seçili ayın harcamasıyla ilerleme çubuğu gösterilir (harcaması olmayanlar dahil; geçmiş aya bakılınca o ayın harcaması güncel limitle karşılaştırılır). Limitler `/Budgets` sayfasından eklenir, değiştirilir ve silinir.
 
+## 8. Günlük harcama hakkı (DailyAllowanceService)
+Ana sayfanın en üstündeki kart "bugün ne kadar harcayabilirim" sorusunu cevaplar: eldeki para, bir sonraki gelire kadar gün gün bölünür.
+
+**Sonraki gelir.** Aktif tekrarlayan gelir tanımlarının bugünden sonraki en yakın oluşumu (başlangıç/bitiş tarihleri ve "31 → ayın son günü" kuralı geçerlidir; durdurulmuş tanımlar sayılmaz). Gelir bugün geldiyse sonraki, bir sonraki oluşumdur.
+- Kalan gün = sonraki gelirin tarihi − bugün (bugün dahil, gelir günü hariç).
+- Hiç tekrarlayan gelir yoksa dönem ayın son gününe kadar sürer (kalan gün = ay sonu − bugün + 1) ve kartta "Gelirini tekrarlayan işlem olarak eklersen daha doğru hesaplarım" ipucu çıkar.
+
+**Kullanılabilir para (gün başına göre).**
+- Eldeki para = bugüne kadarki tüm gelirler (bugünküler dahil) − dünden önceki tüm giderler − bugünkü "sabit gibi" giderler − hedeflere giden tüm para (elle ekleme ve ay sonu devri).
+  - Bakiye **tüm zamanlar** üzerinden hesaplanır, ay başında sıfırlanmaz: geçen aydan kalan para da geçen ayın açığı da sonraki aya taşınır. Ay sonu devri yapılınca aktarılan tutar havuzdan düşer.
+  - "Sabit gibi" gider = sabit kategorideki veya tekrarlayan tanımdan oluşan gider (bkz. 5). Bugün çekilen kira "bugünün harcaması" sayılmaz, havuzdan düşer.
+- Bekleyen giderler = henüz oluşmamış tekrarlayan gider oluşumlarından vadesi sonraki gelirden **önce** olanlar. Sonraki gelir gelecek aydaysa aradakiler de dahildir; gelirle aynı gün olanlar o gelirden ödeneceği için sayılmaz.
+- Kullanılabilir = eldeki para − bekleyen giderler.
+
+**Günlük hak.**
+- Günlük hak = kullanılabilir ÷ kalan gün (kuruşa aşağı yuvarlanır; kullanılabilir ≤ 0 ise 0).
+- Bugün harcanan = bugünkü değişken giderler. Bugün kalan = günlük hak − bugün harcanan.
+- Hak gün başına göre hesaplandığı için gün içinde harcadıkça küçülmez. Az harcanan günün artanı da, aşılan günün fazlası da ertesi günün hakkına kendiliğinden yansır: yarınki hak = (kullanılabilir − bugün harcanan) ÷ (kalan gün − 1). Ayrı bir kayıt tutulmaz; her şey işlemlerden hesaplanır.
+- Örnek: eldeki 800 TL, burs 8 gün sonra → günlük hak 100 TL. Bugün 30 TL harcanırsa "Bugün 100 TL hakkın var, 30 TL harcadın, 70 TL kaldı"; yarınki hak 770 ÷ 7 = 110 TL olur.
+
+**Kartın durumları.**
+- Normal: bugün kalan ≥ 0.
+- Bugünü aştı (altın): kullanılabilir > 0 ama bugün harcanan günlük hakkı geçti; yarınki hak gösterilir.
+- Açık (kırmızı): kullanılabilir ≤ 0; "Sonraki gelire kadar {tutar} açığın var" uyarısı çıkar.
+- Kullanıcının hiç işlemi yoksa kart gösterilmez.
+
+**Bilinen sınırlar.**
+- Bakiye geçmiş kayıtlara dayanır: uygulamaya yeni başlayıp cebindeki parayı girmemiş kullanıcıda düşük, biriken parasını hedefe aktarmayan kullanıcıda yüksek çıkar.
+- "Sonraki gelir" tutarına bakılmaksızın en yakın tekrarlayan gelirdir; küçük bir gelir dönemi kısaltır.
+- Tutarı değişen tanımlar (elektrik, part-time) tanımdaki tahmini tutarla hesaba girer.
+- Geçmiş tarihli bir gider girilirse havuz küçülür ve bugünkü hak o an değişir.
+
 ## 7. CSV dışa aktarma (TransactionCsvExporter)
 İşlemler sayfasındaki "CSV indir" düğmesi, **seçili ayın** işlemlerini Türkçe Excel'de doğrudan açılacak biçimde indirir (dosya adı `islemler-2026-10.csv`).
 

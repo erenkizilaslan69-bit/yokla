@@ -336,6 +336,77 @@ public class DemoDataSeederTests
         Assert.Contains("570,00 TL / 500,00 TL", warning.Message);
     }
 
+    // ---------- daily allowance ----------
+
+    [Fact]
+    public async Task DailyAllowance_OnTheTwelfthShowsABelievableAmountUntilThePartTimePay()
+    {
+        var today = new DateTime(2026, 10, 12);
+        using var t = await SeededDb(today);
+
+        var allowance = await new DailyAllowanceService(t.Context).GetAsync(Demo, today);
+
+        Assert.NotNull(allowance);
+        Assert.Equal("Part-time İş", allowance.NextIncomeName);
+        Assert.Equal(new DateTime(2026, 10, 20), allowance.NextIncomeDate);
+        Assert.Equal(8, allowance.DaysLeft);
+        Assert.Equal(359.99m, allowance.UpcomingExpenses);   // Spotify on the 14th and electricity on the 15th
+        Assert.Equal(802.04m, allowance.Available);
+        Assert.Equal(100.25m, allowance.DailyAmount);
+        Assert.Equal(95m, allowance.SpentToday);             // today's latte
+        Assert.Equal(5.25m, allowance.RemainingToday);
+        Assert.Equal(AllowanceStatus.Ok, allowance.Status);
+    }
+
+    [Theory]
+    [InlineData(8)]
+    [InlineData(11)]
+    [InlineData(12)]
+    [InlineData(13)]
+    [InlineData(14)]
+    [InlineData(15)]
+    [InlineData(17)]
+    public async Task DailyAllowance_IsWithinTodaysShareOnTheQuietDaysOfTheMonth(int day)
+    {
+        var today = new DateTime(2026, 10, day);
+        using var t = await SeededDb(today);
+
+        var allowance = await new DailyAllowanceService(t.Context).GetAsync(Demo, today);
+
+        Assert.Equal(AllowanceStatus.Ok, allowance!.Status);
+        Assert.InRange(allowance.DailyAmount, 60m, 250m);
+    }
+
+    [Theory]
+    [InlineData(9)]   // the day of the 300 TL game
+    [InlineData(16)]
+    [InlineData(18)]
+    public async Task DailyAllowance_IsExceededOnTheDemosBigSpendingDays(int day)
+    {
+        var today = new DateTime(2026, 10, day);
+        using var t = await SeededDb(today);
+
+        var allowance = await new DailyAllowanceService(t.Context).GetAsync(Demo, today);
+
+        Assert.Equal(AllowanceStatus.OverToday, allowance!.Status);
+        Assert.True(allowance.Available > 0);
+    }
+
+    [Fact]
+    public async Task DailyAllowance_AfterThePartTimePayCountsDownToNextMonthsFamilySupport()
+    {
+        var today = new DateTime(2026, 10, 20);
+        using var t = await SeededDb(today);
+
+        var allowance = await new DailyAllowanceService(t.Context).GetAsync(Demo, today);
+
+        Assert.Equal("Aile Desteği", allowance!.NextIncomeName);
+        Assert.Equal(new DateTime(2026, 11, 1), allowance.NextIncomeDate);
+        Assert.Equal(12, allowance.DaysLeft);
+        Assert.Equal(0m, allowance.UpcomingExpenses);        // rent is due on the income day itself
+        Assert.Equal(1442.04m, allowance.Available);
+    }
+
     // ---------- the demo tells a story ----------
 
     [Fact]

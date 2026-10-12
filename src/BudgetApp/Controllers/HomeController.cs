@@ -8,7 +8,7 @@ namespace BudgetApp.Controllers;
 
 public class HomeController(
     IGoalService goals, IMonthCloseService monthCloses, IForecastService forecast, ITransactionService transactions,
-    IRecurringTransactionService recurring)
+    IRecurringTransactionService recurring, IDailyAllowanceService allowance)
     : Controller
 {
     private const int RecentCount = 5;
@@ -22,6 +22,7 @@ public class HomeController(
         var today = DateTime.Today;
         return View(new HomeViewModel
         {
+            Allowance = await allowance.GetAsync(userId, today),
             ActiveGoal = await goals.GetActiveAsync(userId),
             Celebration = await goals.GetCelebrationGoalAsync(userId, today),
             Pending = await monthCloses.GetPendingAsync(userId, today),

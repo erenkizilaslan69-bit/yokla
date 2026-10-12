@@ -92,7 +92,11 @@ public static class DemoDataSeeder
         [
             Out(3, "Döner", 160m), Out(7, "Pizza", 220m), Out(10, "Öğle yemeği", 130m), Out(19, "Döner", 150m),
             Fun(6, "Sinema bileti", 150m), Fun(9, "Steam oyunu", 300m),
-            Edu(9, "Fotokopi", 45m)
+            Edu(9, "Fotokopi", 45m),
+            // A one-off income. Without it the month's heavy spending leaves almost nothing until the part-time
+            // pay of the 20th and the daily allowance card would show a few kuruş; with it the card shows a
+            // believable amount (about 100 TL a day around the middle of the month).
+            new Entry(8, "Diğer Gelir", TransactionType.Income, 800m, "Özel ders")
         ]);
 
     private static Entry Out(int day, string item, decimal amount) =>
