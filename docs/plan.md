@@ -70,7 +70,7 @@ Gider kaydedildiği anda `WarningService` şu kurallara bakar ve uyarıyı sayfa
 3. Bir kategori, geçen ayın aynı gününe göre %30'dan fazla öndeyse.
 4. Mevcut harcama hızıyla ay sonunda eksiye düşülecekse.
 
-Uyarı metinleri samimi olabilir: "Bu ay dışarıda yemeğe 1.200 TL gitti, geçen ayın iki katı. Bu hızla ay sonunda menüde makarna var."
+Uyarı metinleri samimi olabilir: "Bu ay dışarıda yemeğe 1.200 TL gitti, geçen ayın iki katı. Frene basmanın tam zamanı."
 
 ### Aylık analiz ve tavsiye
 
@@ -115,7 +115,7 @@ Her adımda önce plan iste, onayla, sonra uygulat. Örnekler:
 
 ```markdown
 # BudgetApp
-Öğrenci gelir-gider takip uygulaması. ASP.NET Core MVC, .NET 10, EF Core, SQLite.
+Öğrenciler ve çalışanlar dahil herkes için gelir-gider takip uygulaması. ASP.NET Core MVC, .NET 10, EF Core, SQLite.
 
 ## Kurallar
 - Para her zaman decimal.

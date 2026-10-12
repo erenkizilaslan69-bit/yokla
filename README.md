@@ -1,15 +1,15 @@
 # BudgetApp
 
-A simple income and expense tracker for students. It records what comes in and what goes out, warns you the moment a purchase looks risky, explains where the month's money went, and tells you when you will reach a savings goal at your current pace.
+A simple income and expense tracker for everyone — students and people with a job alike. It records what comes in and what goes out, warns you the moment a purchase looks risky, explains where the month's money went, and tells you when you will reach a savings goal at your current pace.
 
-> **Language note:** the user interface is in **Turkish** (currency TL, dates `dd.MM.yyyy`, `tr-TR` culture). The app is designed for **Turkish university students** — the default categories and the demo data reflect things like KYK scholarships, dorm rent and family support. Code, identifiers and commit messages are in English.
+> **Language note:** the user interface is in **Turkish** (currency TL, dates `dd.MM.yyyy`, `tr-TR` culture). The app is designed for **anyone in Turkey who wants to keep track of their money, students and employees included** — the default income categories cover salary, freelance work, part-time jobs, KYK scholarships and family support. Code, identifiers and commit messages are in English.
 
 ## Features
 
 - **Income and expense tracking** — amount, category, date, optional item name and note. List, edit and delete, with a month picker (previous / next month) and per-month income, expense and balance totals. Future-dated entries are rejected.
 - **CSV export** — download the shown month as a CSV file that opens correctly in Turkish Excel (UTF-8 with BOM, `;` separator, decimal comma; columns Tarih, Tür, Kategori, Ürün, Not, Tutar). Text that a spreadsheet would run as a formula is defused.
 - **Daily allowance** — a card at the top of the dashboard answers "how much can I spend today?": the money on hand, minus the recurring expenses still due before the next recurring income, divided by the days until that income. It is measured at the start of the day, so spending during the day uses the allowance up without shrinking it, and whatever is left (or overspent) carries into tomorrow's.
-- **Recurring transactions** — define rent, scholarships, subscriptions and other monthly items once; the app adds the transaction on its due day (day 31 falls on the last day of shorter months). Definitions can be paused, resumed, edited or deleted, and a "repeat every month" switch on the new-transaction form creates one from a regular entry. There is no background job: due items are generated when the user opens a page, at most once per month.
+- **Recurring transactions** — define your salary, rent, subscriptions and other monthly items once; the app adds the transaction on its due day (day 31 falls on the last day of shorter months). Definitions can be paused, resumed, edited or deleted, and a "repeat every month" switch on the new-transaction form creates one from a regular entry. There is no background job: due items are generated when the user opens a page, at most once per month.
 - **Savings goal bar** — create a goal (e.g. headphones, 4.500 TL) and watch the bar fill. A "Para ekle" (add money) button on each unfinished goal puts money in by hand; amounts above what the goal still needs are reduced automatically.
 - **Month-end carry-over** — in a new month the home page offers to move last month's surplus to the goal with one click (never more than the goal still needs). Money you already added by hand that month is not moved a second time. A month can only be closed once.
 - **Instant warnings** — right after an expense is saved, the page shows warnings based on five rules: an unusually large single expense, too much "unnecessary" spending, a category running well ahead of last month, a projected negative month-end balance, and a category budget that is nearly used up or exceeded.
@@ -95,7 +95,7 @@ dotnet test
 
 ## Demo account
 
-In Development only, a demo user is created on first start with about three months of realistic student data: KYK scholarship and family support, rent, bills, subscriptions, groceries with item names, coffee, transport and entertainment, monthly limits on coffee, eating out, entertainment and groceries (mid-month the analysis page shows all three bar colours), a "Kulaklık" (headphones) goal, and month-close records for the two oldest months. The most recent month is deliberately left open so the carry-over card shows up on the home page.
+In Development only, a demo user is created on first start with about three months of realistic data. The demo persona happens to be a university student (one example of a user, not the target audience): KYK scholarship and family support, rent, bills, subscriptions, groceries with item names, coffee, transport and entertainment, monthly limits on coffee, eating out, entertainment and groceries (mid-month the analysis page shows all three bar colours), a "Kulaklık" (headphones) goal, and month-close records for the two oldest months. The most recent month is deliberately left open so the carry-over card shows up on the home page.
 
 | | |
 | --- | --- |

@@ -1,5 +1,7 @@
 # İş kuralları
 
+Hedef kitle: öğrenciler ve çalışanlar dahil herkes. Kurallar gelirin türüne (maaş, burs, serbest çalışma, aile desteği) bakmaz.
+
 ## 1. Ay sonu devri (MonthCloseService)
 - Kullanıcı yeni ayda uygulamayı açtığında, geçen ay için MonthClose kaydı yoksa ana sayfada bir kart gösterilir.
 - Kalan = geçen ayın gelirleri − geçen ayın giderleri. `MonthClose.Remaining` her zaman bu gerçek kalanı saklar.
@@ -46,7 +48,9 @@ Kural 1–4 hesaplanır ve gösterilir, hiçbir şey saklamaz. Kural 5 ise hatı
 Uyarılar kullanıcının kendi kaydettiği giderde çalışır. Tekrarlayan tanımdan otomatik oluşan işlemlerde çalışmaz; onlar için tek bir "şu işlemler eklendi" bildirimi gösterilir (bkz. 5).
 
 Uyarı metinleri samimi ve kısa olsun, her zaman gerçek rakam içersin. Örnek:
-"Bu ay dışarıda yemeğe 1.200 TL gitti, geçen ayın iki katı. Bu hızla ay sonunda menüde makarna var."
+"Bu ay dışarıda yemeğe 1.200 TL gitti, geçen ayın iki katı. Frene basmanın tam zamanı."
+
+Metinler belirli bir kesime (öğrenci, çalışan) değil herkese hitap eder; "burs", "yurt" gibi yalnızca bir kesime özgü örnekler kullanılmaz.
 
 ## 3. Aylık analiz (AnalysisService)
 - Kategori bazında toplam gider (pasta grafik).
@@ -110,7 +114,7 @@ Ana sayfanın en üstündeki kart "bugün ne kadar harcayabilirim" sorusunu ceva
 - Günlük hak = kullanılabilir ÷ kalan gün (kuruşa aşağı yuvarlanır; kullanılabilir ≤ 0 ise 0).
 - Bugün harcanan = bugünkü değişken giderler. Bugün kalan = günlük hak − bugün harcanan.
 - Hak gün başına göre hesaplandığı için gün içinde harcadıkça küçülmez. Az harcanan günün artanı da, aşılan günün fazlası da ertesi günün hakkına kendiliğinden yansır: yarınki hak = (kullanılabilir − bugün harcanan) ÷ (kalan gün − 1). Ayrı bir kayıt tutulmaz; her şey işlemlerden hesaplanır.
-- Örnek: eldeki 800 TL, burs 8 gün sonra → günlük hak 100 TL. Bugün 30 TL harcanırsa "Bugün 100 TL hakkın var, 30 TL harcadın, 70 TL kaldı"; yarınki hak 770 ÷ 7 = 110 TL olur.
+- Örnek: eldeki 800 TL, maaş 8 gün sonra → günlük hak 100 TL. Bugün 30 TL harcanırsa "Bugün 100 TL hakkın var, 30 TL harcadın, 70 TL kaldı"; yarınki hak 770 ÷ 7 = 110 TL olur.
 
 **Kartın durumları.**
 - Normal: bugün kalan ≥ 0.
@@ -199,7 +203,7 @@ Aralıklar formüllerle uyumludur: başa baş bitirilen ay (tasarruf 60) "Orta",
 - Not: Bölgesel ayarı Türkçe olmayan bir Excel `;` ayracını sütunlara bölmeyebilir; bu durumda "Veri → Metinden/CSV'den" ile içe aktarılır.
 
 ## 5. Tekrarlayan işlemler (RecurringTransactionService)
-Kira, burs, aile desteği, abonelik gibi her ay aynı gün tekrarlanan gelir ve giderler bir kez tanımlanır; işlemleri uygulama oluşturur. Yalnızca aylık tekrar vardır.
+Maaş, kira, fatura, abonelik, burs gibi her ay aynı gün tekrarlanan gelir ve giderler bir kez tanımlanır; işlemleri uygulama oluşturur. Yalnızca aylık tekrar vardır.
 
 **Oluşturma zamanı.** Arka plan işi yoktur. Giriş yapmış kullanıcının her sayfa isteğinde, sayfa çalışmadan önce günü gelmiş işlemler oluşturulur (`GenerateDueAsync`). Böylece ana sayfa, işlemler, analiz ve ay sonu devri her zaman güncel veriyi görür.
 

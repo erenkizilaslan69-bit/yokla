@@ -1,5 +1,7 @@
 # Veri modeli
 
+Uygulama öğrenciler ve çalışanlar dahil herkes içindir; varsayılan kategoriler her iki kesimin gelir ve giderlerini kapsar.
+
 Tüm para alanları `decimal(18,2)`. Tüm kullanıcı verisi `UserId` (Identity kullanıcısı) ile ilişkilidir.
 
 ## Category
@@ -34,7 +36,7 @@ Varsayılan kategoriler (seed):
 (RecurringTransactionId, RecurringPeriod) benzersiz olmalı: bir tanım için bir ayda en fazla bir işlem oluşur.
 
 ## RecurringTransaction
-Her ay aynı gün tekrarlanan gelir veya gider tanımı (kira, burs, abonelik). İşlemleri uygulama oluşturur; kurallar için bkz. docs/rules.md bölüm 5.
+Her ay aynı gün tekrarlanan gelir veya gider tanımı (kira, maaş, abonelik). İşlemleri uygulama oluşturur; kurallar için bkz. docs/rules.md bölüm 5.
 
 | Alan | Tip | Not |
 | --- | --- | --- |

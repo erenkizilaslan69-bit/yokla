@@ -1,7 +1,7 @@
 namespace BudgetApp.Models;
 
 /// <summary>
-/// A monthly recurring income or expense (rent, scholarship, subscription). Each month one <see cref="Transaction"/>
+/// A monthly recurring income or expense (rent, salary, subscription). Each month one <see cref="Transaction"/>
 /// is generated from it on its due day.
 /// </summary>
 public class RecurringTransaction

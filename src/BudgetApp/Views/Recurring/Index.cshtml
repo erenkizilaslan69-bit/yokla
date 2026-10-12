@@ -18,7 +18,7 @@
 
 @if (Model.Items.Count == 0)
 {
-    @await Html.PartialAsync("_EmptyState", ("arrow-repeat", "Henüz tekrarlayan işlem yok", "Kira, burs, aile desteği, abonelik gibi her ay tekrarlanan kalemleri bir kez tanımla; her ay elle girmek zorunda kalma.", (string?)"Yeni tekrarlayan", (string?)"Recurring", (string?)"Create"))
+    @await Html.PartialAsync("_EmptyState", ("arrow-repeat", "Henüz tekrarlayan işlem yok", "Maaş, kira, fatura, abonelik gibi her ay tekrarlanan kalemleri bir kez tanımla; her ay elle girmek zorunda kalma.", (string?)"Yeni tekrarlayan", (string?)"Recurring", (string?)"Create"))
 }
 else
 {
