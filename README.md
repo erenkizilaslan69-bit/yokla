@@ -15,6 +15,7 @@ A simple income and expense tracker for students. It records what comes in and w
 - **Instant warnings** — right after an expense is saved, the page shows warnings based on five rules: an unusually large single expense, too much "unnecessary" spending, a category running well ahead of last month, a projected negative month-end balance, and a category budget that is nearly used up or exceeded.
 - **Category budgets** — set a monthly limit on an expense category (e.g. coffee, 500 TL). You are warned once when you pass 80% and once when you pass 100% of it each month, and the analysis page shows a progress bar for every limit. Limits are managed on their own small page.
 - **Monthly analysis** — Chart.js pie chart by category, the 10 most expensive items, change versus the previous month, and 2–3 rule-based tips.
+- **Monthly report card** — every finished month gets a Turkish university letter grade (AA … FF) from four weighted "courses": savings rate, staying within the category limits, share of unnecessary spending, and the share of days the daily allowance was kept. Each limited category is graded on its own, the card is compared with the previous one, and one or two "what if" suggestions say what would have raised the grade. The card can be downloaded as a story-sized image that shows grades and percentages only, never amounts.
 - **Forecast** — projected month-end balance and "at this pace you reach your goal around *month year*". Recurring income and expenses that are still to come this month are included, so a salary due on the 20th no longer makes the first half of the month look like a deficit.
 - **Accounts** — registration and login with ASP.NET Core Identity; every user only ever sees their own data.
 - **Dark theme** — follows the operating system by default; a switch in the navbar chooses light, dark or system and the choice is remembered in the browser.
@@ -48,7 +49,7 @@ Screenshots go in [docs/screenshots/](docs/screenshots/). Placeholders:
 src/BudgetApp
 ├── Models/          Entities (Category, Transaction, Goal, GoalContribution, MonthClose) and view models
 ├── Data/            ApplicationDbContext, EF Core migrations, development demo-data seeder
-├── Services/        All business logic: transactions, CSV export, recurring definitions, budgets, goals, month close, warnings, analysis, forecast, daily allowance
+├── Services/        All business logic: transactions, CSV export, recurring definitions, budgets, goals, month close, warnings, analysis, forecast, daily allowance, report card
 ├── Infrastructure/  The filter that generates due recurring transactions before each request
 ├── Controllers/     Thin MVC controllers: read the request, call a service, return a view
 ├── Views/           Razor views (Turkish UI)

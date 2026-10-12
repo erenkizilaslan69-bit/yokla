@@ -1,0 +1,13 @@
+@* A letter grade as a coloured badge. Model: the letter (null = not graded) and an optional size class.
+   AA–BB are green, CB–DD gold, FD–FF red. *@
+@model (string? Letter, string? Size)
+@{
+    var tone = Model.Letter switch
+    {
+        null => "none",
+        "AA" or "BA" or "BB" => "good",
+        "FD" or "FF" => "low",
+        _ => "mid"
+    };
+}
+<span class="grade @tone @Model.Size">@(Model.Letter ?? "—")</span>

@@ -8,6 +8,9 @@ public class HomeViewModel
     /// <summary>Today's spending allowance; null for a user without any transaction.</summary>
     public DailyAllowance? Allowance { get; init; }
 
+    /// <summary>Last month's report card; null when that month has no data. Only linked when it has a grade.</summary>
+    public ReportCardSummary? LastReport { get; init; }
+
     public GoalProgress? ActiveGoal { get; init; }
 
     public PendingMonthClose? Pending { get; init; }

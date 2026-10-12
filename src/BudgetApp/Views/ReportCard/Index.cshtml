@@ -1,0 +1,127 @@
+@using System.Globalization
+@using BudgetApp.Services
+@model BudgetApp.Models.ReportCardViewModel
+@{
+    ViewData["Title"] = "Karne";
+    var tr = CultureInfo.GetCultureInfo("tr-TR");
+    var card = Model.Card;
+    var monthTitle = Model.Month.ToString("MMMM yyyy", tr);
+}
+
+<div class="page-head">
+    <h1>Ay karnesi</h1>
+    <span class="text-muted fw-semibold text-capitalize">@monthTitle</span>
+</div>
+
+@if (card.IsGraded)
+{
+    <div class="card report-card p-3 p-md-4 mb-4">
+        <div class="report-summary">
+            @await Html.PartialAsync("_GradeBadge", ((string?)card.Letter, (string?)"grade-xl"))
+            <div>
+                <div class="report-label">Genel not</div>
+                <div class="report-points num">@card.Points<span>/100</span></div>
+                @if (card.Comparison is { } comparison)
+                {
+                    <p class="report-compare mb-0">
+                        <i class="bi @(comparison.Steps > 0 ? "bi-arrow-up-right-circle-fill trend up" : comparison.Steps < 0 ? "bi-arrow-down-right-circle-fill trend down" : "bi-dash-circle-fill trend flat")"></i>
+                        @comparison.Text
+                    </p>
+                }
+                else
+                {
+                    <p class="report-compare mb-0 text-muted">Karşılaştıracak daha eski bir karne yok.</p>
+                }
+            </div>
+        </div>
+
+        <div class="table-responsive mt-3">
+            <table class="table report-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">Ders</th>
+                        <th scope="col">Değer</th>
+                        <th scope="col" class="text-end">Puan</th>
+                        <th scope="col" class="text-end">Not</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var course in card.Courses)
+                    {
+                        <tr>
+                            <th scope="row">
+                                @course.Name <span class="report-weight">%@course.Weight.ToString("0")</span>
+                                <div class="report-desc">@(course.NotGradedReason ?? course.Description)</div>
+                            </th>
+                            <td class="num">@course.Value</td>
+                            <td class="num text-end">@(course.Points?.ToString() ?? "—")</td>
+                            <td class="text-end text-nowrap">
+                                @if (course.Trend is { } trend)
+                                {
+                                    <i class="bi @(trend > 0 ? "bi-arrow-up trend up" : trend < 0 ? "bi-arrow-down trend down" : "bi-dash trend flat")"
+                                       title="@(trend > 0 ? "Önceki karneye göre yükseldi" : trend < 0 ? "Önceki karneye göre düştü" : "Önceki karneyle aynı")"></i>
+                                }
+                                @await Html.PartialAsync("_GradeBadge", (course.Letter, (string?)null))
+                            </td>
+                        </tr>
+                        @if (course.Kind == CourseKind.Budgets)
+                        {
+                            @* every limited category is a course of its own *@
+                            @foreach (var category in card.Categories)
+                            {
+                                <tr class="report-sub">
+                                    <th scope="row">@category.Category</th>
+                                    <td class="num">%@category.UsagePercent.ToString("0", tr)</td>
+                                    <td class="num text-end">@category.Points</td>
+                                    <td class="text-end">@await Html.PartialAsync("_GradeBadge", ((string?)category.Letter, (string?)null))</td>
+                                </tr>
+                            }
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+        <p class="report-desc mt-2 mb-0">
+            Genel not, derslerin yanındaki ağırlıklarla ortalamasıdır; notlanmayan dersin ağırlığı diğerlerine dağıtılır.
+            Kategorilerdeki değer, limitin yüzde kaçının kullanıldığıdır.
+        </p>
+    </div>
+
+    <div class="card p-3 p-md-4 mb-4">
+        <h2 class="section-title">Notu yükseltmek için</h2>
+        @if (card.Suggestions.Count == 0)
+        {
+            <p class="mb-0"><i class="bi bi-stars text-success me-1"></i>Bu ay yapılacak bir şey kalmamış; aynen devam.</p>
+        }
+        else
+        {
+            <ul class="report-tips mb-0">
+                @foreach (var suggestion in card.Suggestions)
+                {
+                    <li><i class="bi bi-lightbulb-fill"></i><span>@suggestion.Text</span></li>
+                }
+            </ul>
+        }
+    </div>
+}
+else
+{
+    @await Html.PartialAsync("_EmptyState", ("mortarboard", "Bu ay not verilmedi", card.Reason ?? "", (string?)null, (string?)null, (string?)null))
+}
+
+@if (Model.History.Count > 0)
+{
+    <h2 class="section-title mt-4">Karnelerim</h2>
+    <div class="report-months">
+        @foreach (var item in Model.History)
+        {
+            var active = item.Year == card.Year && item.Month == card.Month;
+            <a asp-action="Index" asp-route-year="@item.Year" asp-route-month="@item.Month"
+               class="report-month @(active ? "active" : "")" aria-current="@(active ? "page" : null)"
+               title="@(item.Reason ?? $"{item.Points}/100")">
+                <span class="text-capitalize">@(new DateTime(item.Year, item.Month, 1).ToString("MMMM yyyy", tr))</span>
+                @await Html.PartialAsync("_GradeBadge", (item.Letter, (string?)null))
+            </a>
+        }
+    </div>
+}
