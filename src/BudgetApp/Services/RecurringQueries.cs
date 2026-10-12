@@ -56,6 +56,39 @@ internal static class RecurringQueries
     }
 
     /// <summary>
+    /// The due dates of a definition's occurrences that have not been generated yet and fall before
+    /// <paramref name="untilExclusive"/>, starting with the current month (older unhandled months are left to the
+    /// catch-up of <see cref="RecurringTransactionService.GenerateDueAsync"/>). Start and end date are respected.
+    /// The current month's occurrence is included even when its day has already passed but it is not generated yet.
+    /// </summary>
+    public static IEnumerable<DateTime> UpcomingDueDates(RecurringTransaction definition, DateTime today, DateTime untilExclusive)
+    {
+        var period = Period(definition.StartDate);
+        if (definition.LastGeneratedPeriod is { } last && last.AddMonths(1) > period)
+            period = last.AddMonths(1);
+        if (period < Period(today))
+            period = Period(today);
+
+        for (var due = DueDate(definition.DayOfMonth, period);
+             due < untilExclusive;
+             period = period.AddMonths(1), due = DueDate(definition.DayOfMonth, period))
+        {
+            if (definition.EndDate is { } end && due > end.Date)
+                yield break;
+            if (due >= definition.StartDate.Date)
+                yield return due;
+        }
+    }
+
+    /// <summary>The user's active definitions (with category); paused ones produce nothing and are left out.</summary>
+    public static Task<List<RecurringTransaction>> GetActiveAsync(ApplicationDbContext db, string userId) =>
+        db.RecurringTransactions
+            .AsNoTracking()
+            .Include(r => r.Category)
+            .Where(r => r.UserId == userId && r.IsActive)
+            .ToListAsync();
+
+    /// <summary>
     /// This month's occurrences of the user's active definitions that have not been generated yet.
     /// They are certain to come, so the month-end forecast counts them as they are.
     /// </summary>
