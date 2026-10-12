@@ -10,7 +10,7 @@ public enum AllowanceStatus
     Ok,
     /// <summary>There is money left for the period, but today's spending is above today's share.</summary>
     OverToday,
-    /// <summary>Nothing is left until the next income (available money is zero or negative).</summary>
+    /// <summary>Nothing is left until the next income: nothing was available, or today's spending used it all up.</summary>
     Deficit
 }
 
@@ -43,8 +43,18 @@ public record DailyAllowance(
     /// <summary>What is left of today's share; negative when today's spending went over it.</summary>
     public decimal RemainingToday => DailyAmount - SpentToday;
 
+    /// <summary>What is left until the next income right now, today's spending included; negative when overspent.</summary>
+    public decimal LeftForPeriod => Available - SpentToday;
+
+    /// <summary>How far the user is below zero until the next income; zero when there is no shortfall.</summary>
+    public decimal Shortfall => Math.Max(0m, -LeftForPeriod);
+
+    /// <summary>
+    /// A deficit does not wait for tomorrow: once today's spending has used up everything that was available, the
+    /// status turns at once. Spending exactly the last share on the last day is the plan working, not a deficit.
+    /// </summary>
     public AllowanceStatus Status =>
-        Available <= 0 ? AllowanceStatus.Deficit
+        Available <= 0 || LeftForPeriod < 0 || (LeftForPeriod == 0 && DaysLeft > 1) ? AllowanceStatus.Deficit
         : RemainingToday < 0 ? AllowanceStatus.OverToday
         : AllowanceStatus.Ok;
 }

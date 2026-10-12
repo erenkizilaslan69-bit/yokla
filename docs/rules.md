@@ -114,8 +114,10 @@ Ana sayfanın en üstündeki kart "bugün ne kadar harcayabilirim" sorusunu ceva
 
 **Kartın durumları.**
 - Normal: bugün kalan ≥ 0.
-- Bugünü aştı (altın): kullanılabilir > 0 ama bugün harcanan günlük hakkı geçti; yarınki hak gösterilir.
-- Açık (kırmızı): kullanılabilir ≤ 0; "Sonraki gelire kadar {tutar} açığın var" uyarısı çıkar.
+- Bugünü aştı (altın): bugün harcanan günlük hakkı geçti ama sonraki gelire kadar hâlâ para var; yarınki hak gösterilir.
+- Açık (kırmızı): sonraki gelire kadar para kalmadı. Ya gün başında kullanılabilir ≤ 0'dı ya da bugünkü harcama kullanılabilir paranın tamamını bitirdi; ikinci durumda kart ertesi günü beklemeden hemen kırmızıya döner.
+  - Şu an kalan = kullanılabilir − bugün harcanan. Açık = bu değer negatifse mutlak değeri; "Sonraki gelire kadar {açık} açığın var" uyarısı çıkar.
+  - Şu an kalan tam 0 ise ve önde başka gün varsa yine açık sayılır ("harcayacak paran kalmadı"). Gelir yarınsa (kalan gün 1) son hakkı tam harcamak açık değildir, normaldir.
 - Kullanıcının hiç işlemi yoksa kart gösterilmez.
 
 **Bilinen sınırlar.**

@@ -468,6 +468,109 @@ public class DailyAllowanceServiceTests
         Assert.Equal(0m, allowance!.Available);
         Assert.Equal(AllowanceStatus.Deficit, allowance.Status);
         Assert.Equal(0m, allowance.DailyAmount);
+        Assert.Equal(0m, allowance.Shortfall);
+    }
+
+    [Fact]
+    public async Task GetAsync_ADeficitCountsTodaysSpendingInTheShortfall()
+    {
+        using var t = new TestDb();
+        AddIncome(t.Context, Alice, 100m, Oct(1));
+        IncomeOn(t, day: 20);
+        ExpenseOn(t, day: 15, amount: 300m);
+        AddExpense(t.Context, Alice, 20m, Today, Coffee);
+
+        var allowance = await Get(t);
+
+        Assert.Equal(-220m, allowance!.LeftForPeriod);
+        Assert.Equal(220m, allowance.Shortfall);
+    }
+
+    [Fact]
+    public async Task GetAsync_TurnsIntoADeficitAtOnceWhenTodaysSpendingExceedsEverythingAvailable()
+    {
+        using var t = new TestDb();
+        SeedBase(t);
+        AddExpense(t.Context, Alice, 900m, Today, Entertainment);
+
+        var allowance = await Get(t);
+
+        Assert.Equal(800m, allowance!.Available);      // still measured at the start of the day
+        Assert.Equal(100m, allowance.DailyAmount);
+        Assert.Equal(-100m, allowance.LeftForPeriod);
+        Assert.Equal(100m, allowance.Shortfall);
+        Assert.Equal(AllowanceStatus.Deficit, allowance.Status);
+        Assert.Equal(0m, allowance.TomorrowAmount);
+    }
+
+    [Fact]
+    public async Task GetAsync_SpendingExactlyEverythingWithDaysStillToGoIsADeficit()
+    {
+        using var t = new TestDb();
+        SeedBase(t);
+        AddExpense(t.Context, Alice, 800m, Today, Entertainment);
+
+        var allowance = await Get(t);
+
+        Assert.Equal(0m, allowance!.LeftForPeriod);
+        Assert.Equal(0m, allowance.Shortfall);
+        Assert.Equal(AllowanceStatus.Deficit, allowance.Status);
+    }
+
+    [Fact]
+    public async Task GetAsync_SpendingAlmostEverythingIsStillOnlyOverToday()
+    {
+        using var t = new TestDb();
+        SeedBase(t);
+        AddExpense(t.Context, Alice, 799.99m, Today, Entertainment);
+
+        var allowance = await Get(t);
+
+        Assert.Equal(0.01m, allowance!.LeftForPeriod);
+        Assert.Equal(AllowanceStatus.OverToday, allowance.Status);
+    }
+
+    [Fact]
+    public async Task GetAsync_SpendingTheLastShareOnTheLastDayIsNotADeficit()
+    {
+        using var t = new TestDb();
+        AddIncome(t.Context, Alice, 100m, Oct(1));
+        IncomeOn(t, day: 13); // tomorrow: one day left, the whole 100 is today's
+        AddExpense(t.Context, Alice, 100m, Today, Market);
+
+        var allowance = await Get(t);
+
+        Assert.Equal(1, allowance!.DaysLeft);
+        Assert.Equal(0m, allowance.RemainingToday);
+        Assert.Equal(AllowanceStatus.Ok, allowance.Status);
+    }
+
+    [Fact]
+    public async Task GetAsync_SpendingMoreThanTheLastShareOnTheLastDayIsADeficit()
+    {
+        using var t = new TestDb();
+        AddIncome(t.Context, Alice, 100m, Oct(1));
+        IncomeOn(t, day: 13);
+        AddExpense(t.Context, Alice, 130m, Today, Market);
+
+        var allowance = await Get(t);
+
+        Assert.Equal(30m, allowance!.Shortfall);
+        Assert.Equal(AllowanceStatus.Deficit, allowance.Status);
+    }
+
+    [Fact]
+    public async Task GetAsync_AFixedExpenseTodayDoesNotCountAsSpendingEverything()
+    {
+        using var t = new TestDb();
+        SeedBase(t);
+        AddExpense(t.Context, Alice, 700m, Today, Rent); // comes off the pool, not off today's share
+
+        var allowance = await Get(t);
+
+        Assert.Equal(100m, allowance!.Available);
+        Assert.Equal(100m, allowance.LeftForPeriod);
+        Assert.Equal(AllowanceStatus.Ok, allowance.Status);
     }
 
     // ---------- whose data ----------

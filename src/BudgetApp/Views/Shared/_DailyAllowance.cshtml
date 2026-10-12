@@ -22,7 +22,7 @@
             @switch (Model.Status)
             {
                 case AllowanceStatus.Deficit:
-                    <div class="allowance-amount num">@((-Model.Available).ToString("C2")) <span class="allowance-unit">açık</span></div>
+                    <div class="allowance-amount num">@Model.Shortfall.ToString("C2") <span class="allowance-unit">açık</span></div>
                     break;
                 case AllowanceStatus.OverToday:
                     <div class="allowance-amount num">@((-Model.RemainingToday).ToString("C2")) <span class="allowance-unit">aştın</span></div>
@@ -52,9 +52,24 @@
         {
             case AllowanceStatus.Deficit:
                 <span>
-                    Sonraki gelire kadar <strong>@((-Model.Available).ToString("C2"))</strong> açığın var.
+                    @if (Model.Available > 0)
+                    {
+                        @* there was money this morning; today's spending used all of it up *@
+                        <span>
+                            Bugün <strong>@Model.SpentToday.ToString("C2")</strong> harcadın; sonraki gelire kadar
+                            kullanabileceğin <strong>@Model.Available.ToString("C2")</strong> bitti.
+                        </span>
+                    }
+                    @if (Model.Shortfall > 0)
+                    {
+                        <span>Sonraki gelire kadar <strong>@Model.Shortfall.ToString("C2")</strong> açığın var.</span>
+                    }
+                    else
+                    {
+                        <span>Sonraki gelire kadar harcayacak paran kalmadı.</span>
+                    }
                     Bugün cüzdanı mümkünse hiç açma; makarna günleri.
-                    @if (Model.SpentToday > 0)
+                    @if (Model.Available <= 0 && Model.SpentToday > 0)
                     {
                         <span>Bugün şimdiden <strong>@Model.SpentToday.ToString("C2")</strong> harcadın.</span>
                     }
@@ -101,7 +116,7 @@
         }
         @if (Model.UpcomingExpenses > 0)
         {
-            <span>&middot; bu tarihe kadar gelecek @Model.UpcomingExpenses.ToString("C2") tekrarlayan gider ayrıldı</span>
+            <span>@if (Model.Status != AllowanceStatus.Deficit) {<text>&middot; bu</text>} else {<text>Bu</text>} tarihe kadar gelecek @Model.UpcomingExpenses.ToString("C2") tekrarlayan gider ayrıldı</span>
         }
         @if (Model.Status == AllowanceStatus.Ok && Model.SpentToday > 0 && Model.TomorrowAmount is { } next)
         {
