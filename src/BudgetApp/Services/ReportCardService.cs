@@ -3,40 +3,37 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BudgetApp.Services;
 
-/// <summary>The university letter scale (AA … FF) for a 0–100 score.</summary>
+/// <summary>
+/// The five levels of a 0–100 score: Pekiyi (85–100), İyi (70–84), Orta (55–69), Geçer (45–54), Zayıf (0–44).
+/// The familiar school-report words, so the card reads the same for a student and for someone with a salary.
+/// </summary>
 public static class GradeScale
 {
-    private static readonly (int Min, string Letter)[] Steps =
+    public const string Top = "Pekiyi";
+
+    private static readonly (int Min, string Level)[] Steps =
     [
-        (90, "AA"), (85, "BA"), (80, "BB"), (75, "CB"), (70, "CC"), (65, "DC"), (60, "DD"), (50, "FD"), (0, "FF")
+        (85, Top), (70, "İyi"), (55, "Orta"), (45, "Geçer"), (0, "Zayıf")
     ];
 
     /// <summary>The score as shown: clamped to 0–100 and rounded to a whole number (halves go up).</summary>
     public static int Points(decimal score) =>
         (int)Math.Round(Math.Clamp(score, 0m, 100m), MidpointRounding.AwayFromZero);
 
-    /// <summary>The letter of the rounded score, so the number and the letter on screen always agree.</summary>
-    public static string LetterFor(decimal score)
+    /// <summary>The level of the rounded score, so the number and the level on screen always agree.</summary>
+    public static string LevelFor(decimal score)
     {
         var points = Points(score);
-        return Steps.First(s => points >= s.Min).Letter;
+        return Steps.First(s => points >= s.Min).Level;
     }
 
-    /// <summary>0 for FF up to 8 for AA; the difference of two ranks is the number of steps between two letters.</summary>
-    public static int Rank(string letter)
+    /// <summary>0 for Zayıf up to 4 for Pekiyi.</summary>
+    public static int Rank(string level)
     {
-        var index = Array.FindIndex(Steps, s => s.Letter == letter);
+        var index = Array.FindIndex(Steps, s => s.Level == level);
         if (index < 0)
-            throw new ArgumentException($"'{letter}' is not a letter grade.", nameof(letter));
+            throw new ArgumentException($"'{level}' is not a level.", nameof(level));
         return Steps.Length - 1 - index;
-    }
-
-    /// <summary>The lowest score of the next better letter; null when the score is already an AA.</summary>
-    public static int? NextStepPoints(decimal score)
-    {
-        var points = Points(score);
-        var better = Steps.Where(s => s.Min > points).ToList();
-        return better.Count == 0 ? null : better[^1].Min;
     }
 }
 
@@ -44,25 +41,33 @@ public static class GradeScale
 public record BudgetFact(string Category, decimal Limit, decimal Spent, bool IsUnnecessary);
 
 /// <summary>Everything the grade of a month is computed from.</summary>
-/// <param name="AllowanceDays">Days of the month the daily allowance could be worked out for.</param>
-/// <param name="AllowanceDaysKept">How many of those days the variable spending stayed within the allowance.</param>
+/// <param name="Weeks">The weeks of the month, for the allowance course.</param>
 public record MonthFacts(
     decimal Income, decimal Expense, decimal Unnecessary,
-    IReadOnlyList<BudgetFact> Budgets, int AllowanceDays, int AllowanceDaysKept);
+    IReadOnlyList<BudgetFact> Budgets, IReadOnlyList<WeekFact> Weeks);
+
+/// <summary>One week of the graded month.</summary>
+/// <param name="Budget">The daily allowances of the week's days added up.</param>
+/// <param name="Spent">The week's variable spending.</param>
+public record WeekFact(decimal Budget, decimal Spent)
+{
+    /// <summary>The week stayed within its daily allowances.</summary>
+    public bool IsKept => Spent <= Budget;
+}
 
 public enum CourseKind { Savings, Budgets, Unnecessary, Allowance }
 
 /// <summary>One "course" of the report card.</summary>
 /// <param name="Score">0–100; null when the course could not be graded (see <paramref name="NotGradedReason"/>).</param>
 /// <param name="Value">What was measured, without any amount of money (e.g. "%12", "3/4 limit içinde").</param>
-/// <param name="Trend">Against the compared month: 1 better letter, -1 worse, 0 same; null when there is nothing to compare.</param>
+/// <param name="Trend">Against the compared month: 1 better level, -1 worse, 0 same; null when there is nothing to compare.</param>
 public record ReportCourse(
     CourseKind Kind, string Name, string Description, decimal Weight,
     decimal? Score, string Value, string? NotGradedReason = null, int? Trend = null)
 {
     public bool IsGraded => Score is not null;
     public int? Points => Score is { } s ? GradeScale.Points(s) : null;
-    public string? Letter => Score is { } s ? GradeScale.LetterFor(s) : null;
+    public string? Level => Score is { } s ? GradeScale.LevelFor(s) : null;
 }
 
 /// <summary>A category with a limit, graded on its own.</summary>
@@ -70,13 +75,13 @@ public record ReportCourse(
 public record CategoryCourse(string Category, decimal UsagePercent, decimal Score)
 {
     public int Points => GradeScale.Points(Score);
-    public string Letter => GradeScale.LetterFor(Score);
+    public string Level => GradeScale.LevelFor(Score);
 }
 
 public record Grading(decimal Score, IReadOnlyList<ReportCourse> Courses, IReadOnlyList<CategoryCourse> Categories)
 {
     public int Points => GradeScale.Points(Score);
-    public string Letter => GradeScale.LetterFor(Score);
+    public string Level => GradeScale.LevelFor(Score);
 }
 
 /// <summary>The pure scoring rules of the report card (see docs/rules.md, section 9).</summary>
@@ -87,10 +92,10 @@ public static class ReportCardMath
     public const decimal UnnecessaryWeight = 20m;
     public const decimal AllowanceWeight = 20m;
 
-    /// <summary>The allowance course needs at least this many days to say anything.</summary>
-    public const int MinAllowanceDays = 10;
+    /// <summary>The allowance course needs at least this many weeks to say anything.</summary>
+    public const int MinAllowanceWeeks = 2;
 
-    /// <summary>Unnecessary spending at this share of the income scores exactly a CC (the threshold of warning rule 2).</summary>
+    /// <summary>Unnecessary spending at this share of the income scores exactly 70 (the threshold of warning rule 2).</summary>
     public const decimal UnnecessaryTargetShare = 0.20m;
 
     /// <summary>Breaking even is 60; saving 20% of the income is 100; a deficit loses 3 points per percent.</summary>
@@ -108,12 +113,23 @@ public static class ReportCardMath
     public static decimal UnnecessaryScore(decimal unnecessary, decimal income) =>
         Clamp(100m - 3m * (unnecessary / income * 100m - 10m));
 
-    /// <summary>The share of days the allowance was kept, as a score; null with fewer than <see cref="MinAllowanceDays"/> days.</summary>
-    public static decimal? AllowanceScore(int daysKept, int days) =>
-        days < MinAllowanceDays ? null : Clamp(daysKept * 100m / days);
+    /// <summary>
+    /// A week within its daily allowances is 100. A week above them loses 2 points for every percent it is over
+    /// (10% over is 80, 50% over is 0), so a near miss is not counted like a week that got out of hand.
+    /// </summary>
+    public static decimal WeekScore(decimal spent, decimal budget)
+    {
+        if (spent <= budget)
+            return 100m;
+        return budget <= 0 ? 0m : Clamp(100m - 2m * (spent / budget * 100m - 100m));
+    }
+
+    /// <summary>The average of the weeks' scores; null with fewer than <see cref="MinAllowanceWeeks"/> weeks.</summary>
+    public static decimal? AllowanceScore(IReadOnlyList<WeekFact> weeks) =>
+        weeks.Count < MinAllowanceWeeks ? null : weeks.Average(w => WeekScore(w.Spent, w.Budget));
 
     /// <summary>
-    /// Grades a month with income. Courses that cannot be graded (no limits, too few allowance days) are left out of
+    /// Grades a month with income. Courses that cannot be graded (no limits, too few allowance weeks) are left out of
     /// the overall score and their weight is shared among the others in proportion.
     /// </summary>
     public static Grading Grade(MonthFacts facts)
@@ -129,7 +145,7 @@ public static class ReportCardMath
 
         var rate = (facts.Income - facts.Expense) / facts.Income;
         var share = facts.Unnecessary / facts.Income;
-        var allowance = AllowanceScore(facts.AllowanceDaysKept, facts.AllowanceDays);
+        var allowance = AllowanceScore(facts.Weeks);
 
         var courses = new List<ReportCourse>
         {
@@ -144,10 +160,10 @@ public static class ReportCardMath
             new(CourseKind.Unnecessary, "Gereksiz harcama", "Gereksiz kategorilerin gelire oranı", UnnecessaryWeight,
                 UnnecessaryScore(facts.Unnecessary, facts.Income), PercentText(share)),
             allowance is null
-                ? new(CourseKind.Allowance, "Günlük hak", "Günlük harcama hakkına uyulan günler", AllowanceWeight, null, "—",
-                    $"Yalnızca {facts.AllowanceDays} gün hesaplanabildi; en az {MinAllowanceDays} gün gerekir.")
-                : new(CourseKind.Allowance, "Günlük hak", "Günlük harcama hakkına uyulan günler", AllowanceWeight,
-                    allowance, $"{facts.AllowanceDaysKept}/{facts.AllowanceDays} gün")
+                ? new(CourseKind.Allowance, "Günlük hak", "Harcaması günlük hakların toplamını aşmayan haftalar", AllowanceWeight, null, "—",
+                    $"Yalnızca {facts.Weeks.Count} hafta hesaplanabildi; en az {MinAllowanceWeeks} hafta gerekir.")
+                : new(CourseKind.Allowance, "Günlük hak", "Harcaması günlük hakların toplamını aşmayan haftalar", AllowanceWeight,
+                    allowance, $"{facts.Weeks.Count(w => w.IsKept)}/{facts.Weeks.Count} hafta")
         };
 
         var graded = courses.Where(c => c.IsGraded).ToList();
@@ -177,11 +193,11 @@ public enum ReportCardStatus
 }
 
 /// <summary>The month the card is compared with: the nearest earlier month that got a grade.</summary>
-/// <param name="Steps">Letter steps between the two; positive when the grade went up.</param>
-public record ReportComparison(int Year, int Month, string Letter, int Points, int Steps, string Text);
+/// <param name="Change">Points between the two; positive when the score went up.</param>
+public record ReportComparison(int Year, int Month, string Level, int Points, int Change, string Text);
 
 /// <summary>A concrete "what if" with the overall grade it would have given.</summary>
-public record ReportSuggestion(string Text, string Letter, int Points);
+public record ReportSuggestion(string Text, string Level, int Points);
 
 /// <summary>The report card of one month. Without a grade, <see cref="Reason"/> says why.</summary>
 public record ReportCard(
@@ -191,11 +207,11 @@ public record ReportCard(
 {
     public bool IsGraded => Status == ReportCardStatus.Graded;
     public int? Points => Score is { } s ? GradeScale.Points(s) : null;
-    public string? Letter => Score is { } s ? GradeScale.LetterFor(s) : null;
+    public string? Level => Score is { } s ? GradeScale.LevelFor(s) : null;
 }
 
 /// <summary>One line of the month list.</summary>
-public record ReportCardSummary(int Year, int Month, ReportCardStatus Status, string? Letter, int? Points, string? Reason);
+public record ReportCardSummary(int Year, int Month, ReportCardStatus Status, string? Level, int? Points, string? Reason);
 
 public interface IReportCardService
 {
@@ -210,6 +226,12 @@ public class ReportCardService(ApplicationDbContext db) : IReportCardService
 {
     /// <summary>A month needs expenses on at least this many different days.</summary>
     public const int MinExpenseDays = 5;
+
+    /// <summary>A piece of a week at the start or the end of the month counts as a week of its own from this many days.</summary>
+    public const int MinWeekDays = 4;
+
+    /// <summary>The savings suggestion aims at the next multiple of this many points.</summary>
+    private const int SavingsStep = 5;
 
     /// <summary>How far back the month to compare with is looked for.</summary>
     private const int ComparisonMonths = 12;
@@ -263,7 +285,7 @@ public class ReportCardService(ApplicationDbContext db) : IReportCardService
         {
             var result = Evaluate(data, period);
             summaries.Add(new ReportCardSummary(period.Year, period.Month, result.Status,
-                result.Grading?.Letter, result.Grading?.Points, result.Reason));
+                result.Grading?.Level, result.Grading?.Points, result.Reason));
         }
         return summaries;
     }
@@ -323,71 +345,106 @@ public class ReportCardService(ApplicationDbContext db) : IReportCardService
         var budgets = data.Budgets
             .Select(b => new BudgetFact(b.Category, b.Limit, spentByCategory.GetValueOrDefault(b.CategoryId), b.IsUnnecessary))
             .ToList();
-        var (days, kept) = AllowanceDays(data, period);
-
         var facts = new MonthFacts(income, expenses.Sum(r => r.Amount),
-            expenses.Where(r => r.IsUnnecessary).Sum(r => r.Amount), budgets, days, kept);
+            expenses.Where(r => r.IsUnnecessary).Sum(r => r.Amount), budgets, AllowanceWeeks(data, period));
         return new(ReportCardStatus.Graded, null, facts, ReportCardMath.Grade(facts));
     }
 
     /// <summary>
-    /// The daily allowance of every day of a past month, rebuilt from the transactions that exist now (the live card
-    /// looks at the recurring definitions, which only know the present). A day is "kept" when its variable spending
-    /// stayed within that day's allowance. The next income is the next recurring income of the same month, otherwise
-    /// the month end, so the result of a finished month does not depend on what happens later.
+    /// The allowance course, week by week: each week's variable spending next to the week's budget, which is the
+    /// daily allowances of its days added up. A single expensive day is fine as long as the week evens it out.
+    ///
+    /// The allowances are rebuilt from the transactions that exist now (the live card looks at the recurring
+    /// definitions, which only know the present). Each week starts from the money that was really there that
+    /// morning; inside the week every day is assumed to spend exactly its allowance, so the budget is the plan of
+    /// the week and does not grow or shrink with how the week was actually spent. The next income is the next
+    /// recurring income of the same month, otherwise the month end, so a finished month does not depend on later ones.
     /// </summary>
-    private static (int Days, int Kept) AllowanceDays(UserData data, DateTime period)
+    private static List<WeekFact> AllowanceWeeks(UserData data, DateTime period)
     {
         var end = period.AddMonths(1);
         var from = data.FirstDay is { } first && first > period ? first : period;
-
-        var income = data.Rows.Where(r => !r.IsExpense && r.Date < from).Sum(r => r.Amount);
-        var spent = data.Rows.Where(r => r.IsExpense && r.Date < from).Sum(r => r.Amount);
-        var setAside = data.Contributions.Where(c => c.Date < from).Sum(c => c.Amount);
         var monthRows = data.Rows.Where(r => r.Date >= from && r.Date < end).ToList();
         var monthContributions = data.Contributions.Where(c => c.Date >= from && c.Date < end).ToList();
 
-        var days = 0;
-        var kept = 0;
-        for (var day = from; day < end; day = day.AddDays(1))
+        var weeks = new List<WeekFact>();
+        foreach (var (start, stop) in Weeks(from, end))
         {
-            var todays = monthRows.Where(r => r.Date.Date == day).ToList();
-            income += todays.Where(r => !r.IsExpense).Sum(r => r.Amount);
-            setAside += monthContributions.Where(c => c.Date.Date == day).Sum(c => c.Amount);
-            var fixedToday = todays.Where(r => r.IsExpense && r.IsFixedLike).Sum(r => r.Amount);
-            var variableToday = todays.Where(r => r.IsExpense && !r.IsFixedLike).Sum(r => r.Amount);
+            var income = data.Rows.Where(r => !r.IsExpense && r.Date < start).Sum(r => r.Amount);
+            var spent = data.Rows.Where(r => r.IsExpense && r.Date < start).Sum(r => r.Amount);
+            var setAside = data.Contributions.Where(c => c.Date < start).Sum(c => c.Amount);
 
-            var later = monthRows.Where(r => r.IsRecurring && r.Date.Date > day).ToList();
-            var periodEnd = later.Where(r => !r.IsExpense).Select(r => (DateTime?)r.Date.Date).Min() ?? end;
-            var upcoming = later.Where(r => r.IsExpense && r.Date.Date < periodEnd).Sum(r => r.Amount);
+            var budget = 0m;
+            var actual = 0m;
+            for (var day = start; day < stop; day = day.AddDays(1))
+            {
+                var todays = monthRows.Where(r => r.Date.Date == day).ToList();
+                income += todays.Where(r => !r.IsExpense).Sum(r => r.Amount);
+                setAside += monthContributions.Where(c => c.Date.Date == day).Sum(c => c.Amount);
+                var fixedToday = todays.Where(r => r.IsExpense && r.IsFixedLike).Sum(r => r.Amount);
+                actual += todays.Where(r => r.IsExpense && !r.IsFixedLike).Sum(r => r.Amount);
 
-            var available = income - spent - fixedToday - setAside - upcoming;
-            var allowance = available > 0 ? Math.Floor(available / (periodEnd - day).Days * 100m) / 100m : 0m;
+                var later = monthRows.Where(r => r.IsRecurring && r.Date.Date > day).ToList();
+                var periodEnd = later.Where(r => !r.IsExpense).Select(r => (DateTime?)r.Date.Date).Min() ?? end;
+                var upcoming = later.Where(r => r.IsExpense && r.Date.Date < periodEnd).Sum(r => r.Amount);
 
-            days++;
-            if (variableToday <= allowance)
-                kept++;
-            spent += fixedToday + variableToday;
+                var available = income - spent - fixedToday - setAside - upcoming;
+                var allowance = available > 0 ? Math.Floor(available / (periodEnd - day).Days * 100m) / 100m : 0m;
+
+                budget += allowance;
+                spent += fixedToday + allowance;
+            }
+
+            weeks.Add(new WeekFact(budget, actual));
         }
-        return (days, kept);
+        return weeks;
+    }
+
+    /// <summary>
+    /// The calendar weeks (Monday to Sunday) of a range. The pieces at the two ends are rarely whole weeks: one of
+    /// at least <see cref="MinWeekDays"/> days is judged on its own, a shorter one is joined to the week next to it.
+    /// </summary>
+    private static List<(DateTime Start, DateTime End)> Weeks(DateTime from, DateTime end)
+    {
+        var weeks = new List<(DateTime Start, DateTime End)>();
+        for (var start = from; start < end;)
+        {
+            var toMonday = ((int)DayOfWeek.Monday - (int)start.DayOfWeek + 7) % 7;
+            var stop = start.AddDays(toMonday == 0 ? 7 : toMonday);
+            if (stop > end)
+                stop = end;
+            weeks.Add((start, stop));
+            start = stop;
+        }
+
+        if (weeks.Count > 1 && (weeks[0].End - weeks[0].Start).Days < MinWeekDays)
+        {
+            weeks[1] = (weeks[0].Start, weeks[1].End);
+            weeks.RemoveAt(0);
+        }
+        if (weeks.Count > 1 && (weeks[^1].End - weeks[^1].Start).Days < MinWeekDays)
+        {
+            weeks[^2] = (weeks[^2].Start, weeks[^1].End);
+            weeks.RemoveAt(weeks.Count - 1);
+        }
+        return weeks;
     }
 
     // ---------- comparison ----------
 
     private static int? Trend(ReportCourse current, ReportCourse previous) =>
-        current.Letter is null || previous.Letter is null
-            ? null
-            : Math.Sign(GradeScale.Rank(current.Letter) - GradeScale.Rank(previous.Letter));
+        current.Points is { } now && previous.Points is { } then ? Math.Sign(now - then) : null;
 
     private static ReportComparison Compare(DateTime period, Grading grading, DateTime earlier, Grading previous)
     {
-        var steps = GradeScale.Rank(grading.Letter) - GradeScale.Rank(previous.Letter);
+        var change = grading.Points - previous.Points;
         var then = MonthLocatives[earlier.Month - 1] + (earlier.Year == period.Year ? "" : $" ({earlier.Year})");
         var now = MonthLocatives[period.Month - 1];
-        var text = steps == 0
-            ? $"{then} da {previous.Letter} almıştın; {now} notun aynı kaldı."
-            : $"{then} {previous.Letter} almıştın, {now} {grading.Letter} aldın: {Math.Abs(steps)} basamak {(steps > 0 ? "yükseldin" : "düştün")}.";
-        return new ReportComparison(earlier.Year, earlier.Month, previous.Letter, previous.Points, steps, text);
+        var text = change == 0
+            ? $"{then} da {previous.Points} puan almıştın ({previous.Level}); {now} puanın aynı kaldı."
+            : $"{then} {previous.Points} puan almıştın ({previous.Level}), {now} {grading.Points} puan aldın ({grading.Level}): " +
+              $"{Math.Abs(change)} puan {(change > 0 ? "yükseldin" : "düştün")}.";
+        return new ReportComparison(earlier.Year, earlier.Month, previous.Level, previous.Points, change, text);
     }
 
     // ---------- suggestions ----------
@@ -398,7 +455,7 @@ public class ReportCardService(ApplicationDbContext db) : IReportCardService
     /// </summary>
     private static List<ReportSuggestion> Suggest(MonthFacts facts, Grading grading)
     {
-        if (grading.Letter == "AA")
+        if (grading.Level == GradeScale.Top)
             return [];
 
         var candidates = new List<(string Text, Grading Result)>();
@@ -422,7 +479,7 @@ public class ReportCardService(ApplicationDbContext db) : IReportCardService
         if (budget.Budget is not null)
             candidates.Add(($"{budget.Budget.Category} limitini {Tr.Money(budget.Excess)} aştın. Limitte kalsaydın", budget.Result));
 
-        // Unnecessary spending cut down to the share that scores a CC.
+        // Unnecessary spending cut down to the threshold of warning rule 2.
         var targetUnnecessary = ReportCardMath.UnnecessaryTargetShare * facts.Income;
         if (facts.Unnecessary > targetUnnecessary)
         {
@@ -434,9 +491,9 @@ public class ReportCardService(ApplicationDbContext db) : IReportCardService
                 ReportCardMath.Grade(changed)));
         }
 
-        // Enough saved for a better letter of the savings course: the nearest one that also moves the overall score.
-        var savings = ReportCardMath.SavingsScore(facts.Income, facts.Expense);
-        for (var next = GradeScale.NextStepPoints(savings); next is { } target; next = GradeScale.NextStepPoints(target))
+        // Enough saved for a rounder savings score: the nearest multiple of five that also moves the overall points.
+        var savings = GradeScale.Points(ReportCardMath.SavingsScore(facts.Income, facts.Expense));
+        for (var target = savings / SavingsStep * SavingsStep + SavingsStep; target <= 100; target += SavingsStep)
         {
             var rate = target >= 60 ? (target - 60m) / 2m : (target - 60m) / 3m;
             var cut = RoundUp(rate / 100m * facts.Income - (facts.Income - facts.Expense));
@@ -446,9 +503,7 @@ public class ReportCardService(ApplicationDbContext db) : IReportCardService
             var result = ReportCardMath.Grade(facts with { Expense = facts.Expense - cut });
             if (result.Points > grading.Points)
             {
-                candidates.Add((
-                    $"Tasarruf notun {GradeScale.LetterFor(savings)}. {Tr.Money(cut)} daha az harcasaydın {GradeScale.LetterFor(target)} olurdu;",
-                    result));
+                candidates.Add(($"Tasarruf puanın {savings}. {Tr.Money(cut)} daha az harcasaydın {target} olurdu;", result));
                 break;
             }
         }
@@ -458,10 +513,10 @@ public class ReportCardService(ApplicationDbContext db) : IReportCardService
             .OrderByDescending(c => c.Result.Score)
             .Take(2)
             .Select(c => new ReportSuggestion(
-                c.Result.Letter != grading.Letter
-                    ? $"{c.Text} genel notun {grading.Letter} yerine {c.Result.Letter} olurdu."
+                c.Result.Level != grading.Level
+                    ? $"{c.Text} genel puanın {grading.Points} yerine {c.Result.Points}, seviyen {grading.Level} yerine {c.Result.Level} olurdu."
                     : $"{c.Text} genel puanın {grading.Points} yerine {c.Result.Points} olurdu.",
-                c.Result.Letter, c.Result.Points))
+                c.Result.Level, c.Result.Points))
             .ToList();
     }
 

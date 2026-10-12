@@ -514,13 +514,13 @@ a:hover { text-decoration: underline; }
 .grade {
   display: inline-grid;
   place-items: center;
-  min-width: 2.7rem;
-  padding: .2rem .5rem;
+  min-width: 3.9rem;
+  padding: .2rem .55rem;
+  white-space: nowrap;
   border-radius: 10px;
   border: 1px solid var(--line);
   font-weight: 800;
   font-size: .88rem;
-  letter-spacing: .03em;
   line-height: 1.3;
   background: var(--surface-2);
   color: var(--muted);
@@ -528,7 +528,8 @@ a:hover { text-decoration: underline; }
 .grade.good { background: var(--brand-soft); border-color: var(--brand-soft-line); color: var(--brand-soft-ink); }
 .grade.mid { background: var(--gold-soft); border-color: var(--gold-soft-line); color: var(--gold-soft-ink); }
 .grade.low { background: var(--expense-soft); border-color: var(--expense-soft-line); color: var(--expense-soft-ink); }
-.grade.grade-xl { flex: none; width: 108px; height: 108px; border-radius: 28px; border-width: 2px; font-size: 2.9rem; letter-spacing: 0; }
+/* The overall score as a big tile (it holds the number; the level word stands next to it). */
+.grade.grade-xl { flex: none; width: 108px; height: 108px; border-radius: 28px; border-width: 2px; font-size: 2.9rem; letter-spacing: -.02em; }
 
 .report-card { box-shadow: var(--shadow); }
 .report-summary { display: flex; align-items: center; gap: 1.1rem; }

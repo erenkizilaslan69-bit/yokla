@@ -39,12 +39,12 @@ else
         <partial name="_DailyAllowance" model="dailyAllowance" />
     }
 
-    @if (Model.LastReport is { Letter: not null } report)
+    @if (Model.LastReport is { Level: not null } report)
     {
         <a asp-controller="ReportCard" asp-action="Index" asp-route-year="@report.Year" asp-route-month="@report.Month" class="card report-link mb-4">
             <i class="bi bi-mortarboard-fill"></i>
             <span><span class="text-capitalize">@CultureInfo.GetCultureInfo("tr-TR").DateTimeFormat.GetMonthName(report.Month)</span> karnen hazır</span>
-            @await Html.PartialAsync("_GradeBadge", (report.Letter, (string?)null))
+            @await Html.PartialAsync("_GradeBadge", (report.Level, (string?)null))
             <span class="report-link-more">Karneyi gör <i class="bi bi-arrow-right"></i></span>
         </a>
     }

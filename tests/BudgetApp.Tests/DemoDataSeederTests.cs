@@ -409,7 +409,7 @@ public class DemoDataSeederTests
 
     // ---------- report cards ----------
 
-    // The coffee habit that grows month after month shows in the grades: BB, then CC, then FD.
+    // The coffee habit that grows month after month shows in the cards: Pekiyi, then İyi, then Orta.
     [Theory]
     [InlineData(3)]
     [InlineData(15)]
@@ -424,32 +424,49 @@ public class DemoDataSeederTests
         var august = await service.GetAsync(Demo, 2026, 8, today);
         var september = await service.GetAsync(Demo, 2026, 9, today);
 
-        Assert.Equal(("BB", 81), (july.Letter, july.Points));
-        Assert.Equal(("CC", 73), (august.Letter, august.Points));
-        Assert.Equal(("FD", 56), (september.Letter, september.Points));
+        Assert.Equal(("Pekiyi", 88), (july.Level, july.Points));
+        Assert.Equal(("İyi", 72), (august.Level, august.Points));
+        Assert.Equal(("Orta", 55), (september.Level, september.Points));
+
+        // The allowance course is judged by the week: July keeps all five, the later months fewer and fewer.
+        string Weeks(ReportCard card) => card.Courses.Single(c => c.Kind == CourseKind.Allowance).Value;
+        Assert.Equal(["5/5 hafta", "2/4 hafta", "1/4 hafta"], new[] { july, august, september }.Select(Weeks));
 
         var history = await service.GetHistoryAsync(Demo, today);
-        Assert.Equal(["FD", "CC", "BB"], history.Select(h => h.Letter));
+        Assert.Equal(["Orta", "İyi", "Pekiyi"], history.Select(h => h.Level));
     }
 
     [Fact]
-    public async Task ReportCard_OfLastMonthShowsEveryKindOfGradeAndSaysWhatToChange()
+    public async Task ReportCard_OfLastMonthShowsEveryLevelAndSaysWhatToChange()
     {
         using var t = await SeededDb();
 
         var card = await new ReportCardService(t.Context).GetAsync(Demo, 2026, 9, Today);
 
-        Assert.Equal(["%4", "2/4 limit içinde", "%27", "13/30 gün"], card.Courses.Select(c => c.Value));
-        Assert.Equal(["DC", "FD", "FF", "FF"], card.Courses.Select(c => c.Letter));
+        Assert.Equal(["%4", "2/4 limit içinde", "%27", "1/4 hafta"], card.Courses.Select(c => c.Value));
+        Assert.Equal([68, 55, 48, 38], card.Courses.Select(c => c.Points!.Value));
+        Assert.Equal(["Orta", "Orta", "Geçer", "Zayıf"], card.Courses.Select(c => c.Level));
         Assert.Equal(["Kafe/Kahve", "Eğlence", "Dışarıda Yemek", "Market"], card.Categories.Select(c => c.Category));
-        Assert.Equal(["FF", "FD", "CC", "AA"], card.Categories.Select(c => c.Letter));
-        Assert.Equal("Ağustos'ta CC almıştın, Eylül'de FD aldın: 3 basamak düştün.", card.Comparison!.Text);
+        Assert.Equal(["Zayıf", "Geçer", "İyi", "Pekiyi"], card.Categories.Select(c => c.Level));
+        Assert.Equal("Ağustos'ta 72 puan almıştın (İyi), Eylül'de 55 puan aldın (Orta): 17 puan düştün.", card.Comparison!.Text);
         Assert.Equal(
             [
-                "Kafe/Kahve limitini 490,00 TL aştın. Limitte kalsaydın genel notun FD yerine DC olurdu.",
-                "Gereksiz harcama payın %27. 540,00 TL daha az harcasaydın %20'ye inerdi; genel notun FD yerine DC olurdu."
+                "Kafe/Kahve limitini 490,00 TL aştın. Limitte kalsaydın genel puanın 55 yerine 68 olurdu.",
+                "Gereksiz harcama payın %27. 540,00 TL daha az harcasaydın %20'ye inerdi; genel puanın 55 yerine 64 olurdu."
             ],
             card.Suggestions.Select(s => s.Text));
+    }
+
+    [Fact]
+    public async Task ReportCard_OfTheBestMonthNeedsNoSuggestion()
+    {
+        using var t = await SeededDb();
+
+        var card = await new ReportCardService(t.Context).GetAsync(Demo, 2026, 7, Today);
+
+        Assert.Equal("Pekiyi", card.Level);
+        Assert.Empty(card.Suggestions);
+        Assert.Null(card.Comparison); // the first month of the demo
     }
 
     [Fact]

@@ -127,56 +127,62 @@ Ana sayfanın en üstündeki kart "bugün ne kadar harcayabilirim" sorusunu ceva
 - Geçmiş tarihli bir gider girilirse havuz küçülür ve bugünkü hak o an değişir.
 
 ## 9. Ay karnesi (ReportCardService)
-Biten her takvim ayı üniversite harf notlarıyla bir karne alır (`/ReportCard`). Ay sonu devrinin yapılmış olması gerekmez. Not **saklanmaz**; her açılışta işlemlerden hesaplanır.
+Biten her takvim ayı 100 üzerinden puanlanan bir karne alır (`/ReportCard`). Ay sonu devrinin yapılmış olması gerekmez. Puan **saklanmaz**; her açılışta işlemlerden hesaplanır.
 
-**Harf ölçeği.** Her ders 0–100 puan alır. Harf, tam sayıya yuvarlanmış puandan çıkar (89,5 → 90 → AA), böylece ekrandaki sayı ile harf hep tutarlıdır.
+**Puan ve seviye.** Her ders ve karnenin geneli 0–100 puan alır; puan tam sayıya yuvarlanır (84,5 → 85). Seviye yuvarlanmış puandan çıkar, böylece ekrandaki sayı ile seviye hep tutarlıdır.
 
-| AA | BA | BB | CB | CC | DC | DD | FD | FF |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 90–100 | 85–89 | 80–84 | 75–79 | 70–74 | 65–69 | 60–64 | 50–59 | 0–49 |
+| Pekiyi | İyi | Orta | Geçer | Zayıf |
+| --- | --- | --- | --- | --- |
+| 85–100 | 70–84 | 55–69 | 45–54 | 0–44 |
 
-**Dersler.** Genel not, derslerin ağırlıklı ortalamasıdır (yuvarlanmamış ders puanlarından).
+Aralıklar formüllerle uyumludur: başa baş bitirilen ay (tasarruf 60) "Orta", tam limitinde kalan kategori ve tam %20 gereksiz harcama (ikisi de 70) "İyi"nin alt sınırıdır. Karnedeki kalemlere "ders" denir.
+
+**Dersler.** Genel puan, derslerin ağırlıklı ortalamasıdır (yuvarlanmamış ders puanlarından).
 
 | Ders | Ağırlık | Ölçülen | Puan (0–100'e kırpılır) |
 | --- | --- | --- | --- |
 | Tasarruf | %35 | oran = (gelir − gider) ÷ gelir | oran ≥ 0: 60 + 2 × oran%; oran < 0: 60 + 3 × oran% |
 | Bütçe uyumu | %25 | limitli kategorilerin kullanımı | kategori puanlarının düz ortalaması |
 | Gereksiz harcama | %20 | pay = gereksiz kategoriler ÷ gelir | 100 − 3 × (pay% − 10) |
-| Günlük hak | %20 | günlük hakka uyulan gün ÷ sayılan gün | oranın kendisi |
+| Günlük hak | %20 | haftaların harcaması ÷ o haftanın günlük haklarının toplamı | hafta puanlarının ortalaması |
 
-- Tasarruf: başa baş 60 (DD), %10 → 80, %20 ve üstü → 100; açıkta her yüzde 3 puan götürür (%−20 → 0).
-- Kategori puanı = 100 − 1,5 × (kullanım% − 80): limitin %80'ine kadar 100, tam limitte 70 (CC), %110'da 55, %114'ten itibaren FF. Limiti olan her kategori karnede ayrı bir ders satırıdır; harcaması olmayan limitli kategori AA alır. Tekrarlayan tanımdan oluşan giderler de kategorinin toplamına girer.
-- Gereksiz harcama: gelirin %10'una kadar 100; uyarı kuralı 2'nin eşiği olan %20 tam 70 (CC) eder.
-- Bir ders notlanamıyorsa genel nottan çıkar ve ağırlığı diğerlerine oranlı dağıtılır: kullanıcının hiç limiti yoksa "Bütçe uyumu", sayılabilen gün 10'dan azsa "Günlük hak".
+- Tasarruf: başa baş 60, %10 → 80, %20 ve üstü → 100; açıkta her yüzde 3 puan götürür (%−20 → 0).
+- Kategori puanı = 100 − 1,5 × (kullanım% − 80): limitin %80'ine kadar 100, tam limitte 70, %110'da 55. Limiti olan her kategori karnede ayrı bir ders satırıdır; harcaması olmayan limitli kategori 100 alır. Tekrarlayan tanımdan oluşan giderler de kategorinin toplamına girer.
+- Gereksiz harcama: gelirin %10'una kadar 100; uyarı kuralı 2'nin eşiği olan %20 tam 70 eder.
+- Bir ders puanlanamıyorsa genel puandan çıkar ve ağırlığı diğerlerine oranlı dağıtılır: kullanıcının hiç limiti yoksa "Bütçe uyumu", ay iki haftadan az sayılabiliyorsa "Günlük hak".
 
-**Günlük hakka uyulan gün (geriye dönük).** Canlı kart (bkz. 8) tekrarlayan tanımların bugünkü durumuna baktığı için geçmiş bir güne uygulanamaz; geçmiş günün hakkı bugün var olan işlemlerden yeniden kurulur:
-- Eldeki para = o gün dahil tüm gelirler − o günden önceki giderler − o günkü sabit gibi giderler − o gün dahil hedef katkıları (tüm zamanlar bakiyesi).
-- Dönem sonu = **aynı ay içinde**, o günden sonraki ilk tekrarlayan gelir işlemi; yoksa ay sonu. (Ay dışına bakılmaz; böylece biten bir ayın sonucu sonradan olanlara bağlı kalmaz.)
-- Bekleyen = o gün ile dönem sonu arasındaki tekrarlayan gider işlemleri.
-- Günün hakkı = max(0, eldeki − bekleyen) ÷ kalan gün (kuruşa aşağı yuvarlanır). O günün değişken gideri hakkı geçmiyorsa gün "uyuldu" sayılır.
-- Sayılan günler ayın ilk gününden (kullanıcı o ay başladıysa ilk işleminin gününden) ay sonuna kadardır.
+**Günlük hak dersi: hafta hafta.** Tek tek günlere bakılmaz; pahalı bir gün, hafta dengelendiği sürece sorun değildir.
+- **Haftalar** pazartesi–pazar takvim haftalarıdır. Ayın başındaki ve sonundaki yarım parça en az 4 günse kendi başına bir hafta sayılır; 4 günden kısaysa bitişiğindeki haftaya eklenir (o hafta 8–10 gün olur). Örnek: Eylül 2026 salı başlar → 1–6, 7–13, 14–20, 21–30. Kullanıcı o ay başladıysa haftalar ilk işleminin gününden başlar.
+- **Haftanın bütçesi** = o haftanın günlerinin günlük haklarının toplamı. Günlük hak, canlı karttaki kuralla (bkz. 8) ama bugün var olan işlemlerden geriye dönük hesaplanır:
+  - Eldeki para = o gün dahil tüm gelirler − önceki giderler − o günkü sabit gibi giderler − o gün dahil hedef katkıları (tüm zamanlar bakiyesi).
+  - Dönem sonu = **aynı ay içinde**, o günden sonraki ilk tekrarlayan gelir işlemi; yoksa ay sonu. (Ay dışına bakılmaz; böylece biten bir ayın sonucu sonradan olanlara bağlı kalmaz.)
+  - Bekleyen = o gün ile dönem sonu arasındaki tekrarlayan gider işlemleri.
+  - Günün hakkı = max(0, eldeki − bekleyen) ÷ kalan gün (kuruşa aşağı yuvarlanır).
+  - Hafta, başladığı sabah gerçekten eldeki parayla başlar; hafta içinde her gün tam hakkı kadar harcanmış varsayılır. Böylece bütçe haftanın **planıdır**: hafta içindeki gerçek harcamaya göre büyüyüp küçülmez. (Günlerin gerçek hakları toplansaydı, harcanmayan para sonraki günlerin hakkına tekrar tekrar eklenir ve toplam eldeki parayı aşardı.)
+- **Hafta puanı.** Haftanın değişken gideri bütçeyi aşmıyorsa hafta başarılıdır ve 100 alır. Aşıyorsa aştığı her yüzde için 2 puan kaybeder (%10 fazla → 80, %25 fazla → 50, %50 ve üstü → 0); sınırı az farkla kaçıran hafta, kontrolden çıkan haftayla bir tutulmaz. Bütçesi 0 olan haftada harcama yoksa 100, varsa 0.
+- Ders puanı hafta puanlarının ortalamasıdır; karnede "başarılı hafta / toplam hafta" (ör. "2/4 hafta") gösterilir.
 
-**Not verilmeyen aylar.** Nedeni karnede yazar.
+**Puan verilmeyen aylar.** Nedeni karnede yazar.
 - Ay bitmediyse (içinde bulunulan ay veya gelecek).
 - Ayda hiç işlem yoksa.
 - Ayda gelir kaydı yoksa (tasarruf oranı ve gereksiz pay gelire göre hesaplanır).
 - Gider kaydı 5 farklı günden azsa.
 
-**Karşılaştırma.** Karne, not almış en yakın önceki ayla karşılaştırılır (en fazla 12 ay geriye; notsuz aylar atlanır): "Ağustos'ta CC almıştın, Eylül'de FD aldın: 3 basamak düştün." Her dersin yanında harfin yükseldiği, düştüğü veya aynı kaldığı gösterilir.
+**Karşılaştırma.** Karne, puan almış en yakın önceki ayla karşılaştırılır (en fazla 12 ay geriye; puansız aylar atlanır): "Ağustos'ta 72 puan almıştın (İyi), Eylül'de 55 puan aldın (Orta): 17 puan düştün." Her dersin yanında puanın yükseldiği, düştüğü veya aynı kaldığı gösterilir.
 
-**Öneriler.** Ayın rakamları değiştirilip aynı kurallarla yeniden notlanır ("olsaydı"); genel puanı en çok yükselten en fazla iki öneri gösterilir, her biri gereken tutarı ve ulaşılacak notu söyler. AA alan aya öneri verilmez. Günlük hak dersi bu hesaplarda olduğu gibi bırakılır.
+**Öneriler.** Ayın rakamları değiştirilip aynı kurallarla yeniden puanlanır ("olsaydı"); genel puanı en çok yükselten en fazla iki öneri gösterilir. Her biri gereken tutarı ve ulaşılacak puanı, seviye de değişiyorsa onu söyler ("… genel puanın 43 yerine 73, seviyen Zayıf yerine İyi olurdu."). Pekiyi alan aya öneri verilmez. Günlük hak dersi bu hesaplarda olduğu gibi bırakılır.
 - Limiti aşılan kategori limite çekilseydi (birden fazlaysa en çok kazandıran).
 - Gereksiz harcama payı %20'ye inseydi.
-- Tasarruf dersi daha iyi bir harfe çıksaydı (genel puanı değiştiren en yakın harf).
+- Tasarruf puanı bir sonraki beşin katına çıksaydı (genel puanı değiştiren en yakını).
 
-**Paylaşılabilir görsel.** Karne 1080 × 1920 (hikâye boyutu) PNG olarak indirilebilir. Görsel tarayıcıda çizilir; içinde yalnızca ay, harfler, puanlar ve yüzdeler vardır, **tutar ve kullanıcı adı yoktur**.
+**Paylaşılabilir görsel.** Karne 1080 × 1920 (hikâye boyutu) PNG olarak indirilebilir. Görsel tarayıcıda çizilir; içinde yalnızca ay, puanlar, seviyeler ve yüzdeler vardır, **tutar ve kullanıcı adı yoktur**.
 
 **Bilinen sınırlar.**
-- Limitlerin geçmişi tutulmaz: limit bugün değiştirilirse eski ayların bütçe notu da değişir. Geçmişe işlem eklemek veya silmek de eski notu değiştirir; daha önce indirilmiş bir görselle çelişebilir.
-- Günlük hak dersi bir tahmindir; o gün kartın gösterdiği rakamla birebir aynı olmayabilir. Tüm zamanlar bakiyesi eksideyse harcama yapılan her gün "aşıldı" sayılır.
-- Çok yüksek limit koymak bütçe notunu yükseltir; hiç limit koymamak dersi karneden çıkarır.
-- Tek seferlik büyük bir gider (sağlık, bilgisayar) veya gelir notu belirgin biçimde oynatır; işlemi karne dışında tutma seçeneği yoktur.
-- Uygulamaya ay ortasında başlayan kullanıcının ilk ayı eksik veriyle notlanır.
+- Limitlerin geçmişi tutulmaz: limit bugün değiştirilirse eski ayların bütçe puanı da değişir. Geçmişe işlem eklemek veya silmek de eski puanı değiştirir; daha önce indirilmiş bir görselle çelişebilir.
+- Günlük hak dersi bir tahmindir; o günlerde kartın gösterdiği rakamlarla birebir aynı olmayabilir. Tüm zamanlar bakiyesi eksideyse harcama yapılan her hafta bütçesini aşmış sayılır. Gelir ayın ortasında geliyorsa, ondan önceki haftaların bütçesi dardır.
+- Çok yüksek limit koymak bütçe puanını yükseltir; hiç limit koymamak dersi karneden çıkarır.
+- Tek seferlik büyük bir gider (sağlık, bilgisayar) veya gelir puanı belirgin biçimde oynatır; işlemi karne dışında tutma seçeneği yoktur.
+- Uygulamaya ay ortasında başlayan kullanıcının ilk ayı eksik veriyle puanlanır.
 
 ## 7. CSV dışa aktarma (TransactionCsvExporter)
 İşlemler sayfasındaki "CSV indir" düğmesi, **seçili ayın** işlemlerini Türkçe Excel'de doğrudan açılacak biçimde indirir (dosya adı `islemler-2026-10.csv`).
