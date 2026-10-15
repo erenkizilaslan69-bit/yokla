@@ -68,6 +68,19 @@ Kullanıcının bir gider kategorisi için koyduğu aylık limit. Kurallar için
 
 (UserId, CategoryId) benzersiz olmalı: kategori başına tek limit.
 
+## ReceiptScan
+Bir fiş okuma denemesi; yalnızca günlük sınırlar için tutulur. **Fotoğraf da okunan sonuç da saklanmaz.** Kurallar için bkz. docs/rules.md bölüm 9.
+
+| Alan | Tip | Not |
+| --- | --- | --- |
+| Id | int | |
+| UserId | string | |
+| CreatedAt | DateTime | Denemenin zamanı (sunucunun yerel saati) |
+| Provider | string | "gemini" veya "demo"; demo denemeleri sınırlara sayılmaz |
+| Outcome | enum (Pending, Succeeded, Failed) | Servise gönderilmeden önce Pending olarak yazılır, cevaba göre güncellenir |
+
+Fişten kaydedilen satırlar sıradan `Transaction` kayıtlarıdır: ItemName = ürün adı, Note = "Fiş · {işletme}".
+
 ## Goal
 | Alan | Tip | Not |
 | --- | --- | --- |

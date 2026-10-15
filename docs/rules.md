@@ -130,6 +130,61 @@ Ana sayfanın en üstündeki kart "bugün ne kadar harcayabilirim" sorusunu ceva
 - Tutarı değişen tanımlar (elektrik, part-time) tanımdaki tahmini tutarla hesaba girer.
 - Geçmiş tarihli bir gider girilirse havuz küçülür ve bugünkü hak o an değişir.
 
+## 9. Fiş okuma (ReceiptService, IReceiptParser)
+Kullanıcı fişin fotoğrafını çeker; okunan satırları onaylar, her onaylanan satır ayrı bir gider olarak kaydedilir.
+
+**Okuyucu.** `IReceiptParser` sağlayıcıyı gizler.
+- Anahtar varsa (`Gemini:ApiKey`, user-secrets veya `Gemini__ApiKey` ortam değişkeni) `GeminiReceiptParser`: Gemini `generateContent` uç noktası, model `Gemini:Model` (varsayılan `gemini-3.8-flash`), sıcaklık 0, yanıt bir JSON şemasıyla sınırlanır. Anahtar URL'de değil `x-goog-api-key` başlığında gider.
+- Anahtar yoksa Development'ta `DemoReceiptParser` (birkaç hazır, uydurma fiş; aynı fotoğrafa hep aynı sonuç; ekranda "demo modu" yazar). Başka ortamlarda özellik kapalıdır: sayfalar 404 döner, giriş noktaları görünmez.
+- Modelden istenenler: işletme adı, tarih (yyyy-MM-dd), fiş toplamı, genel indirim ve her satır için ham metin, anlaşılır ürün adı ("SUT YRM YGL" → "Yarım yağlı süt"), miktar, birim, satır tutarı ve kategori. Kategori, kullanıcının **gider kategorileri** arasından seçilmek zorundadır (şemada enum).
+- İstem Türk fişlerine göredir: TOPLAM, KDV, ödeme, kasiyer, VKN/TCKN gibi satırlar ürün değildir; "2 X 12,50" ve "0,755 KG X 89,90" satırları miktar ve satır toplamı olarak okunur; satıra ait indirim o satırdan düşülür; sayılar Türk biçimindedir; kart numarası, ad, TCKN gibi bilgiler hiçbir alana yazılmaz. Miktar ürün adına eklenmez.
+
+**Fotoğraf.**
+- Tarayıcıda uzun kenarı en fazla `Receipts:MaxImageEdge` (2048) piksele küçültülür ve JPEG olarak gönderilir. Tarayıcı fotoğrafı açamazsa (ör. Safari dışında HEIC) olduğu gibi gönderilir.
+- Sunucu türü dosyanın ilk baytlarından anlar: yalnızca JPEG, PNG, WebP, HEIC/HEIF; en fazla `Receipts:MaxUploadBytes` (4 MB).
+- Fotoğraf yalnızca bellekte işlenir; diske ya da veritabanına yazılmaz.
+
+**Günlük sınırlar.** Gemini'ye giden her deneme `ReceiptScan` olarak kaydedilir (bkz. model.md); başarısız deneme de sayılır, çünkü kotayı o da harcar. Kayıt servise gitmeden önce yazılır, böylece art arda iki gönderim de sayılır.
+- Kullanıcı başına günde `Receipts:DailyLimitPerUser` (10).
+- Uygulama geneli günde `Receipts:DailyLimitTotal` (200): ücretsiz kota tek anahtara aittir.
+- Gün, sunucunun yerel günüdür. Demo denemeleri sınırlara sayılmaz.
+
+**Onay ekranı.** Ekran yükleme isteğinin cevabıdır; okunan sonuç da kaydedilene kadar hiçbir yerde saklanmaz (sayfa yenilenirse fotoğraf yeniden gönderilir ve bir hak daha kullanılır).
+- Tarih: okunamadıysa bugün konur; gelecekteyse bugün konur ve kullanıcı uyarılır; bir yıldan eskiyse kontrol etmesi istenir. Kayıtta gelecek tarih her durumda reddedilir.
+- Kategori: model listede olmayan ya da boş bir kategori dönerse "Diğer Gider".
+- Genel indirim (hiçbir satıra bağlanamayan, fişin geneline uygulanan indirim) satırlara tutarlarıyla orantılı dağıtılır; kuruşa aşağı yuvarlanır, kalan kuruşlar en büyük satırdan düşülür. Ekranda "… genel indirim, tutarlarına oranla satırlara dağıtıldı" notu çıkar. İndirim fiş tutarı kadar ya da daha büyükse dağıtılmaz, kullanıcı uyarılır.
+- 0,00 TL'lik satırlar (ör. ücretsiz poşet) gösterilmez. Hiç tutarlı satır kalmazsa ya da görsel fiş değilse "okunabilir bir fiş bulamadım" hatası verilir.
+- **Toplam kontrolü:** seçili satırların toplamı fiş toplamından 0,05 TL'den fazla farklıysa uyarı çıkar; kullanıcı satırları düzenledikçe ya da çıkardıkça canlı güncellenir.
+- **Aynı fiş iki kez:** aynı gün, aynı işletme notuyla ("Fiş · {işletme}") kayıtlı işlemler varsa uyarı çıkar. Toplamları aynıysa "zaten kaydedilmiş görünüyor"; farklıysa (ör. geçen sefer bir satır çıkarılmış ya da aynı gün ikinci alışveriş) "aynı fişse kontrol et". Elle girilen giderler bu kontrole girmez.
+- Kullanıcı ürün adını, tutarı ve kategoriyi değiştirebilir, satırları çıkarabilir, tarihi ve işletme adını düzeltebilir.
+
+**Kayıt.** Seçili her satır ayrı bir `Transaction` olur: Type = Gider, ItemName = ürün adı (en fazla 200 karakter), Note = "Fiş · {işletme}". Satırlar hep birlikte kaydedilir ya da hiçbiri kaydedilmez (`TransactionService.CreateManyAsync`); tek giderdeki kurallar her satıra uygulanır (tutar > 0, gelecek tarih yok, gider kategorisi). Ardından anında uyarılar her satır için çalışır, aynı uyarı bir kez gösterilir.
+
+**Hata mesajları.**
+
+| Durum | Mesaj |
+| --- | --- |
+| Zaman aşımı (`Gemini:TimeoutSeconds`, 30 sn) / 408 / 504 | Fiş okunması uzun sürdü. Biraz sonra tekrar dene. |
+| 429, günlük kota | Fiş okuma servisinin bugünkü kotası doldu. Yarın tekrar deneyebilirsin. |
+| 429, kısa süreli sınır | Kısa sürede çok fazla fiş gönderildi. Bir dakika sonra tekrar dene. |
+| Kullanıcının günlük sınırı | Bugünkü fiş hakkını kullandın (10/10). Yarın tekrar dene ya da işlemleri elle ekle. |
+| Uygulama geneli sınır | Fiş okuma bugün herkes için yoğundu ve günlük sınıra ulaştı. … |
+| Fiş değil / satır yok | Bu görselde okunabilir bir fiş bulamadım. Fişi düz bir zeminde, yakından ve iyi ışıkta çek. |
+| Geçersiz JSON, şemaya uymayan ya da kesilmiş cevap | Fiş okunurken bir sorun oldu, sonuç anlaşılamadı. Tekrar dene. |
+| Güvenlik engeli | Bu görsel işlenemedi. Başka bir fotoğraf dene. |
+| 400 / 401 / 403 / 404 (anahtar, model, istek) | Fiş okuma şu an kullanılamıyor. (ayrıntı yalnızca loga yazılır) |
+| 5xx, ağ hatası | Fiş okuma servisine şu an ulaşılamıyor. Biraz sonra tekrar dene. |
+| Dosya türü / boyutu | Bu dosya kabul edilmedi: JPEG, PNG, WebP veya HEIC bir fotoğraf, en fazla 4 MB. |
+
+Otomatik yeniden deneme yoktur (kota dolmuşken tekrar denemek kotayı daha da harcar).
+
+**Gizlilik.** Yükleme sayfası, fotoğrafın okunması için Google'ın Gemini servisine gönderildiğini, sunucuda saklanmadığını ve ücretsiz kullanımda Google'ın içeriği ürünlerini geliştirmek için kullanabileceğini, insanların inceleyebileceğini söyler; fişteki kart numarası, ad soyad gibi bilgilerin kapatılmasını önerir. Gemini API şartları 18 yaş sınırı ve AB/İngiltere/İsviçre kullanıcıları için ücretli katman şartı da getirir (bkz. README).
+
+**Bilinen sınırlar.**
+- Model aynı ürünü farklı fişlerde farklı adlandırabilir; bu, Analiz'deki "en çok harcanan ürünler" gruplamasını bölebilir.
+- İade, iptal ve e-fatura belgeleri kapsam dışıdır.
+- Yapılandırılmış çıktı için gönderilen `generationConfig.responseJsonSchema` alanı ve isteğe bağlı `thinkingConfig.thinkingLevel` gerçek bir anahtarla doğrulanmalıdır; testler sahte yanıtlarla çalışır.
+
 ## 7. CSV dışa aktarma (TransactionCsvExporter)
 İşlemler sayfasındaki "CSV indir" düğmesi, **seçili ayın** işlemlerini Türkçe Excel'de doğrudan açılacak biçimde indirir (dosya adı `islemler-2026-10.csv`).
 

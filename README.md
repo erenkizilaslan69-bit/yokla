@@ -7,6 +7,7 @@ A simple income and expense tracker for everyone — students and people with a 
 ## Features
 
 - **Income and expense tracking** — amount, category, date, optional item name and note. List, edit and delete, with a month picker (previous / next month) and per-month income, expense and balance totals. Future-dated entries are rejected.
+- **Receipt scanning** — take a photo of a shop receipt (the phone's camera opens directly) and Google Gemini reads it: shop, date, every line with a readable product name ("SUT YRM YGL" → "Yarım yağlı süt"), amount and a suggested category, and the receipt total. You check the lines in an editable table, drop the ones you do not want, and each confirmed line is saved as its own expense. The photo is shrunk in the browser, sent once and never stored. A warning appears when the lines do not add up to the total or when the same receipt seems to be saved already; a discount on the whole receipt is spread over the lines. See [Receipt scanning setup](#receipt-scanning-setup).
 - **CSV export** — download the shown month as a CSV file that opens correctly in Turkish Excel (UTF-8 with BOM, `;` separator, decimal comma; columns Tarih, Tür, Kategori, Ürün, Not, Tutar). Text that a spreadsheet would run as a formula is defused.
 - **Daily allowance** — a card at the top of the dashboard answers "how much can I spend today?": the money on hand, minus the recurring expenses still due before the next recurring income, divided by the days until that income. It is measured at the start of the day, so spending during the day uses the allowance up without shrinking it, and whatever is left (or overspent) carries into tomorrow's.
 - **Recurring transactions** — define your salary, rent, subscriptions and other monthly items once; the app adds the transaction on its due day (day 31 falls on the last day of shorter months). Definitions can be paused, resumed, edited or deleted, and a "repeat every month" switch on the new-transaction form creates one from a regular entry. There is no background job: due items are generated when the user opens a page, at most once per month.
@@ -46,9 +47,9 @@ Screenshots go in [docs/screenshots/](docs/screenshots/). Placeholders:
 
 ```
 src/BudgetApp
-├── Models/          Entities (Category, Transaction, Goal, GoalContribution, MonthClose) and view models
+├── Models/          Entities (Category, Transaction, Goal, GoalContribution, MonthClose, ReceiptScan) and view models
 ├── Data/            ApplicationDbContext, EF Core migrations, development demo-data seeder
-├── Services/        All business logic: transactions, CSV export, recurring definitions, budgets, goals, month close, warnings, analysis, forecast, daily allowance
+├── Services/        All business logic: transactions, CSV export, recurring definitions, budgets, goals, month close, warnings, analysis, forecast, daily allowance, receipt reading (Services/Receipts)
 ├── Infrastructure/  The filter that generates due recurring transactions before each request
 ├── Controllers/     Thin MVC controllers: read the request, call a service, return a view
 ├── Views/           Razor views (Turkish UI)
@@ -63,7 +64,8 @@ Design decisions worth knowing:
 - **Money is always `decimal`** (`decimal(18,2)` in the database), never `double` or `float`.
 - **Controllers stay thin.** Calculations live in `Services`, each of which has tests. Services take "today" as a parameter, so date-dependent rules are tested with a fixed clock.
 - **Per-user isolation.** Every query filters by `UserId`; asking for someone else's record behaves like "not found".
-- **No LLM and no external API.** The warnings, tips and forecasts are plain, deterministic rules, so every number can be traced back to the data.
+- **An LLM only reads receipts.** Receipt scanning is the one place an external API is used, and only to turn a photo into lines the user then checks. The warnings, tips and forecasts are plain, deterministic rules, so every number can be traced back to the data.
+- **The receipt reader is replaceable.** `IReceiptParser` hides the provider; `GeminiReceiptParser` calls the REST API with plain `HttpClient` (no SDK package) and a JSON schema for the answer. Its tests use canned HTTP answers and never call the real API.
 - **Light and dark theme from one set of variables.** `wwwroot/css/site.css` defines every colour as a CSS variable and redefines them under Bootstrap 5.3's `[data-bs-theme="dark"]`. A few lines of inline script in `<head>` set the theme before the first paint, so the page never flashes in the wrong theme. Each category has a light and a dark tone in `Models/CategoryStyle.cs`; the analysis chart repaints itself when the theme changes.
 
 ## Getting started
@@ -92,6 +94,35 @@ Run the tests:
 dotnet test
 ```
 
+### Receipt scanning setup
+
+Receipt scanning needs a Gemini API key from [Google AI Studio](https://aistudio.google.com/). Keep it out of the code and out of `appsettings.json`:
+
+```bash
+dotnet user-secrets set "Gemini:ApiKey" "<your key>" --project src/BudgetApp
+```
+
+In production, set the environment variable `Gemini__ApiKey` instead. Without a key, the Development environment runs receipt scanning in **demo mode** (a few made-up receipts, clearly labelled); in any other environment the feature is switched off and its buttons are hidden.
+
+Settings in `appsettings.json`:
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `Gemini:Model` | `gemini-3.8-flash` | Model used to read receipts |
+| `Gemini:TimeoutSeconds` | `30` | How long one receipt may take |
+| `Gemini:ThinkingLevel` | *(empty)* | Optional thinking level for Gemini 3 models, e.g. `low` |
+| `Receipts:DailyLimitPerUser` | `10` | Receipts one user may scan per day |
+| `Receipts:DailyLimitTotal` | `200` | Receipts the whole app may scan per day (the free quota belongs to the one key) |
+| `Receipts:MaxUploadBytes` | `4000000` | Largest accepted photo |
+| `Receipts:MaxImageEdge` | `2048` | The browser shrinks photos to this many pixels on the longer side |
+
+Check the free-tier limits of your key in AI Studio and set the two daily limits below them.
+
+> **Before you offer receipt scanning to others, read the [Gemini API terms](https://ai.google.dev/gemini-api/terms).** In short, as of October 2026:
+> - **Free tier data use:** on the unpaid tier Google may use the submitted photos and the answers to improve its products, and human reviewers may read them. Google asks not to send sensitive or personal information. The upload page says this, and suggests covering card numbers and names on the receipt.
+> - **Age:** the API may only be used by people 18 or older, and not in apps aimed at or likely to be used by people under 18.
+> - **EU, UK and Switzerland:** apps offered to users there may only use the paid tier.
+
 ## Demo account
 
 In Development only, a demo user is created on first start with about three months of realistic data. The demo persona happens to be a university student (one example of a user, not the target audience): KYK scholarship and family support, rent, bills, subscriptions, groceries with item names, coffee, transport and entertainment, monthly limits on coffee, eating out, entertainment and groceries (mid-month the analysis page shows all three bar colours), a "Kulaklık" (headphones) goal, and month-close records for the two oldest months. The most recent month is deliberately left open so the carry-over card shows up on the home page.
@@ -105,7 +136,7 @@ The monthly items (rent, scholarship, family support, bills, subscriptions, part
 
 ## Future improvements
 
-- **Receipt scanning** — upload a photo of a receipt, let a vision-capable LLM extract the line items, review them in an editable table and save them as transactions (the data model already stores one transaction per item).
+- **More receipt readers** — another `IReceiptParser` (e.g. a different LLM provider or on-device OCR) can be added without touching the pages.
 - **LLM-written tips** — keep all numbers computed by the services and let an LLM only phrase the advice sentences more naturally.
 - **Mobile app** — a companion app for entering expenses on the go.
 - **Change password and profile pages** — currently only registration, login and logout exist; the Identity management pages are not included.
