@@ -1,0 +1,146 @@
+@model BudgetApp.Models.ReceiptReviewForm
+@{
+    ViewData["Title"] = "Fişi onayla";
+    var tr = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+    string Money(decimal value) => value.ToString("0.00", tr);
+    var linesTotal = Model.Lines.Where(l => l.Include).Sum(l => l.Amount ?? 0m);
+    var mismatch = Model.ReceiptTotal is { } printed && Math.Abs(printed - linesTotal) > BudgetApp.Services.ReceiptMath.TotalTolerance;
+}
+
+<div class="page-head">
+    <div>
+        <a asp-action="Scan" class="small fw-semibold"><i class="bi bi-arrow-left"></i> Başka fiş tara</a>
+        <h1>Fişi onayla</h1>
+    </div>
+    @if (Model.IsDemo)
+    {
+        <span class="status-badge paused"><i class="bi bi-cone-striped"></i> Demo modu: örnek sonuç</span>
+    }
+</div>
+
+@if (Model.DuplicateWarning is { } duplicate)
+{
+    <div class="alert alert-warning" role="alert">
+        <i class="bi bi-files alert-icon"></i>
+        <div class="alert-body">@duplicate</div>
+    </div>
+}
+@foreach (var note in Model.Notes)
+{
+    <div class="alert alert-warning" role="status">
+        <i class="bi bi-info-circle-fill alert-icon"></i>
+        <div class="alert-body">@note</div>
+    </div>
+}
+
+<form asp-action="Save" method="post" id="receiptReview" data-total="@(Model.ReceiptTotal?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))">
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+    <input type="hidden" asp-for="ReceiptTotal" value="@(Model.ReceiptTotal is { } t ? Money(t) : "")" />
+    <input type="hidden" asp-for="GeneralDiscount" value="@Money(Model.GeneralDiscount)" />
+    <input type="hidden" asp-for="IsDemo" />
+    <input type="hidden" asp-for="DuplicateWarning" />
+    @for (var n = 0; n < Model.Notes.Count; n++)
+    {
+        <input type="hidden" name="Notes[@n]" value="@Model.Notes[n]" />
+    }
+
+    <div class="card p-3 p-md-4 mb-3">
+        <div class="row g-3">
+            <div class="col-sm-6">
+                <label asp-for="StoreName" class="form-label"></label>
+                <input asp-for="StoreName" class="form-control" placeholder="ör. Köşe Market" />
+                <span asp-validation-for="StoreName" class="text-danger small"></span>
+            </div>
+            <div class="col-sm-6">
+                <label asp-for="Date" class="form-label"></label>
+                <input asp-for="Date" type="date" max="@DateTime.Today.ToString("yyyy-MM-dd")" class="form-control" />
+                <span asp-validation-for="Date" class="text-danger small"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="receipt-head d-none d-md-grid">
+            <span>Ürün</span><span class="text-end">Tutar</span><span>Kategori</span><span></span>
+        </div>
+        @for (var i = 0; i < Model.Lines.Count; i++)
+        {
+            var line = Model.Lines[i];
+            <div class="receipt-line @(line.Include ? "" : "is-removed")" data-line>
+                <input type="hidden" asp-for="Lines[i].RawText" />
+                <input type="hidden" asp-for="Lines[i].Quantity" />
+
+                <div class="receipt-name">
+                    <label class="visually-hidden" for="Lines_@(i)__Name">Ürün adı</label>
+                    <input asp-for="Lines[i].Name" class="form-control" />
+                    <span asp-validation-for="Lines[i].Name" class="text-danger small"></span>
+                    @if (!string.IsNullOrWhiteSpace(line.RawText) || line.Quantity is not null)
+                    {
+                        <div class="receipt-raw">
+                            @if (!string.IsNullOrWhiteSpace(line.RawText)) { <span>Fişte: @line.RawText</span> }
+                            @if (line.Quantity is not null) { <span>· @line.Quantity</span> }
+                        </div>
+                    }
+                </div>
+                <div class="receipt-amount">
+                    <label class="visually-hidden" for="Lines_@(i)__Amount">Tutar</label>
+                    <div class="input-group">
+                        <span class="input-group-text">₺</span>
+                        <input asp-for="Lines[i].Amount" value="@(line.Amount is { } a ? Money(a) : "")" type="text" inputmode="decimal"
+                               class="form-control text-end num" data-amount />
+                    </div>
+                    <span asp-validation-for="Lines[i].Amount" class="text-danger small"></span>
+                </div>
+                <div class="receipt-category">
+                    <label class="visually-hidden" for="Lines_@(i)__CategoryId">Kategori</label>
+                    <select asp-for="Lines[i].CategoryId" asp-items="Model.Categories" class="form-select"></select>
+                    <span asp-validation-for="Lines[i].CategoryId" class="text-danger small"></span>
+                </div>
+                <div class="receipt-remove">
+                    @* Without JavaScript the tick box itself decides; with it, the remove / undo buttons drive the box. *@
+                    <div class="form-check receipt-include">
+                        <input type="checkbox" asp-for="Lines[i].Include" class="form-check-input" data-include />
+                        <label class="form-check-label small" for="Lines_@(i)__Include">Kaydet</label>
+                    </div>
+                    <button type="button" class="icon-btn danger" data-remove aria-label="Satırı çıkar" title="Satırı çıkar" hidden><i class="bi bi-x-lg"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-restore hidden>Geri al</button>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="card p-3 p-md-4 mb-3 receipt-summary">
+        <div class="d-flex flex-wrap justify-content-between gap-2 align-items-baseline">
+            <div>
+                <span class="text-muted">Kaydedilecek</span>
+                <strong class="num" data-lines-total>@linesTotal.ToString("C2")</strong>
+                <span class="text-muted small">(<span data-count>@Model.Lines.Count(l => l.Include)</span> satır)</span>
+            </div>
+            @if (Model.ReceiptTotal is { } receiptTotal)
+            {
+                <div><span class="text-muted">Fiş toplamı</span> <strong class="num">@receiptTotal.ToString("C2")</strong></div>
+            }
+        </div>
+        @if (Model.ReceiptTotal is not null)
+        {
+            <div class="alert alert-warning mt-3 mb-0" data-mismatch @(mismatch ? "" : "hidden") role="status">
+                <i class="bi bi-exclamation-triangle-fill alert-icon"></i>
+                <div class="alert-body">Satırların toplamı fiş toplamıyla tutmuyor (fark <strong data-difference>@((Model.ReceiptTotal.Value - linesTotal).ToString("C2"))</strong>). Eksik ya da yanlış okunan bir satır olabilir; tutarları fişle karşılaştır.</div>
+            </div>
+        }
+        else
+        {
+            <p class="small text-muted mt-2 mb-0">Fişin toplamı okunamadı; tutarları fişle karşılaştır.</p>
+        }
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>İşlem olarak kaydet</button>
+        <a asp-action="Scan" class="btn btn-outline-secondary">Vazgeç</a>
+    </div>
+    <p class="form-text mt-2">Her satır ayrı bir gider olarak, ürün adıyla kaydedilir. Bu sayfayı yenilersen fiş yeniden gönderilir ve bir fiş hakkı daha kullanılır.</p>
+</form>
+
+@section Scripts {
+    <script src="~/js/receipt-review.js" asp-append-version="true"></script>
+}

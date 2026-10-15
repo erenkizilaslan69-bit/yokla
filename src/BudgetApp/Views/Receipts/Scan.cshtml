@@ -1,0 +1,96 @@
+@model BudgetApp.Models.ReceiptScanViewModel
+@{
+    ViewData["Title"] = "Fiş tara";
+    var quota = Model.Quota;
+}
+
+<div class="page-head">
+    <div>
+        <a asp-controller="Transactions" asp-action="Index" class="small fw-semibold"><i class="bi bi-arrow-left"></i> İşlemler</a>
+        <h1>Fiş tara</h1>
+    </div>
+    @if (!quota.IsDemo)
+    {
+        <span class="text-muted fw-semibold">Bugün @quota.Remaining / @quota.Limit fiş hakkın var</span>
+    }
+</div>
+
+@if (quota.IsDemo)
+{
+    <div class="alert alert-warning" role="status">
+        <i class="bi bi-cone-striped alert-icon"></i>
+        <div class="alert-body"><strong>Demo modu.</strong> Fiş okuma servisi için anahtar tanımlı değil; hangi fotoğrafı yüklersen yükle örnek bir fiş sonucu gösterilir.</div>
+    </div>
+}
+
+@if (Model.Error is { } error)
+{
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle-fill alert-icon"></i>
+        <div class="alert-body">@error</div>
+    </div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card p-3 p-md-4">
+            @if (!quota.CanScan)
+            {
+                <p class="mb-3">
+                    @(quota.TotalLimitReached
+                        ? "Fiş okuma bugün herkes için yoğundu ve günlük sınıra ulaştı."
+                        : $"Bugünkü fiş hakkını kullandın ({quota.Limit}/{quota.Limit}).")
+                    Yarın tekrar deneyebilirsin; o zamana kadar işlemleri elle ekleyebilirsin.
+                </p>
+                <div><a asp-controller="Transactions" asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Yeni işlem</a></div>
+            }
+            else
+            {
+                <form asp-action="Scan" method="post" enctype="multipart/form-data" id="receiptForm"
+                      data-max-edge="@Model.MaxImageEdge" data-max-bytes="@Model.MaxUploadBytes">
+                    <p class="text-muted mb-3">Fişi düz bir zemine koy, tamamı kadraja girecek şekilde yakından ve iyi ışıkta çek. Uzun fişleri katlamadan çekmeye çalış.</p>
+
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <label class="btn btn-primary d-inline-flex align-items-center gap-2 mb-0">
+                            <i class="bi bi-camera-fill"></i>Fotoğraf çek
+                            <input type="file" name="image" accept="image/*" capture="environment" class="visually-hidden receipt-input" />
+                        </label>
+                        <label class="btn btn-outline-primary d-inline-flex align-items-center gap-2 mb-0">
+                            <i class="bi bi-images"></i>Galeriden seç
+                            <input type="file" name="gallery" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" class="visually-hidden receipt-input" />
+                        </label>
+                    </div>
+
+                    <div class="receipt-preview mb-3" id="receiptPreview" hidden>
+                        <img alt="Seçilen fişin önizlemesi" />
+                        <div class="receipt-preview-info small text-muted"></div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100" id="receiptSubmit">
+                        <i class="bi bi-magic me-1"></i><span>Fişi oku</span>
+                    </button>
+                    <div class="form-text mt-2">JPEG, PNG, WebP veya HEIC; en fazla @(Model.MaxUploadBytes / 1_000_000) MB. Okuma birkaç saniye sürebilir.</div>
+                </form>
+            }
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card p-3 p-md-4 receipt-privacy">
+            <h2 class="section-title"><i class="bi bi-shield-lock me-1"></i>Gizlilik</h2>
+            @if (quota.IsDemo)
+            {
+                <p class="mb-0 small">Demo modunda fotoğraf hiçbir yere gönderilmez.</p>
+            }
+            else
+            {
+                <p class="small">Fotoğraf, okunması için <strong>Google'ın Gemini servisine</strong> gönderilir. Sunucumuzda saklanmaz; yalnızca okunan satırları onaylarsan işlem olarak kaydedilir.</p>
+                <p class="small mb-0">Google, ücretsiz kullanımda gönderilen içeriği ürünlerini geliştirmek için kullanabilir ve bu içerik insanlar tarafından incelenebilir. Fişte kart numarası, ad soyad, TC kimlik numarası gibi bilgiler varsa çekmeden önce kapat ya da kırp.</p>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/receipt-scan.js" asp-append-version="true"></script>
+}

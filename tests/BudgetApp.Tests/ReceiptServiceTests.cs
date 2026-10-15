@@ -391,12 +391,26 @@ public class ReceiptServiceTests
         await service.SaveAsync(Alice, new ReceiptSaveInput(day, "Köşe Market",
             [new ReceiptSaveLine("Süt", 42.50m, Market), new ReceiptSaveLine("Makarna", 34m, Market)]));
 
-        Assert.NotNull(await service.FindDuplicateAsync(Alice, day, "Köşe Market", 76.50m));
-        Assert.NotNull(await service.FindDuplicateAsync(Alice, day, "Köşe Market", 76.53m)); // rounding
-        Assert.Null(await service.FindDuplicateAsync(Alice, day, "Köşe Market", 80m));
+        Assert.Contains("zaten kaydedilmiş görünüyor", await service.FindDuplicateAsync(Alice, day, "Köşe Market", 76.50m));
+        Assert.Contains("zaten kaydedilmiş görünüyor", await service.FindDuplicateAsync(Alice, day, "Köşe Market", 76.53m)); // rounding
         Assert.Null(await service.FindDuplicateAsync(Alice, day.AddDays(-1), "Köşe Market", 76.50m));
         Assert.Null(await service.FindDuplicateAsync(Alice, day, "Başka Market", 76.50m));
         Assert.Null(await service.FindDuplicateAsync(Bob, day, "Köşe Market", 76.50m));
+    }
+
+    [Fact]
+    public async Task FindDuplicateAsync_WarnsMoreSoftlyWhenTheSameShopsReceiptWasSavedThatDayWithAnotherTotal()
+    {
+        using var t = new TestDb();
+        var service = Service(t, null);
+        // last time the detergent was left out
+        await service.SaveAsync(Alice, new ReceiptSaveInput(Today, "Köşe Market",
+            [new ReceiptSaveLine("Süt", 42.50m, Market), new ReceiptSaveLine("Makarna", 34m, Market)]));
+
+        var warning = await service.FindDuplicateAsync(Alice, Today, "Köşe Market", 141.40m);
+
+        Assert.Equal("Bu tarihte bu işletmenin fişinden zaten 2 işlem kaydedilmiş (Köşe Market, 16.10.2026, 76,50 TL). " +
+                     "Aynı fişse iki kez eklememek için kontrol et.", warning);
     }
 
     [Fact]

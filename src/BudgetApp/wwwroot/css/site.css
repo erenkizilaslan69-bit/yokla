@@ -679,6 +679,48 @@ a:hover { text-decoration: underline; }
 .fab:hover { color: #fff; transform: translateY(-2px) scale(1.04); text-decoration: none; }
 .fab:active { transform: scale(.96); }
 
+/* "Fiş tara": a smaller, quieter round button just left of the "+". */
+.fab.fab-secondary {
+  right: calc(1.1rem + 58px + .7rem);
+  bottom: calc(1.1rem + 5px);
+  width: 48px;
+  height: 48px;
+  font-size: 1.25rem;
+  color: var(--brand-ink);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+}
+.fab.fab-secondary:hover { color: var(--brand-ink-strong); }
+
+/* ---------- Receipts ---------- */
+.receipt-preview { display: flex; gap: 1rem; align-items: center; }
+.receipt-preview img { max-height: 160px; max-width: 120px; object-fit: contain; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); }
+.receipt-privacy p { color: var(--muted); }
+.receipt-privacy strong { color: var(--text); }
+
+/* Confirmation screen: one grid row per line; on phones the name takes the whole first row. */
+.receipt-head, .receipt-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px 190px 90px;
+  gap: .6rem;
+  align-items: start;
+  padding: .75rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+.receipt-head { color: var(--muted); font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; padding-block: .6rem; }
+.receipt-line:last-child { border-bottom: 0; }
+.receipt-raw { color: var(--muted); font-size: .78rem; margin-top: .25rem; display: flex; flex-wrap: wrap; gap: .3rem; }
+.receipt-remove { display: flex; justify-content: flex-end; align-items: center; min-height: 38px; }
+.receipt-line.is-removed .receipt-name,
+.receipt-line.is-removed .receipt-amount,
+.receipt-line.is-removed .receipt-category { opacity: .45; }
+.receipt-line.is-removed .receipt-name .form-control { text-decoration: line-through; }
+
+@media (max-width: 767.98px) {
+  .receipt-line { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
+  .receipt-name { grid-column: 1 / -1; }
+}
+
 /* ---------- Month picker ---------- */
 .month-picker {
   display: flex;

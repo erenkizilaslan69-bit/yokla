@@ -13,7 +13,8 @@ public class TransactionsController(
     ITransactionService transactions, ICategoryService categories, IWarningService warningService,
     IRecurringTransactionService recurring, ITransactionCsvExporter csvExporter) : Controller
 {
-    private const string WarningsKey = "Warnings";
+    /// <summary>TempData key of the warnings shown above the list (also filled after a receipt is saved).</summary>
+    internal const string WarningsKey = "Warnings";
 
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 

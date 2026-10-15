@@ -166,13 +166,19 @@ public class ReceiptService(
             .Select(t => t.Amount)
             .ToListAsync();
 
-        // Summed in memory: SQLite cannot aggregate decimal columns reliably.
-        if (amounts.Count == 0 || Math.Abs(amounts.Sum() - total) > ReceiptMath.TotalTolerance)
+        if (amounts.Count == 0)
             return null;
 
+        // Summed in memory: SQLite cannot aggregate decimal columns reliably.
+        var saved = amounts.Sum();
         var shop = string.IsNullOrWhiteSpace(storeName) ? "" : $"{storeName.Trim()}, ";
-        return $"Bu fiş zaten kaydedilmiş görünüyor ({shop}{day:dd.MM.yyyy}, {Tr.Money(amounts.Sum())}). " +
-               "İki kez eklememek için İşlemler sayfasını kontrol et.";
+        if (Math.Abs(saved - total) <= ReceiptMath.TotalTolerance)
+            return $"Bu fiş zaten kaydedilmiş görünüyor ({shop}{day:dd.MM.yyyy}, {Tr.Money(saved)}). " +
+                   "İki kez eklememek için İşlemler sayfasını kontrol et.";
+
+        // Same day and shop but another total: maybe some lines were left out last time, maybe a second visit.
+        return $"Bu tarihte bu işletmenin fişinden zaten {amounts.Count} işlem kaydedilmiş ({shop}{day:dd.MM.yyyy}, " +
+               $"{Tr.Money(saved)}). Aynı fişse iki kez eklememek için kontrol et.";
     }
 
     public Task<List<Transaction>> SaveAsync(string userId, ReceiptSaveInput input)

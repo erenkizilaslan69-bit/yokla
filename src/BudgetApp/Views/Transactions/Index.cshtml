@@ -1,5 +1,6 @@
 @using BudgetApp.Models
 @model TransactionsIndexViewModel
+@inject BudgetApp.Services.IReceiptService Receipts
 @{
     ViewData["Title"] = "İşlemler";
     ViewData["HasFab"] = true; // the layout adds bottom room for the mobile "+" button
@@ -23,6 +24,10 @@
            class="btn btn-outline-primary d-inline-flex align-items-center gap-1" title="@Model.Picker.Title işlemlerini Excel için CSV olarak indir">
             <i class="bi bi-download"></i>CSV indir
         </a>
+        @if (Receipts.IsEnabled)
+        {
+            <a asp-controller="Receipts" asp-action="Scan" class="btn btn-outline-primary d-none d-md-inline-flex align-items-center gap-1"><i class="bi bi-receipt"></i>Fiş tara</a>
+        }
         <a asp-action="Create" class="btn btn-primary d-none d-md-inline-flex align-items-center gap-1"><i class="bi bi-plus-lg"></i>Yeni işlem</a>
     </div>
 </div>
@@ -88,4 +93,8 @@ else
     </div>
 }
 
+@if (Receipts.IsEnabled)
+{
+    <a asp-controller="Receipts" asp-action="Scan" class="fab fab-secondary d-md-none" aria-label="Fiş tara" title="Fiş tara"><i class="bi bi-camera-fill"></i></a>
+}
 <a asp-action="Create" class="fab d-md-none" aria-label="Yeni işlem"><i class="bi bi-plus-lg"></i></a>
