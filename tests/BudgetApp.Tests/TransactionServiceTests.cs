@@ -357,6 +357,52 @@ public class TransactionServiceTests
         Assert.Empty(db.Context.Transactions);
     }
 
+    // ---------- several at once (receipt lines) ----------
+
+    [Fact]
+    public async Task CreateManyAsync_SavesAllForTheUser()
+    {
+        using var db = new TestDb();
+        var first = Expense(10m);
+        first.ItemName = "  Süt ";
+        first.Note = "Fiş · Köşe Market";
+
+        var saved = await NewService(db).CreateManyAsync(Alice, [first, Expense(20m), Expense(30m)]);
+
+        Assert.Equal(3, saved.Count);
+        Assert.All(saved, t => Assert.True(t.Id > 0));
+        var rows = db.Context.Transactions.OrderBy(t => t.Id).ToList();
+        Assert.Equal([10m, 20m, 30m], rows.Select(t => t.Amount));
+        Assert.All(rows, t => Assert.Equal(Alice, t.UserId));
+        Assert.Equal(("Süt", "Fiş · Köşe Market"), (rows[0].ItemName, rows[0].Note));
+    }
+
+    [Fact]
+    public async Task CreateManyAsync_SavesNothingWhenOneIsInvalid()
+    {
+        using var db = new TestDb();
+        var service = NewService(db);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.CreateManyAsync(Alice, [Expense(10m), Expense(0m)]));
+        await Assert.ThrowsAsync<ArgumentException>(() => service.CreateManyAsync(Alice, [Expense(10m), Expense(5m, Today.AddDays(1))]));
+        var wrongType = Expense(5m);
+        wrongType.CategoryId = IncomeCategory;
+        await Assert.ThrowsAsync<ArgumentException>(() => service.CreateManyAsync(Alice, [Expense(10m), wrongType]));
+        await Assert.ThrowsAsync<ArgumentException>(() => service.CreateManyAsync(Alice, []));
+
+        Assert.Empty(db.Context.Transactions);
+    }
+
+    [Fact]
+    public async Task CreateManyAsync_TodayIsAllowed()
+    {
+        using var db = new TestDb();
+
+        await NewService(db).CreateManyAsync(Alice, [Expense(10m, Today)]);
+
+        Assert.Single(db.Context.Transactions);
+    }
+
     [Fact]
     public async Task UpdateAsync_RejectsMovingTransactionToFuture()
     {

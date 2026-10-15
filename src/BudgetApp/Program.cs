@@ -37,6 +37,18 @@ builder.Services.AddScoped<IRecurringTransactionService, RecurringTransactionSer
 builder.Services.AddScoped<IBudgetService, BudgetService>();
 builder.Services.AddScoped<ITransactionCsvExporter, TransactionCsvExporter>();
 builder.Services.AddScoped<IDailyAllowanceService, DailyAllowanceService>();
+
+// Receipt reading. With an API key (user-secrets "Gemini:ApiKey" or env "Gemini__ApiKey") the receipts go to Gemini;
+// without one Development gets a demo reader with ready-made results, and anywhere else the feature is switched off
+// (no reader registered: ReceiptService.IsEnabled is false and the entry points are hidden).
+builder.Services.Configure<GeminiOptions>(builder.Configuration.GetSection(GeminiOptions.Section));
+builder.Services.Configure<ReceiptOptions>(builder.Configuration.GetSection(ReceiptOptions.Section));
+if (!string.IsNullOrWhiteSpace(builder.Configuration[$"{GeminiOptions.Section}:ApiKey"]))
+    builder.Services.AddHttpClient<IReceiptParser, GeminiReceiptParser>();
+else if (builder.Environment.IsDevelopment())
+    builder.Services.AddSingleton<IReceiptParser, DemoReceiptParser>();
+builder.Services.AddScoped<IReceiptService, ReceiptService>();
+
 var app = builder.Build();
 
 // Development only: create/upgrade the SQLite file and add the demo account, so `dotnet run` works out of the box.

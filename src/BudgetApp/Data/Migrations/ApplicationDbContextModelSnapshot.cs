@@ -309,6 +309,36 @@ namespace BudgetApp.Data.Migrations
                     b.ToTable("MonthCloses");
                 });
 
+            modelBuilder.Entity("BudgetApp.Models.ReceiptScan", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Outcome")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("UserId", "CreatedAt");
+
+                    b.ToTable("ReceiptScans");
+                });
+
             modelBuilder.Entity("BudgetApp.Models.RecurringTransaction", b =>
                 {
                     b.Property<int>("Id")

@@ -13,6 +13,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<MonthClose> MonthCloses => Set<MonthClose>();
     public DbSet<RecurringTransaction> RecurringTransactions => Set<RecurringTransaction>();
     public DbSet<CategoryBudget> CategoryBudgets => Set<CategoryBudget>();
+    public DbSet<ReceiptScan> ReceiptScans => Set<ReceiptScan>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -72,6 +73,15 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             // One limit per category per user.
             e.HasIndex(b => new { b.UserId, b.CategoryId }).IsUnique();
             e.HasOne(b => b.Category).WithMany().HasForeignKey(b => b.CategoryId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<ReceiptScan>(e =>
+        {
+            e.Property(s => s.UserId).IsRequired();
+            e.Property(s => s.Provider).IsRequired().HasMaxLength(20);
+            // The daily limits count a user's attempts of the day and everyone's attempts of the day.
+            e.HasIndex(s => new { s.UserId, s.CreatedAt });
+            e.HasIndex(s => s.CreatedAt);
         });
 
         builder.Entity<Category>().HasData(DefaultCategories());

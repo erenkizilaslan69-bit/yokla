@@ -15,6 +15,12 @@ public interface ITransactionService
     Task<List<Transaction>> GetRecentAsync(string userId, int count);
     Task<Transaction?> GetAsync(string userId, int id);
     Task<Transaction> CreateAsync(string userId, Transaction input);
+
+    /// <summary>
+    /// Saves several transactions at once (e.g. the lines of a receipt): all of them or, if any is invalid, none.
+    /// The same rules as <see cref="CreateAsync"/> apply to each.
+    /// </summary>
+    Task<List<Transaction>> CreateManyAsync(string userId, IReadOnlyList<Transaction> inputs);
     Task<bool> UpdateAsync(string userId, Transaction input);
     Task<bool> DeleteAsync(string userId, int id);
     Task<TransactionTotals> GetTotalsAsync(string userId, int year, int month);
@@ -60,20 +66,37 @@ public class TransactionService(ApplicationDbContext db, TimeProvider? timeProvi
     {
         await ValidateAsync(input);
 
-        var entity = new Transaction
-        {
-            UserId = userId,
-            Amount = input.Amount,
-            Type = input.Type,
-            Date = input.Date.Date,
-            CategoryId = input.CategoryId,
-            ItemName = Clean(input.ItemName),
-            Note = Clean(input.Note)
-        };
+        var entity = NewEntity(userId, input);
         db.Transactions.Add(entity);
         await db.SaveChangesAsync();
         return entity;
     }
+
+    public async Task<List<Transaction>> CreateManyAsync(string userId, IReadOnlyList<Transaction> inputs)
+    {
+        if (inputs.Count == 0)
+            throw new ArgumentException("There is nothing to save.", nameof(inputs));
+
+        // Everything is checked before anything is added, and one SaveChanges writes them in a single transaction.
+        foreach (var input in inputs)
+            await ValidateAsync(input);
+
+        var entities = inputs.Select(input => NewEntity(userId, input)).ToList();
+        db.Transactions.AddRange(entities);
+        await db.SaveChangesAsync();
+        return entities;
+    }
+
+    private static Transaction NewEntity(string userId, Transaction input) => new()
+    {
+        UserId = userId,
+        Amount = input.Amount,
+        Type = input.Type,
+        Date = input.Date.Date,
+        CategoryId = input.CategoryId,
+        ItemName = Clean(input.ItemName),
+        Note = Clean(input.Note)
+    };
 
     public async Task<bool> UpdateAsync(string userId, Transaction input)
     {
