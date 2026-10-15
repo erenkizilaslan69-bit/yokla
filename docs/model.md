@@ -77,7 +77,7 @@ Bir fiş okuma denemesi; yalnızca günlük sınırlar için tutulur. **Fotoğra
 | UserId | string | |
 | CreatedAt | DateTime | Denemenin zamanı (sunucunun yerel saati) |
 | Provider | string | "gemini" veya "demo"; demo denemeleri sınırlara sayılmaz |
-| Outcome | enum (Pending, Succeeded, Failed) | Servise gönderilmeden önce Pending olarak yazılır, cevaba göre güncellenir |
+| Outcome | enum (Pending, Succeeded, Failed, Unanswered) | Servise gönderilmeden önce Pending olarak yazılır, cevaba göre güncellenir. Failed: cevap geldi ama kullanılabilir fiş çıkmadı. Unanswered: cevap hiç gelmedi (zaman aşımı, ağ/sunucu hatası, hız/kota sınırı, yapılandırma); kullanıcının günlük hakkına sayılmaz, uygulama geneli sınıra sayılır |
 
 Fişten kaydedilen satırlar sıradan `Transaction` kayıtlarıdır: ItemName = ürün adı, Note = "Fiş · {işletme}".
 

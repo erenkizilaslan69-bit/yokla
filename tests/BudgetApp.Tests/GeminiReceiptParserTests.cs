@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using BudgetApp.Services;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -15,11 +16,12 @@ public class GeminiReceiptParserTests
     private static readonly ReceiptImage Image = new(Jpeg, "image/jpeg");
     private static readonly string[] Categories = ["Market", "Kafe/Kahve", "Diğer Gider"];
 
-    private static GeminiReceiptParser Parser(FakeHttpHandler handler, Action<GeminiOptions>? configure = null)
+    private static GeminiReceiptParser Parser(FakeHttpHandler handler, Action<GeminiOptions>? configure = null,
+        ILogger<GeminiReceiptParser>? logger = null)
     {
         var options = new GeminiOptions { ApiKey = Key, Model = "gemini-3.8-flash", TimeoutSeconds = 5 };
         configure?.Invoke(options);
-        return new GeminiReceiptParser(new HttpClient(handler), Options.Create(options), NullLogger<GeminiReceiptParser>.Instance);
+        return new GeminiReceiptParser(new HttpClient(handler), Options.Create(options), logger ?? NullLogger<GeminiReceiptParser>.Instance);
     }
 
     /// <summary>A successful generateContent answer whose text is <paramref name="answer"/>.</summary>
@@ -87,12 +89,32 @@ public class GeminiReceiptParserTests
         Assert.Contains("Türk biçimindedir", body["systemInstruction"]!["parts"]![0]!["text"]!.GetValue<string>());
 
         var config = body["generationConfig"]!;
-        Assert.Equal(0, config["temperature"]!.GetValue<int>());
         Assert.Equal("application/json", config["responseMimeType"]!.GetValue<string>());
         var schema = config["responseJsonSchema"]!;
         Assert.Equal("object", schema["type"]!.GetValue<string>());
         Assert.Contains("lines", schema["required"]!.AsArray().Select(n => n!.GetValue<string>()));
-        Assert.Null(config["thinkingConfig"]);
+    }
+
+    [Fact]
+    public async Task ParseAsync_SendsNoSamplingParameters()
+    {
+        // Gemini 3.6 and later ignore temperature/topP/topK and future models reject them.
+        var handler = FakeHttpHandler.Returning(HttpStatusCode.OK, Envelope(GroceryAnswer));
+
+        await Parse(handler);
+
+        var config = JsonNode.Parse(handler.RequestBody!)!["generationConfig"]!.AsObject();
+        Assert.False(config.ContainsKey("temperature"));
+        Assert.False(config.ContainsKey("topP"));
+        Assert.False(config.ContainsKey("topK"));
+    }
+
+    [Fact]
+    public void Options_DefaultToTheLowestThinkingLevelOfTheModelAndASixtySecondTimeout()
+    {
+        var options = new GeminiOptions();
+
+        Assert.Equal(("gemini-3.8-flash", "low", 60d), (options.Model, options.ThinkingLevel, options.TimeoutSeconds));
     }
 
     [Fact]
@@ -107,14 +129,111 @@ public class GeminiReceiptParserTests
         Assert.Equal(Categories, category["enum"]!.AsArray().Select(n => n!.GetValue<string>()));
     }
 
-    [Fact]
-    public async Task ParseAsync_SendsTheThinkingLevelOnlyWhenConfigured()
+    [Theory]
+    [InlineData("low")]   // the default: the lowest level gemini-3.8-flash accepts
+    [InlineData("medium")]
+    [InlineData("minimal")] // other models accept it; the setting is passed on as written
+    public async Task ParseAsync_SendsTheConfiguredThinkingLevel(string level)
     {
         var handler = FakeHttpHandler.Returning(HttpStatusCode.OK, Envelope(GroceryAnswer));
 
-        await Parse(handler, o => o.ThinkingLevel = "low");
+        await Parse(handler, o => o.ThinkingLevel = level);
+
+        Assert.Equal(level, JsonNode.Parse(handler.RequestBody!)!["generationConfig"]!["thinkingConfig"]!["thinkingLevel"]!.GetValue<string>());
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData(null)]
+    public async Task ParseAsync_AnEmptyThinkingLevelLeavesItToTheModel(string? level)
+    {
+        var handler = FakeHttpHandler.Returning(HttpStatusCode.OK, Envelope(GroceryAnswer));
+
+        await Parse(handler, o => o.ThinkingLevel = level);
+
+        Assert.Null(JsonNode.Parse(handler.RequestBody!)!["generationConfig"]!["thinkingConfig"]);
+    }
+
+    [Fact]
+    public async Task ParseAsync_UsesTheDefaultThinkingLevelWhenNothingIsConfigured()
+    {
+        var handler = FakeHttpHandler.Returning(HttpStatusCode.OK, Envelope(GroceryAnswer));
+        var parser = new GeminiReceiptParser(new HttpClient(handler), Options.Create(new GeminiOptions { ApiKey = Key }),
+            NullLogger<GeminiReceiptParser>.Instance);
+
+        await parser.ParseAsync(Image, Categories, default);
 
         Assert.Equal("low", JsonNode.Parse(handler.RequestBody!)!["generationConfig"]!["thinkingConfig"]!["thinkingLevel"]!.GetValue<string>());
+    }
+
+    // ---------- the log ----------
+
+    [Fact]
+    public async Task ParseAsync_LogsHowLongTheAnswerTookItsStatusAndTheTokens()
+    {
+        var logger = new ListLogger<GeminiReceiptParser>();
+        var body = JsonNode.Parse(Envelope(GroceryAnswer))!.AsObject();
+        body["usageMetadata"] = new JsonObject { ["promptTokenCount"] = 1290, ["candidatesTokenCount"] = 210, ["thoughtsTokenCount"] = 340 };
+
+        await Parser(FakeHttpHandler.Returning(HttpStatusCode.OK, body.ToJsonString()), logger: logger).ParseAsync(Image, Categories, default);
+
+        var line = Assert.Single(logger.Entries, e => e.Message.Contains("answered HTTP 200")).Message;
+        Assert.Matches(@"in \d+ ms", line);
+        Assert.Contains("gemini-3.8-flash", line);
+        Assert.Contains("thinking low", line);
+        Assert.Contains("finish STOP", line);
+        Assert.Contains("prompt 1290, answer 210, thinking 340", line);
+    }
+
+    [Fact]
+    public async Task ParseAsync_LogsAnErrorStatusWithTheTime()
+    {
+        var logger = new ListLogger<GeminiReceiptParser>();
+
+        await Assert.ThrowsAsync<ReceiptParseException>(() =>
+            Parser(FakeHttpHandler.Returning(HttpStatusCode.ServiceUnavailable, """{"error":{"code":503,"message":"overloaded"}}"""), logger: logger)
+                .ParseAsync(Image, Categories, default));
+
+        var line = Assert.Single(logger.Entries, e => e.Message.Contains("HTTP 503")).Message;
+        Assert.Matches(@"in \d+ ms", line);
+        Assert.Contains("overloaded", line);
+        Assert.Equal(LogLevel.Warning, logger.Entries.Single(e => e.Message.Contains("HTTP 503")).Level);
+    }
+
+    [Fact]
+    public async Task ParseAsync_LogsATimeoutWithTheWaitedTime()
+    {
+        var logger = new ListLogger<GeminiReceiptParser>();
+
+        await Assert.ThrowsAsync<ReceiptParseException>(() =>
+            Parser(FakeHttpHandler.Hanging(), o => o.TimeoutSeconds = 0.2, logger).ParseAsync(Image, Categories, default));
+
+        var line = Assert.Single(logger.Entries).Message;
+        Assert.Contains("gave no answer within 0,2 s", line.Replace("0.2", "0,2"));
+        Assert.Matches(@"\(\d+ ms", line);
+    }
+
+    [Fact]
+    public async Task ParseAsync_NeverWritesTheKeyToTheLog()
+    {
+        var logger = new ListLogger<GeminiReceiptParser>();
+        // Google's error text quoting the request must not make the key appear either: it is not in the URL or body.
+        foreach (var handler in new[]
+                 {
+                     FakeHttpHandler.Returning(HttpStatusCode.OK, Envelope(GroceryAnswer)),
+                     FakeHttpHandler.Returning(HttpStatusCode.Forbidden, """{"error":{"code":403,"message":"API key not valid."}}"""),
+                     FakeHttpHandler.Returning(HttpStatusCode.OK, Envelope("kırık")),
+                     FakeHttpHandler.Throwing(new HttpRequestException("DNS")),
+                     FakeHttpHandler.Hanging()
+                 })
+        {
+            try { await Parser(handler, o => o.TimeoutSeconds = 0.2, logger).ParseAsync(Image, Categories, default); }
+            catch (ReceiptParseException) { }
+        }
+
+        Assert.True(logger.Entries.Count >= 5);
+        Assert.All(logger.Entries, e => Assert.DoesNotContain(Key, e.Message));
     }
 
     [Fact]

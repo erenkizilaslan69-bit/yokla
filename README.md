@@ -109,14 +109,16 @@ Settings in `appsettings.json`:
 | Setting | Default | Meaning |
 | --- | --- | --- |
 | `Gemini:Model` | `gemini-3.8-flash` | Model used to read receipts |
-| `Gemini:TimeoutSeconds` | `30` | How long one receipt may take |
-| `Gemini:ThinkingLevel` | *(empty)* | Optional thinking level for Gemini 3 models, e.g. `low` |
-| `Receipts:DailyLimitPerUser` | `10` | Receipts one user may scan per day |
+| `Gemini:TimeoutSeconds` | `60` | How long one receipt may take |
+| `Gemini:ThinkingLevel` | `low` | How much the model thinks before answering (`low`, `medium`, `high`; `low` is the lowest `gemini-3.8-flash` accepts). Empty = the model's default |
+| `Receipts:DailyLimitPerUser` | `10` | Receipts one user may scan per day (attempts that got no answer, such as timeouts, do not count) |
 | `Receipts:DailyLimitTotal` | `200` | Receipts the whole app may scan per day (the free quota belongs to the one key) |
 | `Receipts:MaxUploadBytes` | `4000000` | Largest accepted photo |
 | `Receipts:MaxImageEdge` | `2048` | The browser shrinks photos to this many pixels on the longer side |
 
 Check the free-tier limits of your key in AI Studio and set the two daily limits below them.
+
+Every Gemini request is logged with its duration, HTTP status, finish reason and token counts (prompt, answer, thinking), e.g. `Gemini gemini-3.8-flash answered HTTP 200 in 6421 ms (thinking low; image 412 KB; finish STOP; tokens: prompt 1290, answer 210, thinking 340)`. The API key is never logged. The log goes to the console of `dotnet run`.
 
 > **Before you offer receipt scanning to others, read the [Gemini API terms](https://ai.google.dev/gemini-api/terms).** In short, as of October 2026:
 > - **Free tier data use:** on the unpaid tier Google may use the submitted photos and the answers to improve its products, and human reviewers may read them. Google asks not to send sensitive or personal information. The upload page says this, and suggests covering card numbers and names on the receipt.

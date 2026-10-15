@@ -5,7 +5,14 @@ public enum ReceiptScanOutcome
     /// <summary>Sent to the reader, no answer yet (or the request died on the way).</summary>
     Pending,
     Succeeded,
-    Failed
+    /// <summary>The reader answered, but there was no usable receipt (not a receipt, unusable answer, blocked).</summary>
+    Failed,
+    /// <summary>
+    /// The reader never answered: timeout, network or server error, rate or quota limit, configuration error.
+    /// Not the user's fault, so it does not use up the user's daily allowance; it still counts towards the app's
+    /// limit, because the provider may have spent quota on it.
+    /// </summary>
+    Unanswered
 }
 
 /// <summary>

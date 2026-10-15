@@ -166,11 +166,14 @@ public class ReceiptServiceTests
         Assert.False((await service.GetQuotaAsync(Alice, Now)).CanScan);
     }
 
-    [Fact]
-    public async Task ScanAsync_AFailedAttemptStillCountsBecauseItUsedTheQuota()
+    [Theory]
+    [InlineData(ReceiptErrorKind.Blocked)]
+    [InlineData(ReceiptErrorKind.InvalidResponse)]
+    [InlineData(ReceiptErrorKind.Unreadable)]
+    public async Task ScanAsync_AnAnsweredButUnusableAttemptUsesTheAllowance(ReceiptErrorKind kind)
     {
         using var t = new TestDb();
-        var service = Service(t, new StubParser(() => throw new ReceiptParseException(ReceiptErrorKind.ServiceUnavailable)));
+        var service = Service(t, new StubParser(() => throw new ReceiptParseException(kind)));
 
         await FailureOf(() => service.ScanAsync(Alice, Jpeg, Now, default));
 
@@ -178,6 +181,61 @@ public class ReceiptServiceTests
         Assert.Equal((Alice, "gemini", ReceiptScanOutcome.Failed, Now), (scan.UserId, scan.Provider, scan.Outcome, scan.CreatedAt));
         Assert.Equal(1, (await service.GetQuotaAsync(Alice, Now)).UsedToday);
     }
+
+    [Theory]
+    [InlineData(ReceiptErrorKind.Timeout)]
+    [InlineData(ReceiptErrorKind.ServiceUnavailable)]
+    [InlineData(ReceiptErrorKind.RateLimited)]
+    [InlineData(ReceiptErrorKind.QuotaExceeded)]
+    [InlineData(ReceiptErrorKind.Misconfigured)]
+    public async Task ScanAsync_AnUnansweredAttemptDoesNotUseTheUsersAllowanceButCountsForTheApp(ReceiptErrorKind kind)
+    {
+        using var t = new TestDb();
+        var service = Service(t, new StubParser(() => throw new ReceiptParseException(kind)), total: 1);
+
+        await FailureOf(() => service.ScanAsync(Alice, Jpeg, Now, default));
+
+        Assert.Equal(ReceiptScanOutcome.Unanswered, Assert.Single(t.Context.ReceiptScans).Outcome);
+        var quota = await service.GetQuotaAsync(Alice, Now);
+        Assert.Equal((0, 10), (quota.UsedToday, quota.Remaining));
+        Assert.True(quota.TotalLimitReached); // the provider may have spent quota on it
+    }
+
+    [Fact]
+    public async Task ScanAsync_TimeoutsDoNotLockTheUserOut()
+    {
+        using var t = new TestDb();
+        var service = Service(t, new StubParser(() => throw new ReceiptParseException(ReceiptErrorKind.Timeout)), perUser: 2);
+
+        for (var i = 0; i < 5; i++)
+            Assert.Equal(ReceiptErrorKind.Timeout, await FailureOf(() => service.ScanAsync(Alice, Jpeg, Now, default)));
+
+        Assert.Equal(5, t.Context.ReceiptScans.Count());
+    }
+
+    [Fact]
+    public async Task AnAttemptStillWaitingForItsAnswerCounts()
+    {
+        using var t = new TestDb();
+        t.Context.ReceiptScans.Add(new ReceiptScan { UserId = Alice, CreatedAt = Today.AddHours(9), Provider = "gemini", Outcome = ReceiptScanOutcome.Pending });
+        t.Context.SaveChanges();
+
+        Assert.Equal(1, (await Service(t, new StubParser(() => Receipt())).GetQuotaAsync(Alice, Now)).UsedToday);
+    }
+
+    [Theory]
+    [InlineData(ReceiptErrorKind.Timeout, true)]
+    [InlineData(ReceiptErrorKind.ServiceUnavailable, true)]
+    [InlineData(ReceiptErrorKind.RateLimited, true)]
+    [InlineData(ReceiptErrorKind.QuotaExceeded, true)]
+    [InlineData(ReceiptErrorKind.Misconfigured, true)]
+    [InlineData(ReceiptErrorKind.Blocked, false)]
+    [InlineData(ReceiptErrorKind.InvalidResponse, false)]
+    [InlineData(ReceiptErrorKind.Unreadable, false)]
+    [InlineData(ReceiptErrorKind.InvalidFile, false)]
+    [InlineData(ReceiptErrorKind.UserDailyLimit, false)]
+    public void IsUnanswered_IsTrueOnlyWhenTheReaderGaveNoAnswer(ReceiptErrorKind kind, bool expected) =>
+        Assert.Equal(expected, ReceiptService.IsUnanswered(kind));
 
     [Fact]
     public async Task ScanAsync_RecordsASuccessfulAttemptWithoutThePictureOrTheResult()

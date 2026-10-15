@@ -44,7 +44,9 @@ builder.Services.AddScoped<IDailyAllowanceService, DailyAllowanceService>();
 builder.Services.Configure<GeminiOptions>(builder.Configuration.GetSection(GeminiOptions.Section));
 builder.Services.Configure<ReceiptOptions>(builder.Configuration.GetSection(ReceiptOptions.Section));
 if (!string.IsNullOrWhiteSpace(builder.Configuration[$"{GeminiOptions.Section}:ApiKey"]))
-    builder.Services.AddHttpClient<IReceiptParser, GeminiReceiptParser>();
+    builder.Services.AddHttpClient<IReceiptParser, GeminiReceiptParser>()
+        // HttpClient's own logging may list request headers at Trace level; the API key header must never show up.
+        .RedactLoggedHeaders(_ => true);
 else if (builder.Environment.IsDevelopment())
     builder.Services.AddSingleton<IReceiptParser, DemoReceiptParser>();
 builder.Services.AddScoped<IReceiptService, ReceiptService>();

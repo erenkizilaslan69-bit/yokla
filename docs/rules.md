@@ -134,7 +134,9 @@ Ana sayfanın en üstündeki kart "bugün ne kadar harcayabilirim" sorusunu ceva
 Kullanıcı fişin fotoğrafını çeker; okunan satırları onaylar, her onaylanan satır ayrı bir gider olarak kaydedilir.
 
 **Okuyucu.** `IReceiptParser` sağlayıcıyı gizler.
-- Anahtar varsa (`Gemini:ApiKey`, user-secrets veya `Gemini__ApiKey` ortam değişkeni) `GeminiReceiptParser`: Gemini `generateContent` uç noktası, model `Gemini:Model` (varsayılan `gemini-3.8-flash`), sıcaklık 0, yanıt bir JSON şemasıyla sınırlanır. Anahtar URL'de değil `x-goog-api-key` başlığında gider.
+- Anahtar varsa (`Gemini:ApiKey`, user-secrets veya `Gemini__ApiKey` ortam değişkeni) `GeminiReceiptParser`: Gemini `generateContent` uç noktası, model `Gemini:Model` (varsayılan `gemini-3.8-flash`), yanıt bir JSON şemasıyla sınırlanır. Anahtar URL'de değil `x-goog-api-key` başlığında gider.
+- **Düşünme seviyesi** `Gemini:ThinkingLevel` → `generationConfig.thinkingConfig.thinkingLevel`. Varsayılan `low`: fiş okumak az düşünme ister, uzun düşünme ise cevabı geciktirir. `gemini-3.8-flash` `low`, `medium`, `high` kabul eder (`minimal` bu modelde hata verir, başka modellerde geçerlidir); boş bırakılırsa alan gönderilmez ve model kendi varsayılanını kullanır (3.8 Flash için `medium`).
+- `temperature`, `topP`, `topK` gönderilmez: Gemini 3.6 ve sonrası bunları yok sayar, sonraki modeller reddedecek.
 - Anahtar yoksa Development'ta `DemoReceiptParser` (birkaç hazır, uydurma fiş; aynı fotoğrafa hep aynı sonuç; ekranda "demo modu" yazar). Başka ortamlarda özellik kapalıdır: sayfalar 404 döner, giriş noktaları görünmez.
 - Modelden istenenler: işletme adı, tarih (yyyy-MM-dd), fiş toplamı, genel indirim ve her satır için ham metin, anlaşılır ürün adı ("SUT YRM YGL" → "Yarım yağlı süt"), miktar, birim, satır tutarı ve kategori. Kategori, kullanıcının **gider kategorileri** arasından seçilmek zorundadır (şemada enum).
 - İstem Türk fişlerine göredir: TOPLAM, KDV, ödeme, kasiyer, VKN/TCKN gibi satırlar ürün değildir; "2 X 12,50" ve "0,755 KG X 89,90" satırları miktar ve satır toplamı olarak okunur; satıra ait indirim o satırdan düşülür; sayılar Türk biçimindedir; kart numarası, ad, TCKN gibi bilgiler hiçbir alana yazılmaz. Miktar ürün adına eklenmez.
@@ -144,10 +146,12 @@ Kullanıcı fişin fotoğrafını çeker; okunan satırları onaylar, her onayla
 - Sunucu türü dosyanın ilk baytlarından anlar: yalnızca JPEG, PNG, WebP, HEIC/HEIF; en fazla `Receipts:MaxUploadBytes` (4 MB).
 - Fotoğraf yalnızca bellekte işlenir; diske ya da veritabanına yazılmaz.
 
-**Günlük sınırlar.** Gemini'ye giden her deneme `ReceiptScan` olarak kaydedilir (bkz. model.md); başarısız deneme de sayılır, çünkü kotayı o da harcar. Kayıt servise gitmeden önce yazılır, böylece art arda iki gönderim de sayılır.
-- Kullanıcı başına günde `Receipts:DailyLimitPerUser` (10).
-- Uygulama geneli günde `Receipts:DailyLimitTotal` (200): ücretsiz kota tek anahtara aittir.
+**Günlük sınırlar.** Gemini'ye giden her deneme `ReceiptScan` olarak kaydedilir (bkz. model.md). Kayıt servise gitmeden önce yazılır (Pending), böylece art arda iki gönderim de sayılır.
+- Kullanıcı başına günde `Receipts:DailyLimitPerUser` (10). Sayılanlar: başarılı denemeler, model cevap verdiği hâlde kullanılabilir fiş çıkmayanlar (fiş değil, anlaşılamayan cevap, güvenlik engeli) ve cevabı beklenenler. **Cevap gelmeyen denemeler sayılmaz:** zaman aşımı, ağ ya da sunucu hatası, Google'ın hız veya kota sınırı, yapılandırma hatası. Bunlar kullanıcının elinde değildir; sayılsalardı servis yavaşken kullanıcı hiç fiş okutamadan hakkını bitirebilirdi.
+- Uygulama geneli günde `Receipts:DailyLimitTotal` (200): ücretsiz kota tek anahtara aittir. Buna **her deneme sayılır**, cevap gelmeyenler de; bizim tarafta zaman aşımına uğrayan bir istek Google'da işlenmeye devam edip kotadan düşmüş olabilir.
 - Gün, sunucunun yerel günüdür. Demo denemeleri sınırlara sayılmaz.
+
+**Log.** Her Gemini isteği için model, düşünme seviyesi, görselin boyutu, HTTP durumu, geçen süre (ms), bitiş nedeni ve token sayıları (istem, cevap, düşünme) loga yazılır; zaman aşımında beklenen süre, hata durumunda Google'ın hata metni (ilk 500 karakter) yazılır. API anahtarı hiçbir log satırına girmez: yalnızca istek başlığında taşınır ve HttpClient loglarında başlık değerleri gizlenir. Fotoğraf ve okunan satırlar loglanmaz.
 
 **Onay ekranı.** Ekran yükleme isteğinin cevabıdır; okunan sonuç da kaydedilene kadar hiçbir yerde saklanmaz (sayfa yenilenirse fotoğraf yeniden gönderilir ve bir hak daha kullanılır).
 - Tarih: okunamadıysa bugün konur; gelecekteyse bugün konur ve kullanıcı uyarılır; bir yıldan eskiyse kontrol etmesi istenir. Kayıtta gelecek tarih her durumda reddedilir.
@@ -164,7 +168,7 @@ Kullanıcı fişin fotoğrafını çeker; okunan satırları onaylar, her onayla
 
 | Durum | Mesaj |
 | --- | --- |
-| Zaman aşımı (`Gemini:TimeoutSeconds`, 30 sn) / 408 / 504 | Fiş okunması uzun sürdü. Biraz sonra tekrar dene. |
+| Zaman aşımı (`Gemini:TimeoutSeconds`, 60 sn) / 408 / 504 | Fiş okunması uzun sürdü. Biraz sonra tekrar dene. |
 | 429, günlük kota | Fiş okuma servisinin bugünkü kotası doldu. Yarın tekrar deneyebilirsin. |
 | 429, kısa süreli sınır | Kısa sürede çok fazla fiş gönderildi. Bir dakika sonra tekrar dene. |
 | Kullanıcının günlük sınırı | Bugünkü fiş hakkını kullandın (10/10). Yarın tekrar dene ya da işlemleri elle ekle. |
@@ -183,7 +187,7 @@ Otomatik yeniden deneme yoktur (kota dolmuşken tekrar denemek kotayı daha da h
 **Bilinen sınırlar.**
 - Model aynı ürünü farklı fişlerde farklı adlandırabilir; bu, Analiz'deki "en çok harcanan ürünler" gruplamasını bölebilir.
 - İade, iptal ve e-fatura belgeleri kapsam dışıdır.
-- Yapılandırılmış çıktı için gönderilen `generationConfig.responseJsonSchema` alanı ve isteğe bağlı `thinkingConfig.thinkingLevel` gerçek bir anahtarla doğrulanmalıdır; testler sahte yanıtlarla çalışır.
+- Yapılandırılmış çıktı `generationConfig.responseMimeType` + `responseJsonSchema` ile istenir. Güncel `generateContent` dokümanındaki REST örneği bunun yerine `generationConfig.responseFormat.text.{mimeType, schema}` gösteriyor; eski alanlar için bir kullanımdan kaldırma notu yok ve ilk gerçek istek 400 dönmedi. Testler sahte yanıtlarla çalışır.
 
 ## 7. CSV dışa aktarma (TransactionCsvExporter)
 İşlemler sayfasındaki "CSV indir" düğmesi, **seçili ayın** işlemlerini Türkçe Excel'de doğrudan açılacak biçimde indirir (dosya adı `islemler-2026-10.csv`).

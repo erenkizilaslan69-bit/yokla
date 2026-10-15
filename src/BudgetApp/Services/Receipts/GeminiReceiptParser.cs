@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Text;
@@ -77,6 +78,11 @@ public sealed class GeminiReceiptParser(HttpClient http, IOptions<GeminiOptions>
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(settings.TimeoutSeconds));
 
+        // What every log line of this request says. Never the key: it only lives in the request header above.
+        var thinking = string.IsNullOrWhiteSpace(settings.ThinkingLevel) ? "model default" : settings.ThinkingLevel;
+        var imageKb = image.Data.Length / 1024;
+        var watch = Stopwatch.StartNew();
+
         string body;
         HttpStatusCode status;
         try
@@ -87,11 +93,18 @@ public sealed class GeminiReceiptParser(HttpClient http, IOptions<GeminiOptions>
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
+            logger.LogWarning("Gemini {Model} gave no answer within {TimeoutSeconds} s ({ElapsedMs} ms; thinking {Thinking}; image {ImageKb} KB).",
+                settings.Model, settings.TimeoutSeconds, watch.ElapsedMilliseconds, thinking, imageKb);
             throw new ReceiptParseException(ReceiptErrorKind.Timeout, $"No answer within {settings.TimeoutSeconds} s.");
+        }
+        catch (OperationCanceledException)
+        {
+            logger.LogInformation("Gemini {Model} request cancelled by the user after {ElapsedMs} ms.", settings.Model, watch.ElapsedMilliseconds);
+            throw;
         }
         catch (HttpRequestException e)
         {
-            logger.LogWarning(e, "Gemini could not be reached.");
+            logger.LogWarning("Gemini {Model} could not be reached after {ElapsedMs} ms: {Error}", settings.Model, watch.ElapsedMilliseconds, e.Message);
             throw new ReceiptParseException(ReceiptErrorKind.ServiceUnavailable, e.Message);
         }
 
@@ -99,13 +112,23 @@ public sealed class GeminiReceiptParser(HttpClient http, IOptions<GeminiOptions>
         {
             var error = FromStatus(status, body);
             // The body of an error holds Google's explanation, never the picture or the key.
-            logger.LogWarning("Gemini answered {Status}: {Kind}. {Body}", (int)status, error.Kind, Truncate(body));
+            logger.LogWarning("Gemini {Model} answered HTTP {Status} in {ElapsedMs} ms ({Kind}; thinking {Thinking}; image {ImageKb} KB): {Body}",
+                settings.Model, (int)status, watch.ElapsedMilliseconds, error.Kind, thinking, imageKb, Truncate(body));
             throw error;
         }
 
+        var envelope = ReadEnvelope(body);
+        var usage = envelope.UsageMetadata;
+        logger.LogInformation(
+            "Gemini {Model} answered HTTP {Status} in {ElapsedMs} ms (thinking {Thinking}; image {ImageKb} KB; finish {FinishReason}; " +
+            "tokens: prompt {PromptTokens}, answer {AnswerTokens}, thinking {ThoughtTokens}).",
+            settings.Model, (int)status, watch.ElapsedMilliseconds, thinking, imageKb,
+            envelope.Candidates?.FirstOrDefault()?.FinishReason ?? "-",
+            usage?.PromptTokenCount, usage?.CandidatesTokenCount, usage?.ThoughtsTokenCount);
+
         try
         {
-            return ReadAnswer(body);
+            return ReadAnswer(envelope);
         }
         catch (ReceiptParseException e)
         {
@@ -118,9 +141,9 @@ public sealed class GeminiReceiptParser(HttpClient http, IOptions<GeminiOptions>
 
     internal static JsonObject BuildRequestBody(ReceiptImage image, IReadOnlyList<string> expenseCategories, GeminiOptions settings)
     {
+        // No temperature: Gemini 3.6 and later ignore the sampling parameters and future models reject them.
         var generationConfig = new JsonObject
         {
-            ["temperature"] = 0,
             ["responseMimeType"] = "application/json",
             ["responseJsonSchema"] = Schema(expenseCategories)
         };
@@ -211,22 +234,25 @@ public sealed class GeminiReceiptParser(HttpClient http, IOptions<GeminiOptions>
         _ => new(ReceiptErrorKind.ServiceUnavailable, $"{(int)status}")
     };
 
-    internal static ReceiptParseResult ReadAnswer(string body)
+    private static GeminiResponse ReadEnvelope(string body)
     {
-        GeminiResponse? response;
         try
         {
-            response = JsonSerializer.Deserialize<GeminiResponse>(body, Json);
+            return JsonSerializer.Deserialize<GeminiResponse>(body, Json)
+                   ?? throw new ReceiptParseException(ReceiptErrorKind.InvalidResponse, "Envelope is null.");
         }
         catch (JsonException e)
         {
             throw new ReceiptParseException(ReceiptErrorKind.InvalidResponse, "Envelope is not JSON: " + e.Message);
         }
+    }
 
-        var candidate = response?.Candidates?.FirstOrDefault();
+    private static ReceiptParseResult ReadAnswer(GeminiResponse response)
+    {
+        var candidate = response.Candidates?.FirstOrDefault();
         if (candidate is null)
         {
-            if (response?.PromptFeedback?.BlockReason is { } blockReason)
+            if (response.PromptFeedback?.BlockReason is { } blockReason)
                 throw new ReceiptParseException(ReceiptErrorKind.Blocked, "Prompt blocked: " + blockReason);
             throw new ReceiptParseException(ReceiptErrorKind.InvalidResponse, "No candidates.");
         }
@@ -298,6 +324,15 @@ public sealed class GeminiReceiptParser(HttpClient http, IOptions<GeminiOptions>
     {
         public List<Candidate>? Candidates { get; set; }
         public Feedback? PromptFeedback { get; set; }
+        public Usage? UsageMetadata { get; set; }
+    }
+
+    /// <summary>Token counts, for the log: a long wait usually shows up as many thinking tokens.</summary>
+    private sealed class Usage
+    {
+        public int? PromptTokenCount { get; set; }
+        public int? CandidatesTokenCount { get; set; }
+        public int? ThoughtsTokenCount { get; set; }
     }
 
     private sealed class Candidate

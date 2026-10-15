@@ -141,7 +141,7 @@ public class ReceiptService(
         catch (ReceiptParseException e)
         {
             logger.LogInformation("Receipt not read: {Kind} ({Detail})", e.Kind, e.Detail);
-            await FinishAsync(scan, ReceiptScanOutcome.Failed);
+            await FinishAsync(scan, IsUnanswered(e.Kind) ? ReceiptScanOutcome.Unanswered : ReceiptScanOutcome.Failed);
             throw;
         }
 
@@ -209,13 +209,26 @@ public class ReceiptService(
 
     // ---------- helpers ----------
 
+    /// <summary>
+    /// The user's allowance counts attempts the reader answered (or is still answering); the app's limit counts every
+    /// attempt, because the provider may have spent quota even on one that timed out on our side.
+    /// </summary>
     private async Task<(int User, int Total)> CountTodayAsync(string userId, DateTime now)
     {
         var start = now.Date;
         var end = start.AddDays(1);
         var today = db.ReceiptScans.AsNoTracking().Where(s => s.CreatedAt >= start && s.CreatedAt < end && s.Provider != "demo");
-        return (await today.CountAsync(s => s.UserId == userId), await today.CountAsync());
+        return (await today.CountAsync(s => s.UserId == userId && s.Outcome != ReceiptScanOutcome.Unanswered),
+                await today.CountAsync());
     }
+
+    /// <summary>
+    /// Errors where the reader gave no answer and the user could not have done anything differently:
+    /// these attempts do not use up the user's daily allowance.
+    /// </summary>
+    public static bool IsUnanswered(ReceiptErrorKind kind) => kind is
+        ReceiptErrorKind.Timeout or ReceiptErrorKind.ServiceUnavailable or ReceiptErrorKind.RateLimited
+        or ReceiptErrorKind.QuotaExceeded or ReceiptErrorKind.Misconfigured;
 
     private async Task FinishAsync(ReceiptScan scan, ReceiptScanOutcome outcome)
     {
