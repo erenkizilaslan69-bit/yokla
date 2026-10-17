@@ -89,6 +89,72 @@ public class AnalysisServiceTests
     }
 
     [Fact]
+    public async Task TopItems_GroupSpellingsThatDifferOnlyInCaseAndSpaces()
+    {
+        using var t = new TestDb();
+        AddExpense(t.Context, Alice, 95m, Oct(2), Coffee, "LATTE");
+        AddExpense(t.Context, Alice, 95m, Oct(5), Coffee, "Latte");
+        AddExpense(t.Context, Alice, 90m, Oct(9), Coffee, "  latte ");
+        AddExpense(t.Context, Alice, 40m, Oct(9), Market, "Süt  1 L");
+        AddExpense(t.Context, Alice, 40m, Oct(10), Market, "süt 1 l");
+
+        var analysis = await Analyze(t);
+
+        Assert.Equal(2, analysis.TopItems.Count);
+        var latte = analysis.TopItems[0];
+        Assert.Equal((280m, 3), (latte.Amount, latte.Count));
+        Assert.Equal(2, analysis.TopItems[1].Count);
+    }
+
+    [Fact]
+    public async Task TopItems_TreatTheTurkishDottedAndDotlessIAsTheSameLetter()
+    {
+        using var t = new TestDb();
+        // a receipt in plain ASCII capitals, one in Turkish capitals, one typed by hand
+        AddExpense(t.Context, Alice, 15m, Oct(2), Market, "SIMIT");
+        AddExpense(t.Context, Alice, 15m, Oct(3), Market, "SİMİT");
+        AddExpense(t.Context, Alice, 15m, Oct(4), Market, "Simit");
+        AddExpense(t.Context, Alice, 15m, Oct(5), Market, "Simit");
+
+        var item = Assert.Single((await Analyze(t)).TopItems);
+
+        Assert.Equal(("Simit", 60m, 4), (item.ItemName, item.Amount, item.Count));
+    }
+
+    [Fact]
+    public async Task Advice_CountsAFrequentItemAcrossItsSpellings()
+    {
+        using var t = new TestDb();
+        AddExpense(t.Context, Alice, 30m, Oct(2), Market, "SUT");
+        AddExpense(t.Context, Alice, 30m, Oct(5), Market, "Sut");
+        AddExpense(t.Context, Alice, 30m, Oct(9), Market, "sut");
+
+        var analysis = await Analyze(t);
+
+        Assert.Contains(analysis.Advice, a => a.Contains("3 kez toplam 90,00"));
+    }
+
+    [Theory]
+    [InlineData("LATTE", "latte")]
+    [InlineData("  Süt   1 L ", "süt 1 l")]
+    [InlineData("SIMIT", "simit")]
+    [InlineData("SİMİT", "simit")]
+    [InlineData("sımıt", "simit")]
+    [InlineData("Islak Mendil", "islak mendil")]
+    public void ItemNames_KeyIgnoresCaseSpacesAndTheTurkishI(string name, string key) =>
+        Assert.Equal(key, ItemNames.Key(name));
+
+    [Fact]
+    public void ItemNames_DisplayNameIsTheMostUsedSpellingAndAvoidsAllCapitalsOnATie()
+    {
+        Assert.Equal("LATTE", ItemNames.DisplayName(["LATTE", "LATTE", "Latte"]));   // most used wins
+        Assert.Equal("Latte", ItemNames.DisplayName(["LATTE", "Latte"]));            // tie: not all capitals
+        Assert.Equal("Latte", ItemNames.DisplayName(["Latte", "LATTE"]));            // order does not matter
+        Assert.Equal("Süt 1 L", ItemNames.DisplayName([" Süt  1 L"]));               // tidied spaces
+        Assert.Equal("A101 ekmek", ItemNames.DisplayName(["A101 EKMEK", "A101 ekmek"]));
+    }
+
+    [Fact]
     public async Task TopItems_IgnoreExpensesWithoutItemName()
     {
         using var t = new TestDb();

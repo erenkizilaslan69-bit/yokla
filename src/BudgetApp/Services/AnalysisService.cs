@@ -24,6 +24,34 @@ public record MonthlyAnalysis(
     List<CategoryChange> Changes,
     List<string> Advice);
 
+/// <summary>
+/// Product names typed by hand or read from receipts come in many spellings ("LATTE", "Latte", " latte ").
+/// They are grouped by a key that ignores case, extra spaces and the Turkish dotted/dotless i: receipts are
+/// often printed in plain ASCII capitals ("SIMIT"), so a Turkish lower-casing alone ("sımıt") would not
+/// match "Simit", and an invariant one would not match "SİMİT".
+/// </summary>
+public static class ItemNames
+{
+    public static string Key(string name)
+    {
+        var folded = name.Trim().Replace('İ', 'i').Replace('I', 'i').Replace('ı', 'i').ToLowerInvariant();
+        return string.Join(' ', folded.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    /// <summary>
+    /// The spelling a group is shown with: the one used most often; on a tie one that is not all capitals
+    /// ("Latte" rather than "LATTE"), then the alphabetically first so the result never depends on the order.
+    /// </summary>
+    public static string DisplayName(IEnumerable<string> spellings) =>
+        spellings
+            .Select(s => string.Join(' ', s.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries)))
+            .GroupBy(s => s)
+            .OrderByDescending(g => g.Count())
+            .ThenBy(g => g.Key.Any(char.IsLetter) && g.Key == g.Key.ToUpper(Tr.Culture) ? 1 : 0)
+            .ThenBy(g => g.Key, StringComparer.Ordinal)
+            .First().Key;
+}
+
 public interface IAnalysisService
 {
     Task<MonthlyAnalysis> GetMonthlyAnalysisAsync(string userId, int year, int month, DateTime today);
@@ -53,8 +81,8 @@ public class AnalysisService(ApplicationDbContext db, IForecastService forecast)
         // crowd out the real top items.
         var topItems = current
             .Where(r => !r.IsFixedLike && !string.IsNullOrWhiteSpace(r.ItemName))
-            .GroupBy(r => r.ItemName!.Trim())
-            .Select(g => new ItemTotal(g.Key, g.Sum(r => r.Amount), g.Count()))
+            .GroupBy(r => ItemNames.Key(r.ItemName!))
+            .Select(g => new ItemTotal(ItemNames.DisplayName(g.Select(r => r.ItemName!)), g.Sum(r => r.Amount), g.Count()))
             .OrderByDescending(i => i.Amount)
             .ThenBy(i => i.ItemName)
             .Take(TopItemCount)
