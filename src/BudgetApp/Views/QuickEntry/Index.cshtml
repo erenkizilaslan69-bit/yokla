@@ -1,0 +1,102 @@
+@model BudgetApp.Models.QuickEntryViewModel
+@{
+    ViewData["Title"] = "Söyle ya da yaz";
+    var quota = Model.Quota;
+}
+
+<div class="page-head">
+    <div>
+        <a asp-controller="Transactions" asp-action="Index" class="small fw-semibold"><i class="bi bi-arrow-left"></i> İşlemler</a>
+        <h1>Söyle ya da yaz</h1>
+    </div>
+    @if (!quota.IsDemo)
+    {
+        <span class="text-muted fw-semibold">Bugün @quota.Remaining / @quota.Limit hakkın var</span>
+    }
+</div>
+
+@if (quota.IsDemo)
+{
+    <div class="alert alert-warning" role="status">
+        <i class="bi bi-cone-striped alert-icon"></i>
+        <div class="alert-body"><strong>Demo modu.</strong> Servis için anahtar tanımlı değil. Yazdığın metin basit kurallarla ayrılır; ses kaydı dinlenmez, örnek bir cümle gösterilir.</div>
+    </div>
+}
+
+@if (Model.Error is { } error)
+{
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-triangle-fill alert-icon"></i>
+        <div class="alert-body">@error</div>
+    </div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card p-3 p-md-4">
+            @if (!quota.CanUse)
+            {
+                <p class="mb-3">
+                    @(quota.TotalLimitReached
+                        ? "Söyle ya da yaz bugün herkes için yoğundu ve günlük sınıra ulaştı."
+                        : $"Bugünkü söyle ya da yaz hakkını kullandın ({quota.Limit}/{quota.Limit}).")
+                    Yarın tekrar deneyebilirsin; o zamana kadar işlemleri elle ekleyebilirsin.
+                </p>
+                <div><a asp-controller="Transactions" asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Yeni işlem</a></div>
+            }
+            else
+            {
+                <form asp-action="Index" method="post" enctype="multipart/form-data" id="quickEntryForm"
+                      data-max-seconds="@Model.MaxRecordingSeconds" data-max-bytes="@Model.MaxAudioBytes">
+                    <p class="text-muted mb-3">Harcamalarını ve gelirlerini tutarlarıyla söyle ya da yaz; her biri ayrı bir işlem olur.
+                        Örneğin: <em>"simitçiye 20, otobüse 15, markete 230"</em> ya da <em>"dün bursum yattı 3000"</em>.</p>
+
+                    @* Shown by quick-entry.js only where the browser can record (HTTPS, MediaRecorder). *@
+                    <div class="quick-mic" data-mic hidden>
+                        <button type="button" class="quick-mic-btn" data-record aria-pressed="false">
+                            <i class="bi bi-mic-fill" aria-hidden="true"></i>
+                            <span data-record-label>Konuşmak için dokun</span>
+                        </button>
+                        <div class="quick-mic-status" data-status aria-live="polite"></div>
+                    </div>
+                    <div class="alert alert-warning" data-mic-error role="alert" hidden>
+                        <i class="bi bi-mic-mute-fill alert-icon"></i>
+                        <div class="alert-body" data-mic-error-text></div>
+                    </div>
+                    <input type="file" name="audio" accept="audio/*" class="visually-hidden" tabindex="-1" aria-hidden="true" data-audio />
+
+                    <label for="quickText" class="form-label" data-text-label>Yaz</label>
+                    <textarea id="quickText" name="text" class="form-control mb-3" rows="3" maxlength="@Model.MaxTextLength"
+                              placeholder="simitçiye 20, otobüse 15, markete 230" autocomplete="off">@Model.Text</textarea>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100" data-submit>
+                        <i class="bi bi-magic me-1"></i><span>Satırlara ayır</span>
+                    </button>
+                    <div class="form-text mt-2">
+                        Ses kaydı en fazla @Model.MaxRecordingSeconds saniye sürer. Açık olan her şey hemen kaydedilir ve geri alınabilir;
+                        emin olunamayan bir şey varsa önce sana gösterilir.
+                    </div>
+                </form>
+            }
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card p-3 p-md-4 receipt-privacy">
+            <h2 class="section-title"><i class="bi bi-shield-lock me-1"></i>Gizlilik</h2>
+            @if (quota.IsDemo)
+            {
+                <p class="mb-0 small">Demo modunda ses kaydın ve yazdığın metin hiçbir yere gönderilmez.</p>
+            }
+            else
+            {
+                <p class="small">Ses kaydın ya da yazdığın metin, işlemlere ayrılması için <strong>Google'ın Gemini servisine</strong> gönderilir. Kayıt sunucumuzda saklanmaz; yalnızca çıkan işlemler kaydedilir.</p>
+                <p class="small mb-0">Google, ücretsiz kullanımda gönderilen içeriği ürünlerini geliştirmek için kullanabilir ve bu içerik insanlar tarafından incelenebilir. Kayıtta kart numarası, TC kimlik numarası gibi bilgiler söyleme; yanında konuşan başkaları varsa onların sesi de kayda girer.</p>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/quick-entry.js" asp-append-version="true"></script>
+}

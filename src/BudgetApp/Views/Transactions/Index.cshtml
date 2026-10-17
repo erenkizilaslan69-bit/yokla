@@ -1,6 +1,7 @@
 @using BudgetApp.Models
 @model TransactionsIndexViewModel
 @inject BudgetApp.Services.IReceiptService Receipts
+@inject BudgetApp.Services.IQuickEntryService QuickEntry
 @{
     ViewData["Title"] = "İşlemler";
     var totals = Model.Totals;
@@ -32,6 +33,10 @@
                 </li>
             </ul>
         </div>
+        @if (QuickEntry.IsEnabled)
+        {
+            <a asp-controller="QuickEntry" asp-action="Index" class="btn btn-outline-primary d-none d-md-inline-flex align-items-center gap-1"><i class="bi bi-mic"></i>Söyle ya da yaz</a>
+        }
         @if (Receipts.IsEnabled)
         {
             <a asp-controller="Receipts" asp-action="Scan" class="btn btn-outline-primary d-none d-md-inline-flex align-items-center gap-1"><i class="bi bi-receipt"></i>Fiş tara</a>

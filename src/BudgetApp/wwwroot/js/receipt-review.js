@@ -1,9 +1,10 @@
-// Receipt confirmation screen: removing / restoring lines and a running total compared with the receipt's total.
-// Amounts are typed the Turkish way ("1.234,50"). Without this script the "Kaydet" tick boxes do the same job.
+// Confirmation screens (receipt, quick entry): removing / restoring lines, the number of lines and, on a receipt,
+// a running total compared with the receipt's total. Amounts are typed the Turkish way ("1.234,50").
+// Without this script the "Kaydet" tick boxes do the same job.
 (function () {
     'use strict';
 
-    const form = document.getElementById('receiptReview');
+    const form = document.getElementById('receiptReview') || document.getElementById('quickEntryReview');
     if (!form) return;
 
     const TOLERANCE = 0.05; // ReceiptMath.TotalTolerance
@@ -34,7 +35,9 @@
         });
 
         sum = Math.round(sum * 100) / 100;
-        form.querySelector('[data-lines-total]').textContent = money.format(sum);
+        // Quick entry mixes income and expenses, so it shows only the count.
+        const linesTotal = form.querySelector('[data-lines-total]');
+        if (linesTotal) linesTotal.textContent = money.format(sum);
         form.querySelector('[data-count]').textContent = count;
 
         const mismatch = form.querySelector('[data-mismatch]');

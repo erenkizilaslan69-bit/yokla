@@ -857,6 +857,67 @@ a:hover { text-decoration: underline; }
   .receipt-name { grid-column: 1 / -1; }
 }
 
+/* ---------- Quick entry ("Söyle ya da yaz") ---------- */
+.quick-mic { display: flex; flex-direction: column; align-items: center; gap: .6rem; margin-bottom: 1.25rem; }
+.quick-mic-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .35rem;
+  width: 132px;
+  height: 132px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--brand);
+  color: #fff;
+  font-weight: 600;
+  font-size: var(--fs-meta);
+}
+.quick-mic-btn .bi { font-size: 2.2rem; line-height: 1; }
+.quick-mic-btn:hover { background: var(--brand-hover); }
+.quick-mic-btn:focus-visible { outline: 3px solid var(--brand-ink); outline-offset: 3px; }
+.quick-mic-btn:disabled { opacity: .6; }
+/* Recording: the brand colour with a slow ring, not red (red is for problems). */
+.quick-mic-btn.is-recording { background: var(--brand-hover); animation: quick-pulse 1.6s ease-in-out infinite; }
+@keyframes quick-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 35%, transparent); }
+  50% { box-shadow: 0 0 0 14px color-mix(in srgb, var(--brand) 0%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .quick-mic-btn.is-recording { animation: none; box-shadow: 0 0 0 6px color-mix(in srgb, var(--brand) 30%, transparent); }
+}
+.quick-mic-status { min-height: 1.5em; color: var(--muted); font-variant-numeric: tabular-nums; text-align: center; }
+
+.quick-heard blockquote { font-size: 1.05rem; }
+
+/* Confirmation lines: name · amount · category · date · remove, and what to check underneath. */
+.quick-head, .quick-line {
+  grid-template-columns: minmax(0, 1fr) 140px 190px 150px 90px;
+  grid-template-areas: "name amount category date toggle" "problem problem problem problem problem";
+}
+.quick-head { grid-template-areas: none; }
+.quick-line .receipt-name { grid-area: name; }
+.quick-line .receipt-amount { grid-area: amount; }
+.quick-line .receipt-category { grid-area: category; }
+.quick-line .quick-date { grid-area: date; }
+.quick-line .receipt-remove { grid-area: toggle; }
+.quick-problem { grid-area: problem; color: var(--gold-ink); }
+.receipt-line.is-removed .quick-date,
+.receipt-line.is-removed .quick-problem { opacity: .45; }
+
+@media (max-width: 767.98px) {
+  .quick-line {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    grid-template-areas: "name name name" "amount date toggle" "category category category" "problem problem problem";
+  }
+}
+
+/* The message after saving: what was added, what was heard, "Geri al" and "Düzenle". */
+.quick-flash-heard { font-size: var(--fs-meta); opacity: .85; margin-top: .15rem; }
+.quick-flash-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .5rem; }
+.quick-flash-actions form { margin: 0; }
+
 /* ---------- Month picker ---------- */
 .month-picker {
   display: flex;

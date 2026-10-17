@@ -1,6 +1,7 @@
 @* One-time messages left in TempData by the previous request:
    Recurring = transactions that were just generated automatically, Message = success,
-   Notice = heads-up (e.g. an amount was reduced), Error = something was rejected. *@
+   Notice = heads-up (e.g. an amount was reduced), Error = something was rejected,
+   QuickEntrySaved = lines "Söyle ya da yaz" saved without asking, with "Geri al" and "Düzenle". *@
 @{
     var items = new (string Key, string Css, string Icon)[]
     {
@@ -9,6 +10,33 @@
         ("Notice", "alert-warning", "info-circle-fill"),
         ("Error", "alert-danger", "exclamation-triangle-fill")
     };
+}
+
+@if (BudgetApp.Models.QuickEntryFlash.From(TempData[BudgetApp.Models.QuickEntryFlash.Key]) is { } saved)
+{
+    var here = Context.Request.Path + Context.Request.QueryString;
+    <div class="alert alert-success alert-dismissible fade show quick-flash" role="status">
+        <i class="bi bi-check-circle-fill alert-icon"></i>
+        <div class="alert-body">
+            <strong>@saved.Ids.Count işlem eklendi:</strong> @saved.Summary
+            @if (saved.Heard is { } heard)
+            {
+                <div class="quick-flash-heard">Duyduğum: “@heard”</div>
+            }
+            <div class="quick-flash-actions">
+                <form asp-area="" asp-controller="QuickEntry" asp-action="Undo" method="post">
+                    @foreach (var id in saved.Ids)
+                    {
+                        <input type="hidden" name="ids" value="@id" />
+                    }
+                    <input type="hidden" name="returnUrl" value="@here" />
+                    <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-counterclockwise me-1"></i>Geri al</button>
+                </form>
+                <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Edit", "QuickEntry", new { area = "" })?@string.Join("&", saved.Ids.Select(id => $"ids={id}"))"><i class="bi bi-pencil me-1"></i>Düzenle</a>
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Kapat"></button>
+    </div>
 }
 
 @foreach (var (key, css, icon) in items)

@@ -1,0 +1,116 @@
+@model BudgetApp.Models.QuickEntryReviewForm
+@{
+    ViewData["Title"] = Model.IsEdit ? "İşlemleri düzenle" : "Kontrol et";
+    var tr = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+    string Money(decimal value) => value.ToString("0.00", tr);
+    var today = DateTime.Today.ToString("yyyy-MM-dd");
+}
+
+<div class="page-head">
+    <div>
+        @if (Model.IsEdit)
+        {
+            <a asp-controller="Transactions" asp-action="Index" class="small fw-semibold"><i class="bi bi-arrow-left"></i> İşlemler</a>
+        }
+        else
+        {
+            <a asp-action="Index" class="small fw-semibold"><i class="bi bi-arrow-left"></i> Tekrar söyle</a>
+        }
+        <h1>@ViewData["Title"]</h1>
+    </div>
+    @if (Model.IsDemo)
+    {
+        <span class="status-badge paused"><i class="bi bi-cone-striped"></i> Demo modu</span>
+    }
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Heard))
+{
+    <figure class="quick-heard card p-3 mb-3">
+        <figcaption class="small text-muted mb-1"><i class="bi bi-chat-quote me-1"></i>Duyduğum</figcaption>
+        <blockquote class="mb-0">“@Model.Heard”</blockquote>
+    </figure>
+}
+
+@if (Model.IsEdit)
+{
+    <div class="alert alert-info" role="status">
+        <i class="bi bi-pencil-square alert-icon"></i>
+        <div class="alert-body">Az önce eklenen @Model.EditIds.Count işlemi düzenliyorsun. Kaydedersen bu satırlar onların yerine geçer; vazgeçersen hiçbir şey değişmez.</div>
+    </div>
+}
+else
+{
+    <p class="text-muted">Emin olamadığım şeyler var. Satırları kontrol et, gerekirse düzelt ya da çıkar.</p>
+}
+
+<form asp-action="Save" method="post" id="quickEntryReview">
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+    <input type="hidden" asp-for="Heard" />
+    <input type="hidden" asp-for="IsDemo" />
+    @for (var n = 0; n < Model.EditIds.Count; n++)
+    {
+        <input type="hidden" name="EditIds[@n]" value="@Model.EditIds[n]" />
+    }
+
+    <div class="card mb-3">
+        <div class="receipt-head quick-head d-none d-md-grid">
+            <span>Açıklama</span><span class="text-end">Tutar</span><span>Kategori</span><span>Tarih</span><span></span>
+        </div>
+        @for (var i = 0; i < Model.Lines.Count; i++)
+        {
+            var line = Model.Lines[i];
+            <div class="receipt-line quick-line @(line.Include ? "" : "is-removed")" data-line>
+                <input type="hidden" asp-for="Lines[i].Problem" />
+
+                <div class="receipt-name">
+                    <label class="visually-hidden" for="Lines_@(i)__Name">Açıklama</label>
+                    <input asp-for="Lines[i].Name" class="form-control" />
+                    <span asp-validation-for="Lines[i].Name" class="text-danger small"></span>
+                </div>
+                <div class="receipt-amount">
+                    <label class="visually-hidden" for="Lines_@(i)__Amount">Tutar</label>
+                    <div class="input-group">
+                        <span class="input-group-text">₺</span>
+                        <input asp-for="Lines[i].Amount" value="@(line.Amount is { } a ? Money(a) : "")" type="text" inputmode="decimal"
+                               class="form-control text-end num @(line.Amount is null ? "is-invalid" : "")" placeholder="0,00" data-amount />
+                    </div>
+                    <span asp-validation-for="Lines[i].Amount" class="text-danger small"></span>
+                </div>
+                <div class="receipt-category">
+                    <label class="visually-hidden" for="Lines_@(i)__CategoryId">Kategori</label>
+                    <select asp-for="Lines[i].CategoryId" asp-items="Model.Categories" class="form-select"></select>
+                    <span asp-validation-for="Lines[i].CategoryId" class="text-danger small"></span>
+                </div>
+                <div class="quick-date">
+                    <label class="visually-hidden" for="Lines_@(i)__Date">Tarih</label>
+                    <input asp-for="Lines[i].Date" type="date" max="@today" class="form-control" />
+                    <span asp-validation-for="Lines[i].Date" class="text-danger small"></span>
+                </div>
+                <partial name="_ReviewLineToggle" model="(Html.NameFor(m => m.Lines[i].Include).ToString(), line.Include)" />
+                @if (line.Problem is { } problem)
+                {
+                    <div class="quick-problem small"><i class="bi bi-exclamation-circle-fill me-1"></i>@problem</div>
+                }
+            </div>
+        }
+    </div>
+
+    <p class="text-muted small mb-3"><span data-count>@Model.Lines.Count(l => l.Include)</span> satır kaydedilecek. Kategori, satırın gider mi gelir mi olduğunu da belirler.</p>
+
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>@(Model.IsEdit ? "Değişiklikleri kaydet" : "İşlem olarak kaydet")</button>
+        @if (Model.IsEdit)
+        {
+            <a asp-controller="Transactions" asp-action="Index" class="btn btn-outline-secondary">Vazgeç</a>
+        }
+        else
+        {
+            <a asp-action="Index" class="btn btn-outline-secondary">Vazgeç</a>
+        }
+    </div>
+</form>
+
+@section Scripts {
+    <script src="~/js/receipt-review.js" asp-append-version="true"></script>
+}

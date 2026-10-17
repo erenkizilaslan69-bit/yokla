@@ -156,7 +156,7 @@ Kullanıcı fişin fotoğrafını çeker; okunan satırları onaylar, her onayla
 
 **Günlük sınırlar.** Gemini'ye giden her deneme `ReceiptScan` olarak kaydedilir (bkz. model.md). Kayıt servise gitmeden önce yazılır (Pending), böylece art arda iki gönderim de sayılır.
 - Kullanıcı başına günde `Receipts:DailyLimitPerUser` (10). Sayılanlar: başarılı denemeler, model cevap verdiği hâlde kullanılabilir fiş çıkmayanlar (fiş değil, anlaşılamayan cevap, güvenlik engeli) ve cevabı beklenenler. **Cevap gelmeyen denemeler sayılmaz:** zaman aşımı, ağ ya da sunucu hatası, Google'ın hız veya kota sınırı, yapılandırma hatası. Bunlar kullanıcının elinde değildir; sayılsalardı servis yavaşken kullanıcı hiç fiş okutamadan hakkını bitirebilirdi.
-- Uygulama geneli günde `Receipts:DailyLimitTotal` (200): ücretsiz kota tek anahtara aittir. Buna **her deneme sayılır**, cevap gelmeyenler de; bizim tarafta zaman aşımına uğrayan bir istek Google'da işlenmeye devam edip kotadan düşmüş olabilir.
+- Uygulama geneli günde `Receipts:DailyLimitTotal` (300), **fiş okuma ve söyle ya da yaz için ortak**: ücretsiz kota tek anahtara aittir. Buna **her deneme sayılır**, cevap gelmeyenler de; bizim tarafta zaman aşımına uğrayan bir istek Google'da işlenmeye devam edip kotadan düşmüş olabilir.
 - Gün, sunucunun yerel günüdür. Demo denemeleri sınırlara sayılmaz.
 
 **Log.** Her Gemini isteği için model, düşünme seviyesi, görselin boyutu, HTTP durumu, geçen süre (ms), bitiş nedeni ve token sayıları (istem, cevap, düşünme) loga yazılır; zaman aşımında beklenen süre, hata durumunda Google'ın hata metni (ilk 500 karakter) yazılır. API anahtarı hiçbir log satırına girmez: yalnızca istek başlığında taşınır ve HttpClient loglarında başlık değerleri gizlenir. Fotoğraf ve okunan satırlar loglanmaz.
@@ -196,6 +196,73 @@ Otomatik yeniden deneme yoktur (kota dolmuşken tekrar denemek kotayı daha da h
 - Model aynı ürünü farklı fişlerde farklı adlandırabilir; bu, Analiz'deki "en çok harcanan ürünler" gruplamasını bölebilir.
 - İade, iptal ve e-fatura belgeleri kapsam dışıdır.
 - Yapılandırılmış çıktı `generationConfig.responseMimeType` + `responseJsonSchema` ile istenir. Güncel `generateContent` dokümanındaki REST örneği bunun yerine `generationConfig.responseFormat.text.{mimeType, schema}` gösteriyor; eski alanlar için bir kullanımdan kaldırma notu yok ve ilk gerçek istek 400 dönmedi. Testler sahte yanıtlarla çalışır.
+
+## 10. Söyle ya da yaz (QuickEntryService, IQuickEntryParser)
+Kullanıcı "simitçiye 20, otobüse 15, markete 230" gibi bir cümleyi söyler ya da yazar; cümle ayrı gider/gelir satırlarına bölünür. Açık olan satırlar hemen kaydedilir, şüpheli olan her şey önce onay ekranında gösterilir. Giriş noktası: telefonda "+" menüsü, masaüstünde İşlemler sayfasındaki "Söyle ya da yaz" düğmesi.
+
+**Ses.** Tarayıcıda yazıya çevirme yoktur: ses `MediaRecorder` ile kaydedilir ve Gemini'ye **ses olarak** gönderilir (çok modlu girdi).
+- Kayıt en fazla `QuickEntry:MaxRecordingSeconds` (30) sn sürer; son 5 saniyede geri sayım görünür, sürenin sonunda kendiliğinden durur. 0,5 sn'den kısa kayıt gönderilmez. Escape ya da sayfadan çıkmak kaydı atar ve mikrofonu bırakır.
+- Boyut sınırı `QuickEntry:MaxAudioBytes` (2 MB; 30 sn tarayıcı kaydı 1 MB'ın çok altında), istek sınırı 3 MB.
+- Sunucu türü tarayıcının söylediğine değil dosyanın ilk baytlarına bakarak belirler: WebM (Chrome, Edge, Firefox) → `audio/webm`, Ogg → `audio/ogg`, WAV → `audio/wav`, MP4 kabı (Safari'nin `audio/mp4` kaydı, iPhone Sesli Notlar `.m4a`) → `audio/m4a`. Gemini'nin desteklediği türler arasında `audio/mp4` yoktur, `audio/m4a` ve `audio/aac` vardır; MP4 kabı bu yüzden m4a olarak gönderilir. MP4 ailesinden resimler (HEIC, AVIF) reddedilir.
+- Ses yalnızca bellekte işlenir; diske, veritabanına ya da loga yazılmaz. Loga yalnızca boyutu ve türü girer.
+- Mikrofon izni reddedilirse: "Mikrofon izni verilmedi. Tarayıcının site ayarlarından izin verebilir ya da aşağıya yazabilirsin." ve imleç yazı kutusuna geçer. Mikrofon yoksa "Mikrofon bulunamadı." Tarayıcı kayıt yapamıyorsa (HTTPS değil, `MediaRecorder` yok) mikrofon düğmesi hiç gösterilmez.
+
+**Yazı.** Aynı sayfadaki kutuya yazılan metin aynı ayrıştırmadan geçer (en fazla `QuickEntry:MaxTextLength`, 500 karakter). Metin istemde işaretler arasında **veri** olarak gider; içindeki talimatlara uyulmaması istenir. JavaScript olmadan da çalışır.
+
+**Ayrıştırma.** `GeminiQuickEntryParser`, fiş okumayla aynı `GeminiClient` üzerinden (anahtar başlıkta, JSON şeması, düşünme seviyesi, zaman aşımı, log). İstemde bugünün tarihi ve haftanın günü, gider ve gelir kategorilerinin adları ile Türkçe sayı örnekleri ("yirmi beş", "iki buçuk", "bin iki yüz", "kırk lira elli kuruş") vardır. Yanıt şeması:
+- `heard`: duyulan cümle (kullanıcıya gösterilir; yazılı girdide kullanıcının kendi metni gösterilir),
+- `isEntry`: konuşmada hiç para geçmiyorsa false,
+- her satır için `description`, `amount` (duyulmadıysa null), `type` (expense/income), `category` (gider ve gelir kategorileri, enum), `date` (yyyy-MM-dd; "dün", "cuma", "ayın 3'ü"; söylenmediyse null = bugün), `confidence` (high/medium/low) ve `issue` (modelin emin olamadığı şey, Türkçe).
+
+**Satırların denetimi (QuickEntryRules.Resolve).** Modelin dediğine körü körüne güvenilmez:
+- Modelin `issue` cümlesi aynen gösterilir.
+- Tutar kuruşa yuvarlanır; yoksa ya da 0'dan küçükse boş bırakılır (model bir neden yazmadıysa: "Tutarı duyamadım, yazar mısın?").
+- Kategori satırın türünde ve listede değilse "Diğer Gider" / "Diğer Gelir" konur: "Kategoriyi seç."
+- İleri tarih bugüne çekilir ve söylenir; 60 günden eski tarih korunur ama sorulur.
+- Yüksek güvende olmayan, başka sorunu olmayan satıra "Emin olamadım, kontrol et." yazılır.
+
+**Hemen kaydet mi, onaya mı? (QuickEntryRules.CanAutoSave).** Satırlar ancak şunların **hepsi** doğruysa sorulmadan kaydedilir: bir şey duyulmuş, 1–8 satır, her satırın güveni `high`, tutarı var, kategoriyi model kendisi seçmiş ve türüyle uyumlu, modelin şüphesi yok, tarih son 7 gün içinde. Biri bile tutmazsa bütün satırlar onay ekranına gider. Modelin güven bilgisi bir ölçüm değildir; asıl güvence kuralların sıkılığı ve "Geri al"dır.
+
+**Hemen kaydedilince.** İşlemler sayfasına (son satırın ayına) dönülür ve bir bildirim çıkar: "3 işlem eklendi: Simit ₺20,00 · Otobüs ₺15,00 · Market alışverişi ₺230,00", altında "Duyduğum: …", **Geri al** ve **Düzenle**.
+- **Geri al:** bu işlemleri tek seferde siler. Yalnızca kullanıcının, notu "Hızlı giriş" olan işlemlerine dokunur; başka bir işlemin id'si gelse bile silinmez. Zaten silinmişse "Geri alınacak işlem bulunamadı" der.
+- **Düzenle:** onay ekranını kaydedilmiş satırlarla açar. Kaydedilirse eski satırlar yenileriyle **tek bir veritabanı işleminde** değiştirilir (`TransactionService.ReplaceManyAsync`); yeni satırlardan biri geçersizse hiçbir şey değişmez. Vazgeçilirse kaydedilmiş satırlar olduğu gibi kalır.
+- Bildirim tek seferliktir; sonradan değiştirmek için İşlemler sayfası kullanılır.
+
+**Onay ekranı.** Fiş onay ekranının satır düzenini, satır çıkarma/geri alma denetimini (`_ReviewLineToggle`) ve betiğini (`receipt-review.js`) paylaşır. Her satırda açıklama, tutar, kategori (Gider ve Gelir gruplu tek liste; kategori türü de belirler) ve tarih vardır; sorunlu satırın altında nedeni yazar. Toplam gösterilmez (gelir ve gider karışabilir), kaydedilecek satır sayısı gösterilir.
+
+**Kayıt.** Fişle aynı yol: `TransactionService.CreateManyAsync`, hepsi ya da hiçbiri; tutar > 0, gelecek tarih yok, kategori türü uyumlu. ItemName = açıklama (en fazla 200 karakter), Note = "Hızlı giriş". Ardından **anında uyarılar** her satır için çalışır, aynı uyarı bir kez gösterilir.
+
+**Günlük sınırlar.** Denemeler `ReceiptScan` olarak, `Kind = QuickEntry` ile kaydedilir.
+- Kullanıcı başına günde `QuickEntry:DailyLimitPerUser` (30), fiş hakkından **ayrı**: hızlı giriş günde birçok kez kullanılan küçük bir istek.
+- Uygulama geneli sınır fiş okumayla **ortak** (`Receipts:DailyLimitTotal`, 300).
+- Yazıyla giriş de sayılır (o da Gemini'ye gider). Konuşma içermeyen ya da para geçmeyen bir kayıt sayılır (model cevap verdi). Cevap gelmeyen denemeler (zaman aşımı, 5xx, hız/kota sınırı, yapılandırma) fişteki gibi kullanıcının hakkından düşmez. Demo denemeleri sayılmaz.
+
+**Demo modu.** Anahtar yoksa Development'ta `DemoQuickEntryParser`: yazılan metni basit kurallarla gerçekten böler (virgül, noktalı virgül, "ve"; "simit", "otobüs", "market", "burs" gibi anahtar kelimeler; Türk biçimli sayılar; "dün" bütün satırlara uygulanır). Sayıların yazıyla söylenişini anlamaz. Ses kaydını dinlemez; her zaman "Simitçiye 20, otobüse 15, markete 230." döner.
+
+**Geliştirme için deneme komutu.** iPhone sesini uygulamada denemek HTTPS ister; bunun yerine Development'ta:
+```
+dotnet run --project src/BudgetApp -- quick-entry-test kayit.m4a
+dotnet run --project src/BudgetApp -- quick-entry-test kayit.m4a --mime audio/mp4
+```
+Komut dosyayı uygulamanın kullandığı gerçek ayrıştırıcıyla Gemini'ye gönderir; algılanan türü, süreyi, duyulan cümleyi, satırları ve uygulamanın ne yapacağını (hemen kaydet / onay ekranı) yazdırır. Hiçbir şey kaydedilmez, günlük sınıra sayılmaz. `--mime` başka bir türle göndermeyi dener (ör. m4a reddedilirse `audio/mp4` ya da `audio/aac`).
+
+**Hata mesajları.**
+
+| Durum | Mesaj |
+| --- | --- |
+| Boş girdi | Önce harcamanı söyle ya da yaz. |
+| Ses dosyası değil / çok büyük | Ses kaydı alınamadı. Tekrar kaydet ya da yazarak gir. |
+| Para geçmiyor | Söylediğinde bir harcama ya da gelir bulamadım. "Simitçiye 20, otobüse 15" gibi tutarlarla tekrar dener misin? |
+| Kullanıcının günlük sınırı | Bugünkü söyle ya da yaz hakkını kullandın (30/30). … |
+| Zaman aşımı, kota, ağ, yapılandırma | Fiş okumadaki karşılıklarıyla aynı anlamda, "Söyle ya da yaz" diliyle |
+
+**Gizlilik.** Sayfa ve Gizlilik sayfası, ses kaydının ya da metnin işlenmek üzere Google'ın Gemini servisine gönderildiğini, Yokla'nın sesi saklamadığını, ücretsiz katmanda Google'ın içeriği ürünlerini geliştirmek için kullanabileceğini söyler; kayıtta kart numarası gibi bilgilerin söylenmemesini ve yanındakilerin sesinin de kayda girebileceğini hatırlatır.
+
+**Bilinen sınırlar.**
+- iPhone Safari'nin MediaRecorder kaydı (parçalı MP4 olabilir) gerçek API ile denenmedi; Sesli Notlar `.m4a` dosyası deneme komutuyla denenebilir. m4a reddedilirse yedek yol: tarayıcıda Web Audio ile çözüp 16 kHz mono WAV'a çevirmek.
+- Mikrofon yalnızca HTTPS'te ya da localhost'ta açılır.
+- "Geri al", bildirim gösterildikten sonra kullanıcının o satırlarda yaptığı değişiklikleri de siler.
+- "yüz elli" / "yüz, elli", "iki buçuk" (2,5 mi 250 mi) gibi belirsizlikler modele bırakılır; şüphe varsa onay ekranı açılır.
 
 ## 7. CSV dışa aktarma (TransactionCsvExporter)
 İşlemler sayfasındaki "CSV indir" düğmesi, **seçili ayın** işlemlerini Türkçe Excel'de doğrudan açılacak biçimde indirir (dosya adı `islemler-2026-10.csv`).

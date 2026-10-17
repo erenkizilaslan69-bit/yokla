@@ -57,12 +57,17 @@ public static class QuickEntryRules
         return items.Select(item =>
         {
             var problems = new List<string>();
+            // The reader's own words about what it doubted come first; the rules' sentences only fill in where it said nothing.
+            var issue = string.IsNullOrWhiteSpace(item.Issue) ? null : item.Issue.Trim();
+            if (issue is not null)
+                problems.Add(issue);
 
             decimal? amount = item.Amount is > 0 and var a ? Math.Round(a, 2, MidpointRounding.AwayFromZero) : null;
             if (amount is null or 0m)
             {
                 amount = null;
-                problems.Add("Tutarı duyamadım, yazar mısın?");
+                if (issue is null)
+                    problems.Add("Tutarı duyamadım, yazar mısın?");
             }
 
             int categoryId;
@@ -83,9 +88,7 @@ public static class QuickEntryRules
             else if (date < today.AddDays(-OldDateDays))
                 problems.Add($"Tarih {date:dd.MM.yyyy}, {OldDateDays} günden eski. Doğru mu?");
 
-            if (!string.IsNullOrWhiteSpace(item.Issue))
-                problems.Add(item.Issue.Trim());
-            else if (item.Confidence != QuickEntryConfidence.High && problems.Count == 0)
+            if (item.Confidence != QuickEntryConfidence.High && problems.Count == 0)
                 problems.Add("Emin olamadım, kontrol et.");
 
             var description = Describe(item.Description, categories.First(c => c.Id == categoryId).Name);

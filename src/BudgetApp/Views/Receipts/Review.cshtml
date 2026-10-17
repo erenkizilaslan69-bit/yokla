@@ -96,15 +96,7 @@
                     <select asp-for="Lines[i].CategoryId" asp-items="Model.Categories" class="form-select"></select>
                     <span asp-validation-for="Lines[i].CategoryId" class="text-danger small"></span>
                 </div>
-                <div class="receipt-remove">
-                    @* Without JavaScript the tick box itself decides; with it, the remove / undo buttons drive the box. *@
-                    <div class="form-check receipt-include">
-                        <input type="checkbox" asp-for="Lines[i].Include" class="form-check-input" data-include />
-                        <label class="form-check-label small" for="Lines_@(i)__Include">Kaydet</label>
-                    </div>
-                    <button type="button" class="icon-btn danger" data-remove aria-label="Satırı çıkar" title="Satırı çıkar" hidden><i class="bi bi-x-lg"></i></button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" data-restore hidden>Geri al</button>
-                </div>
+                <partial name="_ReviewLineToggle" model="(Html.NameFor(m => m.Lines[i].Include).ToString(), line.Include)" />
             </div>
         }
     </div>

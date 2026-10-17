@@ -1,12 +1,14 @@
 @* Phones only: the bottom tab bar of a signed-in user. Four destinations and, in the middle, "+" for adding.
-   With receipt reading on, "+" opens a small sheet (add a transaction / scan a receipt); otherwise it goes
-   straight to the new-transaction form. The desktop keeps its top menu (see _Layout). *@
+   With receipt reading or quick entry on, "+" opens a small sheet (add a transaction / scan a receipt / say or type);
+   otherwise it goes straight to the new-transaction form. The desktop keeps its top menu (see _Layout). *@
 @inject BudgetApp.Services.IReceiptService Receipts
+@inject BudgetApp.Services.IQuickEntryService QuickEntry
 @{
     var controller = ViewContext.RouteData.Values["controller"]?.ToString();
     var action = ViewContext.RouteData.Values["action"]?.ToString();
     bool Is(params string[] controllers) => controllers.Contains(controller);
     var home = controller == "Home" && action == "Index";
+    var sheet = Receipts.IsEnabled || QuickEntry.IsEnabled;
 }
 
 <nav class="tabbar d-md-none" aria-label="Ana gezinme">
@@ -17,7 +19,7 @@
         <i class="bi bi-arrow-left-right"></i><span>İşlemler</span>
     </a>
 
-    @if (Receipts.IsEnabled)
+    @if (sheet)
     {
         <button type="button" class="tabbar-add" data-bs-toggle="offcanvas" data-bs-target="#addSheet" aria-controls="addSheet" aria-label="Ekle">
             <i class="bi bi-plus-lg"></i>
@@ -36,7 +38,7 @@
     </a>
 </nav>
 
-@if (Receipts.IsEnabled)
+@if (sheet)
 {
     <div class="offcanvas offcanvas-bottom add-sheet d-md-none" tabindex="-1" id="addSheet" aria-labelledby="addSheetTitle">
         <div class="offcanvas-header">
@@ -48,10 +50,20 @@
                 <i class="bi bi-pencil-square"></i>
                 <span><strong>İşlem ekle</strong><small>Gelir ya da gideri elle gir</small></span>
             </a>
-            <a class="add-option" asp-area="" asp-controller="Receipts" asp-action="Scan">
-                <i class="bi bi-camera"></i>
-                <span><strong>Fiş tara</strong><small>Fişin fotoğrafını çek, satırlar kendiliğinden gelsin</small></span>
-            </a>
+            @if (QuickEntry.IsEnabled)
+            {
+                <a class="add-option" asp-area="" asp-controller="QuickEntry" asp-action="Index">
+                    <i class="bi bi-mic"></i>
+                    <span><strong>Söyle ya da yaz</strong><small>Harcamanı söyle ya da yaz, satırlara ayıralım</small></span>
+                </a>
+            }
+            @if (Receipts.IsEnabled)
+            {
+                <a class="add-option" asp-area="" asp-controller="Receipts" asp-action="Scan">
+                    <i class="bi bi-camera"></i>
+                    <span><strong>Fiş tara</strong><small>Fişin fotoğrafını çek, satırlar kendiliğinden gelsin</small></span>
+                </a>
+            }
         </div>
     </div>
 }

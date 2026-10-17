@@ -69,7 +69,7 @@ Kullanıcının bir gider kategorisi için koyduğu aylık limit. Kurallar için
 (UserId, CategoryId) benzersiz olmalı: kategori başına tek limit.
 
 ## ReceiptScan
-Bir fiş okuma denemesi; yalnızca günlük sınırlar için tutulur. **Fotoğraf da okunan sonuç da saklanmaz.** Kurallar için bkz. docs/rules.md bölüm 9.
+Okuyucuya (Gemini) giden bir deneme: fiş okuma ya da "Söyle ya da yaz"; yalnızca günlük sınırlar için tutulur. **Fotoğraf, ses kaydı ve okunan sonuç saklanmaz.** Kurallar için bkz. docs/rules.md bölüm 9 ve 10.
 
 | Alan | Tip | Not |
 | --- | --- | --- |
@@ -77,9 +77,10 @@ Bir fiş okuma denemesi; yalnızca günlük sınırlar için tutulur. **Fotoğra
 | UserId | string | |
 | CreatedAt | DateTime | Denemenin zamanı (sunucunun yerel saati) |
 | Provider | string | "gemini" veya "demo"; demo denemeleri sınırlara sayılmaz |
+| Kind | enum (Receipt, QuickEntry) | Fiş mi, söyle ya da yaz mı. Kullanıcı başına sınır türe göre ayrı, uygulama geneli sınır ortaktır |
 | Outcome | enum (Pending, Succeeded, Failed, Unanswered) | Servise gönderilmeden önce Pending olarak yazılır, cevaba göre güncellenir. Failed: cevap geldi ama kullanılabilir fiş çıkmadı. Unanswered: cevap hiç gelmedi (zaman aşımı, ağ/sunucu hatası, hız/kota sınırı, yapılandırma); kullanıcının günlük hakkına sayılmaz, uygulama geneli sınıra sayılır |
 
-Fişten kaydedilen satırlar sıradan `Transaction` kayıtlarıdır: ItemName = ürün adı, Note = "Fiş · {işletme}".
+Fişten kaydedilen satırlar sıradan `Transaction` kayıtlarıdır: ItemName = ürün adı, Note = "Fiş · {işletme}". "Söyle ya da yaz" satırları da öyledir: ItemName = kısa açıklama, Note = "Hızlı giriş" ("Geri al" ve "Düzenle" yalnızca bu nottaki işlemlere dokunur).
 
 ## Goal
 | Alan | Tip | Not |

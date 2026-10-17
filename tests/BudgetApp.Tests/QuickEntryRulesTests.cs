@@ -122,6 +122,14 @@ public class QuickEntryRulesTests
         Assert.Equal("Tutar 15 mi 50 mi, emin olamadım.", lines[0].Problem);
     }
 
+    [Fact]
+    public void Resolve_AMissingAmountTheReaderExplainedIsNotExplainedTwice()
+    {
+        var (lines, _) = Run(items: Item(amount: null, confidence: QuickEntryConfidence.Low, issue: "Tutarı anlayamadım."));
+
+        Assert.Equal("Tutarı anlayamadım.", lines[0].Problem);
+    }
+
     [Theory]
     [InlineData(QuickEntryConfidence.Medium)]
     [InlineData(QuickEntryConfidence.Low)]

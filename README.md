@@ -19,6 +19,7 @@ A simple income and expense tracker for everyone — students and people with a 
 
 - **Income and expense tracking** — amount, category, date, optional item name and note. List, edit and delete, with a month picker (previous / next month) and per-month income, expense and balance totals. Future-dated entries are rejected.
 - **Receipt scanning** — take a photo of a shop receipt (the phone's camera opens directly) and Google Gemini reads it: shop, date, every line with a readable product name ("SUT YRM YGL" → "Yarım yağlı süt"), amount and a suggested category, and the receipt total. You check the lines in an editable table, drop the ones you do not want, and each confirmed line is saved as its own expense. The photo is shrunk in the browser, sent once and never stored. A warning appears when the lines do not add up to the total or when the same receipt seems to be saved already; a discount on the whole receipt is spread over the lines. See [Receipt scanning setup](#receipt-scanning-setup).
+- **Say or type ("Söyle ya da yaz")** — say "simitçiye 20, otobüse 15, markete 230" into the microphone or type it, and it becomes three separate transactions with categories (income too: "dün bursum yattı 3000"). The recording is sent to Google Gemini as audio (no speech-to-text in the browser) and never stored. Clear lines are saved at once with an "undo / edit" message; anything the reader was unsure about (a missing amount, an unknown category, an old date) opens a confirmation screen first. The instant warnings run on these lines too. See [docs/rules.md](docs/rules.md) section 10.
 - **CSV export** — download the shown month as a CSV file that opens correctly in Turkish Excel (UTF-8 with BOM, `;` separator, decimal comma; columns Tarih, Tür, Kategori, Ürün, Not, Tutar). Text that a spreadsheet would run as a formula is defused.
 - **Daily allowance** — a card at the top of the dashboard answers "how much can I spend today?": the money on hand, minus the recurring expenses still due before the next recurring income, divided by the days until that income. It is measured at the start of the day, so spending during the day uses the allowance up without shrinking it, and whatever is left (or overspent) carries into tomorrow's. When this month's daily pace would use the available money up before the next income, the card says on which day ("at this pace your money runs out on 27 October").
 - **Recurring transactions** — define your salary, rent, subscriptions and other monthly items once; the app adds the transaction on its due day (day 31 falls on the last day of shorter months). Definitions can be paused, resumed, edited or deleted, and a "repeat every month" switch on the new-transaction form creates one from a regular entry. There is no background job: due items are generated when the user opens a page, at most once per month.
@@ -62,7 +63,7 @@ The product is called Yokla; in the code it keeps its working name, BudgetApp (p
 src/BudgetApp
 ├── Models/          Entities (Category, Transaction, Goal, GoalContribution, MonthClose, ReceiptScan) and view models
 ├── Data/            ApplicationDbContext, EF Core migrations, development demo-data seeder
-├── Services/        All business logic: transactions, CSV export, recurring definitions, budgets, goals, month close, warnings, analysis, forecast, daily allowance, receipt reading (Services/Receipts)
+├── Services/        All business logic: transactions, CSV export, recurring definitions, budgets, goals, month close, warnings, analysis, forecast, daily allowance, receipt reading (Services/Receipts), say or type (Services/QuickEntry), the shared Gemini client (Services/Gemini)
 ├── Infrastructure/  The filter that generates due recurring transactions before each request
 ├── Controllers/     Thin MVC controllers: read the request, call a service, return a view
 ├── Views/           Razor views (Turkish UI)
@@ -77,8 +78,8 @@ Design decisions worth knowing:
 - **Money is always `decimal`** (`decimal(18,2)` in the database), never `double` or `float`.
 - **Controllers stay thin.** Calculations live in `Services`, each of which has tests. Services take "today" as a parameter, so date-dependent rules are tested with a fixed clock.
 - **Per-user isolation.** Every query filters by `UserId`; asking for someone else's record behaves like "not found".
-- **An LLM only reads receipts.** Receipt scanning is the one place an external API is used, and only to turn a photo into lines the user then checks. The warnings, tips and forecasts are plain, deterministic rules, so every number can be traced back to the data.
-- **The receipt reader is replaceable.** `IReceiptParser` hides the provider; `GeminiReceiptParser` calls the REST API with plain `HttpClient` (no SDK package) and a JSON schema for the answer. Its tests use canned HTTP answers and never call the real API.
+- **An LLM only reads input.** Receipt scanning and "Söyle ya da yaz" are the only places an external API is used, and only to turn a photo or a sentence into lines; anything doubtful is shown to the user before it is saved, and saved lines can be undone. The warnings, tips and forecasts are plain, deterministic rules, so every number can be traced back to the data.
+- **The readers are replaceable.** `IReceiptParser` and `IQuickEntryParser` hide the provider; the Gemini readers share one `GeminiClient` that calls the REST API with plain `HttpClient` (no SDK package) and a JSON schema for the answer. Their tests use canned HTTP answers and never call the real API.
 - **One bold thing per page.** The home page has a single raised surface and a single big number, today's allowance; everything else is a quiet section. Amounts use [Bricolage Grotesque](https://fonts.google.com/specimen/Bricolage+Grotesque) (SIL OFL, bundled under `wwwroot/fonts`) with tabular figures; text stays in Inter. Expense amounts are not red: red is kept for problems. On phones a bottom tab bar replaces the hamburger menu. The design guide is [docs/design-brief.md](docs/design-brief.md).
 - **Light and dark theme from one set of variables.** `wwwroot/css/site.css` defines every colour as a CSS variable and redefines them under Bootstrap 5.3's `[data-bs-theme="dark"]`. A few lines of inline script in `<head>` set the theme before the first paint, so the page never flashes in the wrong theme. Each category has a light and a dark tone in `Models/CategoryStyle.cs`; the analysis chart repaints itself when the theme changes.
 
@@ -116,7 +117,15 @@ Receipt scanning needs a Gemini API key from [Google AI Studio](https://aistudio
 dotnet user-secrets set "Gemini:ApiKey" "<your key>" --project src/BudgetApp
 ```
 
-In production, set the environment variable `Gemini__ApiKey` instead. Without a key, the Development environment runs receipt scanning in **demo mode** (a few made-up receipts, clearly labelled); in any other environment the feature is switched off and its buttons are hidden.
+In production, set the environment variable `Gemini__ApiKey` instead. The same key is used by "Söyle ya da yaz". Without a key, the Development environment runs both in **demo mode** (a few made-up receipts; typed sentences split by simple rules, recordings answered with a sample sentence; clearly labelled); in any other environment both features are switched off and their buttons are hidden.
+
+To check how Gemini handles a real recording (for example an iPhone Voice Memos `.m4a`, since the microphone in the browser needs HTTPS), run in Development:
+
+```bash
+dotnet run --project src/BudgetApp -- quick-entry-test recording.m4a
+```
+
+It sends the file to the real reader, prints what was heard, the lines and what the app would do, and saves nothing.
 
 Settings in `appsettings.json`:
 
@@ -126,16 +135,20 @@ Settings in `appsettings.json`:
 | `Gemini:TimeoutSeconds` | `60` | How long one receipt may take |
 | `Gemini:ThinkingLevel` | `low` | How much the model thinks before answering (`low`, `medium`, `high`; `low` is the lowest `gemini-3.8-flash` accepts). Empty = the model's default |
 | `Receipts:DailyLimitPerUser` | `10` | Receipts one user may scan per day (attempts that got no answer, such as timeouts, do not count) |
-| `Receipts:DailyLimitTotal` | `200` | Receipts the whole app may scan per day (the free quota belongs to the one key) |
+| `Receipts:DailyLimitTotal` | `300` | Requests the whole app may send per day, receipts and quick entries together (the free quota belongs to the one key) |
 | `Receipts:MaxUploadBytes` | `4000000` | Largest accepted photo |
 | `Receipts:MaxImageEdge` | `2048` | The browser shrinks photos to this many pixels on the longer side |
+| `QuickEntry:DailyLimitPerUser` | `30` | Quick entries (spoken or typed) one user may send per day, separate from receipts |
+| `QuickEntry:MaxRecordingSeconds` | `30` | The browser stops recording after this long |
+| `QuickEntry:MaxAudioBytes` | `2000000` | Largest accepted recording |
+| `QuickEntry:MaxTextLength` | `500` | Longest accepted typed sentence |
 
 Check the free-tier limits of your key in AI Studio and set the two daily limits below them.
 
 Every Gemini request is logged with its duration, HTTP status, finish reason and token counts (prompt, answer, thinking), e.g. `Gemini gemini-3.8-flash answered HTTP 200 in 6421 ms (thinking low; image 412 KB; finish STOP; tokens: prompt 1290, answer 210, thinking 340)`. The API key is never logged. The log goes to the console of `dotnet run`.
 
 > **Before you offer receipt scanning to others, read the [Gemini API terms](https://ai.google.dev/gemini-api/terms).** In short, as of October 2026:
-> - **Free tier data use:** on the unpaid tier Google may use the submitted photos and the answers to improve its products, and human reviewers may read them. Google asks not to send sensitive or personal information. The upload page says this, and suggests covering card numbers and names on the receipt.
+> - **Free tier data use:** on the unpaid tier Google may use the submitted photos, recordings, sentences and the answers to improve its products, and human reviewers may read them. Google asks not to send sensitive or personal information. The upload and "Söyle ya da yaz" pages say this, suggest covering card numbers and names on the receipt, and remind that other people's voices may end up in a recording.
 > - **Age:** the API may only be used by people 18 or older, and not in apps aimed at or likely to be used by people under 18.
 > - **EU, UK and Switzerland:** apps offered to users there may only use the paid tier.
 
