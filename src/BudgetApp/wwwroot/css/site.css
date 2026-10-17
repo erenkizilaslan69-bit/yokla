@@ -287,24 +287,25 @@ a:hover { text-decoration: underline; }
 }
 
 .app-navbar .navbar-brand {
-  font-weight: 800;
-  letter-spacing: -.02em;
   color: var(--text);
   display: inline-flex;
   align-items: center;
-  gap: .5rem;
 }
 
-.brand-mark {
-  display: inline-grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  color: #fff;
-  background: linear-gradient(135deg, var(--brand), var(--brand-grad-end));
-  font-size: 1.05rem;
+/* Wordmark (_Logo): "Y", a gold coin for the "o", "kla". The coin is .62em and centred on the x-height (.528em):
+   .264em - .31em = -.046em. It looks the same in both themes; the letters take the text colour. */
+.logo {
+  display: inline-block;
+  font-family: var(--font-money);
+  font-weight: 800;
+  font-size: 1.6rem;
+  letter-spacing: -.04em;
+  line-height: 1;
+  color: var(--text);
+  white-space: nowrap;
 }
+.logo-coin { width: .62em; height: .62em; vertical-align: -.046em; margin: 0 .01em; }
+.logo-lg { font-size: 3rem; }
 
 .app-navbar .nav-link {
   color: var(--muted);
@@ -1007,7 +1008,6 @@ a:hover { text-decoration: underline; }
 /* ---------- Sign in / register ---------- */
 .auth-wrap { max-width: 420px; margin: 2rem auto; }
 .auth-card { padding: 2rem 1.75rem; box-shadow: var(--shadow-lg); border-radius: var(--radius-lg); }
-.auth-card .brand-mark { width: 52px; height: 52px; font-size: 1.5rem; border-radius: 16px; }
 .auth-card h1 { font-size: 1.45rem; }
 
 /* ---------- Footer ---------- */

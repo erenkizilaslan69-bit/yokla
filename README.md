@@ -1,3 +1,5 @@
+<img src="docs/logo.svg" alt="Yokla" height="64">
+
 # Yokla (Turkish for "check your pockets")
 
 **Cebini yokla.**

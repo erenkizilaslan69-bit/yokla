@@ -19,6 +19,9 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#0B7A5C" />
     <title>@ViewData["Title"] · Yokla</title>
+    <link rel="icon" href="~/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="~/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="~/apple-touch-icon.png" />
     <partial name="_ThemeInit" />
     <link rel="preload" href="~/fonts/inter/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="~/fonts/bricolage-grotesque/bricolage-grotesque-latin-opsz-normal.woff2" as="font" type="font/woff2" crossorigin />
@@ -32,7 +35,7 @@
         <nav class="navbar navbar-expand-md app-navbar sticky-top">
             <div class="container">
                 <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
-                    <span class="brand-mark"><i class="bi bi-wallet2"></i></span>Yokla
+                    <partial name="_Logo" model='"nav"' />
                 </a>
                 @if (signedIn)
                 {
