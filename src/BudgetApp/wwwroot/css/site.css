@@ -348,15 +348,16 @@ a:hover { text-decoration: underline; }
 .theme-toggle::after { display: none; } /* no caret: the icon is the control */
 
 /* ---------- Cards ---------- */
+/* Resting cards have no shadow: the 1px border separates them. Shadows are for what floats above the page
+   (menus, the "+" sheet). */
 .card {
   --bs-card-color: var(--text);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
 }
 
-.card-lift { box-shadow: var(--shadow); }
 .section-title { font-size: var(--fs-title); font-weight: 700; margin: 0 0 .75rem; }
 
 .page-head {
