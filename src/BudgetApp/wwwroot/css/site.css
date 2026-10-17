@@ -23,6 +23,27 @@
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
+/* ---------- Bricolage Grotesque (local, variable: weight and optical size) for money and big numbers ----------
+   The digits, comma and point live in the latin file, which carries the tabular-figures feature; the lira sign and
+   the Turkish letters live in latin-ext. Licence: SIL OFL 1.1 (fonts/bricolage-grotesque/LICENSE.txt). */
+@font-face {
+  font-family: "Bricolage Grotesque Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url("../fonts/bricolage-grotesque/bricolage-grotesque-latin-ext-opsz-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url("../fonts/bricolage-grotesque/bricolage-grotesque-latin-opsz-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 /* ---------- Tokens: light theme ----------
    Each meaning colour has up to five roles:
      (plain)     a fill: button, bar, icon tile            --brand, --expense, --gold
@@ -106,6 +127,19 @@
   --shadow-lg: 0 12px 32px rgba(16, 40, 32, .14);
 
   --font: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Money and big numbers. The optical-size axis follows the font size: characterful at 72px, quiet at 15px. */
+  --font-money: "Bricolage Grotesque Variable", var(--font);
+
+  /* Type scale: a few fixed sizes. Text never goes below 13px. */
+  --fs-meta: .8125rem;    /* 13px: dates, captions */
+  --fs-small: .875rem;    /* 14px: secondary text */
+  --fs-body: 1rem;        /* 16px */
+  --fs-title: 1.125rem;   /* 18px: section titles */
+  --fs-page: 1.625rem;    /* 26px: page titles */
+  --fs-hero: clamp(3rem, 14vw, 4.5rem); /* 48-72px: today's allowance, the one big number */
+
+  /* Spacing rhythm (4/8): sections are separated by these, by importance. */
+  --space-1: .25rem; --space-2: .5rem; --space-3: 1rem; --space-4: 1.5rem; --space-5: 2rem; --space-6: 3rem;
 }
 
 /* ---------- Tokens: dark theme ---------- */
@@ -227,8 +261,16 @@ main { flex: 1 0 auto; }
 .app-main { padding-top: 1.5rem; padding-bottom: 1.5rem; }
 
 h1, h2, h3, h4, h5 { font-weight: 700; letter-spacing: -.015em; }
-h1 { font-size: 1.7rem; }
-.num, .stat-value, .amount { font-variant-numeric: tabular-nums; }
+h1 { font-size: var(--fs-page); }
+body { line-height: 1.5; }
+
+/* Every amount: the money face, tabular figures so columns line up, never broken across lines. */
+.num, .stat-value, .amount, .money, .carry-amount, .celebrate-amount, .allowance-amount, .goal-percent, .budget-percent {
+  font-family: var(--font-money);
+  font-variant-numeric: tabular-nums;
+  font-optical-sizing: auto;
+}
+.money { font-weight: 650; white-space: nowrap; }
 
 a { text-decoration: none; }
 a:hover { text-decoration: underline; }
@@ -319,7 +361,7 @@ a:hover { text-decoration: underline; }
 }
 
 .card-lift { box-shadow: var(--shadow); }
-.section-title { font-size: 1.05rem; font-weight: 700; margin: 0 0 .75rem; }
+.section-title { font-size: var(--fs-title); font-weight: 700; margin: 0 0 .75rem; }
 
 .page-head {
   display: flex;
@@ -603,12 +645,13 @@ a:hover { text-decoration: underline; }
 
 /* ---------- Transactions ---------- */
 .tx-table { --bs-table-bg: transparent; margin: 0; }
-.tx-table th { color: var(--muted); font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; border-bottom-color: var(--line); }
+.tx-table th { color: var(--muted); font-size: var(--fs-meta); font-weight: 600; border-bottom-color: var(--line); }
 .tx-table td { vertical-align: middle; border-color: var(--line); padding-top: .8rem; padding-bottom: .8rem; }
 .tx-table tbody tr:hover { background: var(--surface-hover); }
 .amount { font-weight: 700; white-space: nowrap; }
 .amount.income { color: var(--income); }
-.amount.expense { color: var(--expense-ink); }
+/* Spending is the normal case in a budget: neutral with its minus sign. Red is kept for problems. */
+.amount.expense { color: var(--text); }
 
 .tx-card {
   display: flex;
@@ -707,7 +750,7 @@ a:hover { text-decoration: underline; }
   padding: .75rem 1rem;
   border-bottom: 1px solid var(--line);
 }
-.receipt-head { color: var(--muted); font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; padding-block: .6rem; }
+.receipt-head { color: var(--muted); font-size: var(--fs-meta); font-weight: 600; padding-block: .6rem; }
 .receipt-line:last-child { border-bottom: 0; }
 .receipt-raw { color: var(--muted); font-size: .78rem; margin-top: .25rem; display: flex; flex-wrap: wrap; gap: .3rem; }
 .receipt-remove { display: flex; justify-content: flex-end; align-items: center; min-height: 38px; }
