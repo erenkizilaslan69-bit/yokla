@@ -94,7 +94,7 @@ else
         <div class="table-responsive">
             <table class="table table-sm align-middle mb-0">
                 <thead>
-                    <tr class="text-muted small"><th>Kategori</th><th class="text-end">Geçen ay</th><th class="text-end">Bu ay</th><th class="text-end">Fark</th><th class="text-end">%</th></tr>
+                    <tr class="text-muted small"><th>Kategori</th><th class="text-end d-none d-sm-table-cell">Geçen ay</th><th class="text-end d-none d-sm-table-cell">Bu ay</th><th class="text-end">Fark</th><th class="text-end">%</th></tr>
                 </thead>
                 <tbody>
                 @foreach (var c in a.Changes)
@@ -102,9 +102,16 @@ else
                     var cls = c.Delta > 0 ? "up" : c.Delta < 0 ? "down" : "flat";
                     var icon = c.Delta > 0 ? "arrow-up-right" : c.Delta < 0 ? "arrow-down-right" : "dash";
                     <tr>
-                        <td><partial name="_CategoryBadge" model="c.Name" /></td>
-                        <td class="text-end num">@c.Previous.ToString("C2")</td>
-                        <td class="text-end num">@c.Current.ToString("C2")</td>
+                        <td>
+                            @* Phones show category, difference and percent; the two month totals open under the category. *@
+                            <details class="change-detail d-sm-none">
+                                <summary><partial name="_CategoryBadge" model="c.Name" /></summary>
+                                <div class="change-months">Geçen ay <span class="money">@c.Previous.ToString("C2")</span> · bu ay <span class="money">@c.Current.ToString("C2")</span></div>
+                            </details>
+                            <span class="d-none d-sm-inline"><partial name="_CategoryBadge" model="c.Name" /></span>
+                        </td>
+                        <td class="text-end num d-none d-sm-table-cell">@c.Previous.ToString("C2")</td>
+                        <td class="text-end num d-none d-sm-table-cell">@c.Current.ToString("C2")</td>
                         <td class="text-end"><span class="delta @cls num"><i class="bi bi-@icon"></i> @(c.Delta > 0 ? "+" : "")@c.Delta.ToString("C2")</span></td>
                         <td class="text-end"><span class="delta @cls num">@(c.Percent is { } p ? $"{(p > 0 ? "+" : "")}{p:N0}%" : "—")</span></td>
                     </tr>
@@ -114,15 +121,14 @@ else
         </div>
     </div>
 
-    <h2 class="section-title">Tavsiyeler</h2>
-    <div class="d-grid gap-2 mb-4">
-        @foreach (var tip in a.Advice)
-        {
-            <div class="card tip-card">
-                <span class="tip-icon"><i class="bi bi-lightbulb-fill"></i></span>
-                <div>@tip</div>
-            </div>
-        }
+    <div class="card p-3 p-md-4 mb-4">
+        <h2 class="section-title">Tavsiyeler</h2>
+        <ul class="tips">
+            @foreach (var tip in a.Advice)
+            {
+                <li><i class="bi bi-lightbulb-fill" aria-hidden="true"></i><span>@tip</span></li>
+            }
+        </ul>
     </div>
 }
 

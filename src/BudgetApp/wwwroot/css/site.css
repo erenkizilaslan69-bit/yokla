@@ -932,23 +932,17 @@ a:hover { text-decoration: underline; }
 .delta.down { color: var(--income); font-weight: 600; white-space: nowrap; }
 .delta.flat { color: var(--muted); white-space: nowrap; }
 
-.tip-card {
-  display: flex;
-  gap: .85rem;
-  align-items: flex-start;
-  padding: .95rem 1.1rem;
-}
+/* Tips: one card, a plain list. */
+.tips { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }
+.tips li { display: flex; gap: .6rem; align-items: baseline; }
+.tips .bi { flex: none; color: var(--gold-icon); }
 
-.tip-card .tip-icon {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: var(--gold-soft);
-  color: var(--gold-icon);
-}
+/* Change table on phones: the category opens to show both months. */
+.change-detail summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; min-height: 44px; }
+.change-detail summary::-webkit-details-marker { display: none; }
+.change-detail summary::after { content: "\f282"; font-family: "bootstrap-icons"; font-size: .7rem; margin-left: .4rem; color: var(--muted); transition: transform .12s ease; }
+.change-detail[open] summary::after { transform: rotate(180deg); }
+.change-months { color: var(--muted); font-size: var(--fs-meta); padding-bottom: .35rem; }
 
 /* ---------- Goal reached (home page) ---------- */
 .celebrate-card {
