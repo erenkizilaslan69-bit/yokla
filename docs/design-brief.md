@@ -1,4 +1,4 @@
-# Tasarım rehberi — BudgetApp son dokunuş
+# Tasarım rehberi — Yokla son dokunuş
 
 Bu dosya, tasarım skill'lerinden (frontend-design, ui-ux-pro-max) bu uygulamaya uyan ilkelerin özetidir. Tasarım kararlarında bu dosya esas alınır. Mantığa, servislere ve testlere dokunulmaz; sadece görünüm, metin ve yerleşim değişir.
 

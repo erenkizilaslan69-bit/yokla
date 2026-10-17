@@ -114,7 +114,7 @@ Her adımda önce plan iste, onayla, sonra uygulat. Örnekler:
 ### Kısa CLAUDE.md
 
 ```markdown
-# BudgetApp
+# Yokla (kod adı BudgetApp)
 Öğrenciler ve çalışanlar dahil herkes için gelir-gider takip uygulaması. ASP.NET Core MVC, .NET 10, EF Core, SQLite.
 
 ## Kurallar

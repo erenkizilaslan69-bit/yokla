@@ -1,4 +1,6 @@
-# BudgetApp
+# Yokla
+
+Uygulamanın kullanıcıya görünen adı Yokla ("Cebini yokla."). Kod içindeki proje, namespace ve klasör adları BudgetApp olarak kalır.
 
 Öğrenciler ve çalışanlar dahil herkes için gelir-gider takip uygulaması.
 Teknoloji: ASP.NET Core MVC, .NET 10, Entity Framework Core, SQLite, ASP.NET Core Identity, Bootstrap, Chart.js.

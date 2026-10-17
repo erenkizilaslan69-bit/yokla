@@ -1,4 +1,9 @@
-# BudgetApp
+# Yokla (Turkish for "check your pockets")
+
+**Cebini yokla.**
+
+### Ay sonu gelmeden cebini yokla.
+*Check your pockets before the month runs out.*
 
 A simple income and expense tracker for everyone — students and people with a job alike. It records what comes in and what goes out, warns you the moment a purchase looks risky, explains where the month's money went, and tells you when you will reach a savings goal at your current pace.
 
@@ -44,6 +49,8 @@ Screenshots go in [docs/screenshots/](docs/screenshots/). Placeholders:
 - xUnit for tests
 
 ## Architecture
+
+The product is called Yokla; in the code it keeps its working name, BudgetApp (project, namespaces, folders).
 
 ```
 src/BudgetApp
