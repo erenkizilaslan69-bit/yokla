@@ -1009,6 +1009,10 @@ a:hover { text-decoration: underline; }
 .auth-wrap { max-width: 420px; margin: 2rem auto; }
 .auth-card { padding: 2rem 1.75rem; box-shadow: var(--shadow-lg); border-radius: var(--radius-lg); }
 .auth-card h1 { font-size: 1.45rem; }
+/* Welcome screen feature list: the icon stays beside the first line when a point wraps. */
+.welcome-points { max-width: 20rem; display: grid; gap: .6rem; }
+.welcome-points li { display: flex; gap: .6rem; align-items: baseline; }
+.welcome-points .bi { color: var(--brand-ink); flex-shrink: 0; }
 
 /* ---------- Footer ---------- */
 .site-footer { border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; padding: 1.25rem 0; margin-top: 2rem; }

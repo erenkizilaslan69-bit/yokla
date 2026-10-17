@@ -1,5 +1,6 @@
 @using System.Globalization
 @model BudgetApp.Models.HomeViewModel
+@inject BudgetApp.Services.IReceiptService Receipts
 @{
     ViewData["Title"] = "Ana sayfa";
     var authenticated = User.Identity?.IsAuthenticated == true;
@@ -15,10 +16,18 @@
         <div class="card auth-card">
             <h1 class="mb-3"><partial name="_Logo" model='"lg"' /></h1>
             <p class="text-muted">Ay sonu gelmeden cebini yokla.</p>
-            <ul class="list-unstyled text-start mx-auto mb-4" style="max-width: 18rem">
-                <li class="mb-2"><i class="bi bi-lightning-charge-fill text-success me-2"></i>Harcamana anında uyarılar</li>
-                <li class="mb-2"><i class="bi bi-pie-chart-fill text-success me-2"></i>Aylık analiz ve tavsiyeler</li>
-                <li><i class="bi bi-bullseye text-success me-2"></i>Hedef barı ve ay sonu devri</li>
+            @* The strongest features; receipt reading only when it is switched on (otherwise the instant warnings). *@
+            <ul class="welcome-points list-unstyled text-start mx-auto mb-4">
+                <li><i class="bi bi-calendar-check-fill"></i>Bugün ne kadar harcayabileceğini gör</li>
+                @if (Receipts.IsEnabled)
+                {
+                    <li><i class="bi bi-camera-fill"></i>Fişi fotoğrafla, harcamalar kendiliğinden eklensin</li>
+                }
+                else
+                {
+                    <li><i class="bi bi-lightning-charge-fill"></i>Harcamana anında uyarılar</li>
+                }
+                <li><i class="bi bi-flag-fill"></i>Hedefine ne zaman ulaşacağını öğren</li>
             </ul>
             <div class="d-grid gap-2">
                 <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-primary btn-lg">Giriş yap</a>
