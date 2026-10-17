@@ -23,6 +23,16 @@ public interface ITransactionService
     Task<List<Transaction>> CreateManyAsync(string userId, IReadOnlyList<Transaction> inputs);
     Task<bool> UpdateAsync(string userId, Transaction input);
     Task<bool> DeleteAsync(string userId, int id);
+
+    /// <summary>Deletes those of the given transactions that belong to the user, in one go. Returns how many.</summary>
+    Task<int> DeleteManyAsync(string userId, IReadOnlyCollection<int> ids);
+
+    /// <summary>
+    /// Replaces the user's transactions with the given ids by new ones in a single database transaction: if any new one
+    /// is invalid nothing changes. Ids that are not the user's are ignored.
+    /// </summary>
+    /// <exception cref="ArgumentException">A new transaction breaks the rules of <see cref="CreateAsync"/>.</exception>
+    Task<List<Transaction>> ReplaceManyAsync(string userId, IReadOnlyCollection<int> ids, IReadOnlyList<Transaction> inputs);
     Task<TransactionTotals> GetTotalsAsync(string userId, int year, int month);
 }
 
@@ -125,6 +135,34 @@ public class TransactionService(ApplicationDbContext db, TimeProvider? timeProvi
         db.Transactions.Remove(entity);
         await db.SaveChangesAsync();
         return true;
+    }
+
+    public async Task<int> DeleteManyAsync(string userId, IReadOnlyCollection<int> ids)
+    {
+        if (ids.Count == 0)
+            return 0;
+
+        var entities = await db.Transactions.Where(t => t.UserId == userId && ids.Contains(t.Id)).ToListAsync();
+        db.Transactions.RemoveRange(entities);
+        await db.SaveChangesAsync();
+        return entities.Count;
+    }
+
+    public async Task<List<Transaction>> ReplaceManyAsync(string userId, IReadOnlyCollection<int> ids, IReadOnlyList<Transaction> inputs)
+    {
+        if (inputs.Count == 0)
+            throw new ArgumentException("There is nothing to save.", nameof(inputs));
+
+        // Checked before anything is touched; then one SaveChanges removes the old rows and adds the new ones.
+        foreach (var input in inputs)
+            await ValidateAsync(input);
+
+        var old = await db.Transactions.Where(t => t.UserId == userId && ids.Contains(t.Id)).ToListAsync();
+        var entities = inputs.Select(input => NewEntity(userId, input)).ToList();
+        db.Transactions.RemoveRange(old);
+        db.Transactions.AddRange(entities);
+        await db.SaveChangesAsync();
+        return entities;
     }
 
     public async Task<TransactionTotals> GetTotalsAsync(string userId, int year, int month)

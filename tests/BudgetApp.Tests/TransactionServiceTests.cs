@@ -416,5 +416,82 @@ public class TransactionServiceTests
         await Assert.ThrowsAsync<ArgumentException>(() => service.UpdateAsync(Alice, update));
         Assert.Equal(Today, (await service.GetAsync(Alice, created.Id))!.Date);
     }
-}
 
+    [Fact]
+    public async Task DeleteManyAsync_DeletesOnlyTheUsersOwnTransactions()
+    {
+        using var db = new TestDb();
+        var service = NewService(db);
+        var mine = await service.CreateManyAsync(Alice, [Expense(10m), Expense(20m), Expense(30m)]);
+        var bobs = await service.CreateAsync(Bob, Expense(40m));
+
+        var deleted = await service.DeleteManyAsync(Alice, [mine[0].Id, mine[1].Id, bobs.Id, 9999]);
+
+        Assert.Equal(2, deleted);
+        Assert.Equal([30m, 40m], db.Context.Transactions.Select(t => t.Amount).OrderBy(a => a).ToList());
+    }
+
+    [Fact]
+    public async Task DeleteManyAsync_WithNoIdsDoesNothing()
+    {
+        using var db = new TestDb();
+        var service = NewService(db);
+        await service.CreateAsync(Alice, Expense(10m));
+
+        Assert.Equal(0, await service.DeleteManyAsync(Alice, []));
+        Assert.Single(db.Context.Transactions);
+    }
+
+    [Fact]
+    public async Task ReplaceManyAsync_SwapsTheOldTransactionsForTheNewOnes()
+    {
+        using var db = new TestDb();
+        var service = NewService(db);
+        var old = await service.CreateManyAsync(Alice, [Expense(10m), Expense(20m)]);
+        var kept = await service.CreateAsync(Alice, Expense(99m));
+
+        var created = await service.ReplaceManyAsync(Alice, old.Select(t => t.Id).ToList(), [Expense(15m), Income(500m), Expense(5m)]);
+
+        Assert.Equal(3, created.Count);
+        Assert.All(created, t => Assert.Equal(Alice, t.UserId));
+        Assert.Equal([5m, 15m, 99m, 500m], db.Context.Transactions.Select(t => t.Amount).OrderBy(a => a).ToList());
+        Assert.Contains(db.Context.Transactions, t => t.Id == kept.Id);
+    }
+
+    [Fact]
+    public async Task ReplaceManyAsync_ChangesNothingWhenANewTransactionIsInvalid()
+    {
+        using var db = new TestDb();
+        var service = NewService(db);
+        var old = await service.CreateManyAsync(Alice, [Expense(10m), Expense(20m)]);
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.ReplaceManyAsync(Alice, old.Select(t => t.Id).ToList(), [Expense(15m), Expense(5m, Today.AddDays(1))]));
+
+        db.Context.ChangeTracker.Clear();
+        Assert.Equal([10m, 20m], db.Context.Transactions.Select(t => t.Amount).OrderBy(a => a).ToList());
+    }
+
+    [Fact]
+    public async Task ReplaceManyAsync_LeavesAnotherUsersTransactionsAlone()
+    {
+        using var db = new TestDb();
+        var service = NewService(db);
+        var bobs = await service.CreateAsync(Bob, Expense(40m));
+
+        await service.ReplaceManyAsync(Alice, [bobs.Id], [Expense(15m)]);
+
+        Assert.Equal([15m, 40m], db.Context.Transactions.Select(t => t.Amount).OrderBy(a => a).ToList());
+    }
+
+    [Fact]
+    public async Task ReplaceManyAsync_NeedsSomethingToSave()
+    {
+        using var db = new TestDb();
+        var service = NewService(db);
+        var old = await service.CreateAsync(Alice, Expense(10m));
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.ReplaceManyAsync(Alice, [old.Id], []));
+        Assert.Single(db.Context.Transactions);
+    }
+}

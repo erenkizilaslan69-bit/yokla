@@ -8,8 +8,11 @@ public sealed class ReceiptOptions
     /// <summary>Receipts one user may send to the reader per day.</summary>
     public int DailyLimitPerUser { get; set; } = 10;
 
-    /// <summary>Receipts the whole app may send per day: the provider's free quota belongs to the one API key.</summary>
-    public int DailyLimitTotal { get; set; } = 200;
+    /// <summary>
+    /// Requests the whole app may send to the reader per day, receipts and quick entries together: the provider's
+    /// free quota belongs to the one API key.
+    /// </summary>
+    public int DailyLimitTotal { get; set; } = 300;
 
     public int MaxUploadBytes { get; set; } = 4_000_000;
 

@@ -318,6 +318,9 @@ namespace BudgetApp.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("Kind")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("Outcome")
                         .HasColumnType("INTEGER");
 

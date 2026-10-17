@@ -15,9 +15,17 @@ public enum ReceiptScanOutcome
     Unanswered
 }
 
+/// <summary>What was sent to the reader. Each kind has its own daily allowance per user; the app's limit counts both.</summary>
+public enum ScanKind
+{
+    Receipt = 0,
+    /// <summary>"Söyle ya da yaz": a voice recording or a typed sentence turned into transactions.</summary>
+    QuickEntry = 1
+}
+
 /// <summary>
-/// One attempt to read a receipt. Only the attempt is kept, for the daily limits: neither the picture nor what was
-/// read from it is ever stored.
+/// One attempt to read a receipt or a quick entry. Only the attempt is kept, for the daily limits: neither the
+/// picture or recording nor what was read from it is ever stored.
 /// </summary>
 public class ReceiptScan
 {
@@ -31,4 +39,6 @@ public class ReceiptScan
     public string Provider { get; set; } = string.Empty;
 
     public ReceiptScanOutcome Outcome { get; set; }
+
+    public ScanKind Kind { get; set; } = ScanKind.Receipt;
 }

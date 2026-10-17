@@ -129,7 +129,7 @@ public class ReceiptService(
 
         // Recorded before the call: an attempt uses the provider's quota even if it fails, and two quick submits
         // both count.
-        var scan = new ReceiptScan { UserId = userId, CreatedAt = now, Provider = _parser.Provider, Outcome = ReceiptScanOutcome.Pending };
+        var scan = new ReceiptScan { UserId = userId, CreatedAt = now, Provider = _parser.Provider, Outcome = ReceiptScanOutcome.Pending, Kind = ScanKind.Receipt };
         db.ReceiptScans.Add(scan);
         await db.SaveChangesAsync(CancellationToken.None);
 
@@ -209,18 +209,9 @@ public class ReceiptService(
 
     // ---------- helpers ----------
 
-    /// <summary>
-    /// The user's allowance counts attempts the reader answered (or is still answering); the app's limit counts every
-    /// attempt, because the provider may have spent quota even on one that timed out on our side.
-    /// </summary>
-    private async Task<(int User, int Total)> CountTodayAsync(string userId, DateTime now)
-    {
-        var start = now.Date;
-        var end = start.AddDays(1);
-        var today = db.ReceiptScans.AsNoTracking().Where(s => s.CreatedAt >= start && s.CreatedAt < end && s.Provider != "demo");
-        return (await today.CountAsync(s => s.UserId == userId && s.Outcome != ReceiptScanOutcome.Unanswered),
-                await today.CountAsync());
-    }
+    /// <summary>The user's receipts today and every request the app sent today (see <see cref="ReaderUsage"/>).</summary>
+    private Task<(int User, int Total)> CountTodayAsync(string userId, DateTime now) =>
+        ReaderUsage.CountTodayAsync(db, userId, ScanKind.Receipt, now);
 
     /// <summary>
     /// Errors where the reader gave no answer and the user could not have done anything differently:

@@ -38,18 +38,25 @@ builder.Services.AddScoped<IBudgetService, BudgetService>();
 builder.Services.AddScoped<ITransactionCsvExporter, TransactionCsvExporter>();
 builder.Services.AddScoped<IDailyAllowanceService, DailyAllowanceService>();
 
-// Receipt reading. With an API key (user-secrets "Gemini:ApiKey" or env "Gemini__ApiKey") the receipts go to Gemini;
-// without one Development gets a demo reader with ready-made results, and anywhere else the feature is switched off
-// (no reader registered: ReceiptService.IsEnabled is false and the entry points are hidden).
+// Receipt reading and quick entry ("Söyle ya da yaz"). With an API key (user-secrets "Gemini:ApiKey" or env
+// "Gemini__ApiKey") both go to Gemini; without one Development gets demo readers, and anywhere else both features are
+// switched off (no reader registered: IsEnabled is false and the entry points are hidden).
 builder.Services.Configure<GeminiOptions>(builder.Configuration.GetSection(GeminiOptions.Section));
 builder.Services.Configure<ReceiptOptions>(builder.Configuration.GetSection(ReceiptOptions.Section));
+builder.Services.Configure<QuickEntryOptions>(builder.Configuration.GetSection(QuickEntryOptions.Section));
 if (!string.IsNullOrWhiteSpace(builder.Configuration[$"{GeminiOptions.Section}:ApiKey"]))
-    builder.Services.AddHttpClient<IReceiptParser, GeminiReceiptParser>()
-        // HttpClient's own logging may list request headers at Trace level; the API key header must never show up.
-        .RedactLoggedHeaders(_ => true);
+{
+    // HttpClient's own logging may list request headers at Trace level; the API key header must never show up.
+    builder.Services.AddHttpClient<IReceiptParser, GeminiReceiptParser>().RedactLoggedHeaders(_ => true);
+    builder.Services.AddHttpClient<IQuickEntryParser, GeminiQuickEntryParser>().RedactLoggedHeaders(_ => true);
+}
 else if (builder.Environment.IsDevelopment())
+{
     builder.Services.AddSingleton<IReceiptParser, DemoReceiptParser>();
+    builder.Services.AddSingleton<IQuickEntryParser, DemoQuickEntryParser>();
+}
 builder.Services.AddScoped<IReceiptService, ReceiptService>();
+builder.Services.AddScoped<IQuickEntryService, QuickEntryService>();
 
 var app = builder.Build();
 
@@ -59,6 +66,14 @@ if (app.Environment.IsDevelopment())
     using var scope = app.Services.CreateScope();
     await scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.MigrateAsync();
     await DemoDataSeeder.SeedAsync(scope.ServiceProvider, DateTime.Today);
+}
+
+// Development only: `dotnet run --project src/BudgetApp -- quick-entry-test <recording>` sends one recording to the
+// real quick entry reader, prints the result and exits (see QuickEntryProbe).
+if (args.Length > 0 && args[0] == QuickEntryProbe.Command)
+{
+    Environment.ExitCode = await QuickEntryProbe.RunAsync(app.Services, app.Environment, args[1..]);
+    return;
 }
 
 // tr-TR, with the real minus sign for negative numbers (see AppCulture).
