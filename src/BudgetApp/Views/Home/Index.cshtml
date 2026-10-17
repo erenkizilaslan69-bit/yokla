@@ -1,6 +1,7 @@
 @using System.Globalization
 @model BudgetApp.Models.HomeViewModel
 @inject BudgetApp.Services.IReceiptService Receipts
+@inject BudgetApp.Services.IQuickEntryService QuickEntry
 @{
     ViewData["Title"] = "Ana sayfa";
     var authenticated = User.Identity?.IsAuthenticated == true;
@@ -16,12 +17,12 @@
         <div class="card auth-card">
             <h1 class="mb-3"><partial name="_Logo" model='"lg"' /></h1>
             <p class="text-muted">Ay sonu gelmeden cebini yokla.</p>
-            @* The strongest features; receipt reading only when it is switched on (otherwise the instant warnings). *@
+            @* The strongest features; receipt reading and "Söyle ya da yaz" only when they are switched on (otherwise the instant warnings). *@
             <ul class="welcome-points list-unstyled text-start mx-auto mb-4">
                 <li><i class="bi bi-calendar-check-fill"></i>Bugün ne kadar harcayabileceğini gör</li>
-                @if (Receipts.IsEnabled)
+                @if (Receipts.IsEnabled || QuickEntry.IsEnabled)
                 {
-                    <li><i class="bi bi-camera-fill"></i>Fişi fotoğrafla, harcamalar kendiliğinden eklensin</li>
+                    <li><i class="bi bi-magic"></i>Fişi fotoğrafla ya da harcamanı söyle, gerisini Yokla halletsin</li>
                 }
                 else
                 {
