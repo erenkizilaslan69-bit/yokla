@@ -1,7 +1,4 @@
-using System.Diagnostics;
 using System.Globalization;
-using System.Net;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Options;
@@ -9,9 +6,8 @@ using Microsoft.Extensions.Options;
 namespace BudgetApp.Services;
 
 /// <summary>
-/// Reads receipts with the Google Gemini API ("generateContent", which keeps nothing on Google's side between calls),
-/// over plain HttpClient. The answer is constrained to a JSON schema. The API key travels in the
-/// "x-goog-api-key" header, never in the URL, so it cannot end up in a log line.
+/// Reads receipts with the Google Gemini API through <see cref="GeminiClient"/> (key in a header, answer constrained
+/// to a JSON schema, duration/status/tokens logged).
 /// </summary>
 public sealed class GeminiReceiptParser(HttpClient http, IOptions<GeminiOptions> options, ILogger<GeminiReceiptParser> logger)
     : IReceiptParser
@@ -66,69 +62,24 @@ public sealed class GeminiReceiptParser(HttpClient http, IOptions<GeminiOptions>
     public async Task<ReceiptParseResult> ParseAsync(ReceiptImage image, IReadOnlyList<string> expenseCategories, CancellationToken cancellationToken)
     {
         var settings = options.Value;
-        if (string.IsNullOrWhiteSpace(settings.ApiKey))
-            throw new ReceiptParseException(ReceiptErrorKind.Misconfigured, "Gemini:ApiKey is not set.");
+        var call = new GeminiRequest(Instructions, new GeminiMedia(image.Data, image.MimeType), UserPrompt,
+            Schema(expenseCategories), $"image {image.Data.Length / 1024} KB");
 
-        using var request = new HttpRequestMessage(HttpMethod.Post,
-            $"{settings.BaseUrl.TrimEnd('/')}/models/{Uri.EscapeDataString(settings.Model)}:generateContent");
-        request.Headers.Add("x-goog-api-key", settings.ApiKey);
-        request.Content = new StringContent(
-            BuildRequestBody(image, expenseCategories, settings).ToJsonString(), Encoding.UTF8, "application/json");
-
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(TimeSpan.FromSeconds(settings.TimeoutSeconds));
-
-        // What every log line of this request says. Never the key: it only lives in the request header above.
-        var thinking = string.IsNullOrWhiteSpace(settings.ThinkingLevel) ? "model default" : settings.ThinkingLevel;
-        var imageKb = image.Data.Length / 1024;
-        var watch = Stopwatch.StartNew();
-
-        string body;
-        HttpStatusCode status;
+        string answer;
         try
         {
-            using var response = await http.SendAsync(request, timeout.Token);
-            status = response.StatusCode;
-            body = await response.Content.ReadAsStringAsync(timeout.Token);
+            answer = await new GeminiClient(http, settings, logger).GenerateAsync(call, cancellationToken);
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        catch (GeminiCallException e)
         {
-            logger.LogWarning("Gemini {Model} gave no answer within {TimeoutSeconds} s ({ElapsedMs} ms; thinking {Thinking}; image {ImageKb} KB).",
-                settings.Model, settings.TimeoutSeconds, watch.ElapsedMilliseconds, thinking, imageKb);
-            throw new ReceiptParseException(ReceiptErrorKind.Timeout, $"No answer within {settings.TimeoutSeconds} s.");
+            if (e.Failure is GeminiFailure.Blocked or GeminiFailure.InvalidResponse)
+                logger.LogWarning("Gemini's answer was not usable: {Kind}. {Detail}", e.Failure, e.Message);
+            throw new ReceiptParseException(KindOf(e.Failure), e.Message);
         }
-        catch (OperationCanceledException)
-        {
-            logger.LogInformation("Gemini {Model} request cancelled by the user after {ElapsedMs} ms.", settings.Model, watch.ElapsedMilliseconds);
-            throw;
-        }
-        catch (HttpRequestException e)
-        {
-            logger.LogWarning("Gemini {Model} could not be reached after {ElapsedMs} ms: {Error}", settings.Model, watch.ElapsedMilliseconds, e.Message);
-            throw new ReceiptParseException(ReceiptErrorKind.ServiceUnavailable, e.Message);
-        }
-
-        if ((int)status is < 200 or > 299)
-        {
-            var error = FromStatus(status, body);
-            // The body of an error holds Google's explanation, never the picture or the key.
-            logger.LogWarning("Gemini {Model} answered HTTP {Status} in {ElapsedMs} ms ({Kind}; thinking {Thinking}; image {ImageKb} KB): {Body}",
-                settings.Model, (int)status, watch.ElapsedMilliseconds, error.Kind, thinking, imageKb, Truncate(body));
-            throw error;
-        }
-
-        var envelope = ReadEnvelope(body);
-        var usage = envelope.UsageMetadata;
-        logger.LogInformation(
-            "Gemini {Model} answered HTTP {Status} in {ElapsedMs} ms (thinking {Thinking}; image {ImageKb} KB; finish {FinishReason}; " +
-            "tokens: prompt {PromptTokens}, answer {AnswerTokens}, thinking {ThoughtTokens}).",
-            settings.Model, (int)status, watch.ElapsedMilliseconds, thinking, imageKb,
-            envelope.Candidates?.FirstOrDefault()?.FinishReason ?? "-",
-            usage?.PromptTokenCount, usage?.CandidatesTokenCount, usage?.ThoughtsTokenCount);
 
         try
         {
-            return ReadAnswer(envelope);
+            return ToResult(ReadAnswer(answer));
         }
         catch (ReceiptParseException e)
         {
@@ -137,53 +88,29 @@ public sealed class GeminiReceiptParser(HttpClient http, IOptions<GeminiOptions>
         }
     }
 
+    internal static ReceiptErrorKind KindOf(GeminiFailure failure) => failure switch
+    {
+        GeminiFailure.Misconfigured => ReceiptErrorKind.Misconfigured,
+        GeminiFailure.Timeout => ReceiptErrorKind.Timeout,
+        GeminiFailure.RateLimited => ReceiptErrorKind.RateLimited,
+        GeminiFailure.QuotaExceeded => ReceiptErrorKind.QuotaExceeded,
+        GeminiFailure.Blocked => ReceiptErrorKind.Blocked,
+        GeminiFailure.InvalidResponse => ReceiptErrorKind.InvalidResponse,
+        _ => ReceiptErrorKind.ServiceUnavailable
+    };
+
     // ---------- request ----------
 
-    internal static JsonObject BuildRequestBody(ReceiptImage image, IReadOnlyList<string> expenseCategories, GeminiOptions settings)
-    {
-        // No temperature: Gemini 3.6 and later ignore the sampling parameters and future models reject them.
-        var generationConfig = new JsonObject
-        {
-            ["responseMimeType"] = "application/json",
-            ["responseJsonSchema"] = Schema(expenseCategories)
-        };
-        if (!string.IsNullOrWhiteSpace(settings.ThinkingLevel))
-            generationConfig["thinkingConfig"] = new JsonObject { ["thinkingLevel"] = settings.ThinkingLevel };
-
-        return new JsonObject
-        {
-            ["systemInstruction"] = new JsonObject
-            {
-                ["parts"] = new JsonArray(new JsonObject { ["text"] = Instructions })
-            },
-            ["contents"] = new JsonArray(new JsonObject
-            {
-                ["role"] = "user",
-                ["parts"] = new JsonArray(
-                    new JsonObject
-                    {
-                        ["inlineData"] = new JsonObject
-                        {
-                            ["mimeType"] = image.MimeType,
-                            ["data"] = Convert.ToBase64String(image.Data)
-                        }
-                    },
-                    new JsonObject { ["text"] = UserPrompt })
-            }),
-            ["generationConfig"] = generationConfig
-        };
-    }
+    /// <summary>The whole request body, as <see cref="GeminiClient"/> sends it.</summary>
+    internal static JsonObject BuildRequestBody(ReceiptImage image, IReadOnlyList<string> expenseCategories, GeminiOptions settings) =>
+        GeminiClient.BuildRequestBody(
+            new GeminiRequest(Instructions, new GeminiMedia(image.Data, image.MimeType), UserPrompt, Schema(expenseCategories), ""),
+            settings);
 
     /// <summary>The shape of the answer. The category is an enum of the user's expense categories, so the model
     /// cannot invent one.</summary>
     internal static JsonObject Schema(IReadOnlyList<string> expenseCategories)
     {
-        static JsonObject Nullable(string type, string description) => new()
-        {
-            ["type"] = new JsonArray(type, "null"),
-            ["description"] = description
-        };
-
         var line = new JsonObject
         {
             ["type"] = "object",
@@ -191,14 +118,10 @@ public sealed class GeminiReceiptParser(HttpClient http, IOptions<GeminiOptions>
             {
                 ["rawText"] = new JsonObject { ["type"] = "string", ["description"] = "Satırın fişte yazdığı hali." },
                 ["name"] = new JsonObject { ["type"] = "string", ["description"] = "Anlaşılır Türkçe ürün adı." },
-                ["quantity"] = Nullable("number", "Miktar; yazmıyorsa null."),
-                ["unit"] = Nullable("string", "adet, kg, g, lt; yazmıyorsa null."),
+                ["quantity"] = GeminiClient.Nullable("number", "Miktar; yazmıyorsa null."),
+                ["unit"] = GeminiClient.Nullable("string", "adet, kg, g, lt; yazmıyorsa null."),
                 ["amount"] = new JsonObject { ["type"] = "number", ["description"] = "Satırın KDV dahil ödenen toplamı." },
-                ["category"] = new JsonObject
-                {
-                    ["type"] = "string",
-                    ["enum"] = new JsonArray(expenseCategories.Select(c => (JsonNode?)JsonValue.Create(c)).ToArray())
-                }
+                ["category"] = new JsonObject { ["type"] = "string", ["enum"] = GeminiClient.Enum(expenseCategories) }
             },
             ["required"] = new JsonArray("rawText", "name", "quantity", "unit", "amount", "category")
         };
@@ -209,10 +132,10 @@ public sealed class GeminiReceiptParser(HttpClient http, IOptions<GeminiOptions>
             ["properties"] = new JsonObject
             {
                 ["isReceipt"] = new JsonObject { ["type"] = "boolean" },
-                ["storeName"] = Nullable("string", "İşletmenin adı."),
-                ["date"] = Nullable("string", "Fiş tarihi, yyyy-MM-dd."),
-                ["total"] = Nullable("number", "TOPLAM satırındaki tutar."),
-                ["generalDiscount"] = Nullable("number", "Hiçbir ürüne bağlanamayan genel indirim, pozitif."),
+                ["storeName"] = GeminiClient.Nullable("string", "İşletmenin adı."),
+                ["date"] = GeminiClient.Nullable("string", "Fiş tarihi, yyyy-MM-dd."),
+                ["total"] = GeminiClient.Nullable("number", "TOPLAM satırındaki tutar."),
+                ["generalDiscount"] = GeminiClient.Nullable("number", "Hiçbir ürüne bağlanamayan genel indirim, pozitif."),
                 ["lines"] = new JsonObject { ["type"] = "array", ["items"] = line }
             },
             ["required"] = new JsonArray("isReceipt", "storeName", "date", "total", "generalDiscount", "lines")
@@ -221,55 +144,8 @@ public sealed class GeminiReceiptParser(HttpClient http, IOptions<GeminiOptions>
 
     // ---------- response ----------
 
-    private static ReceiptParseException FromStatus(HttpStatusCode status, string body) => (int)status switch
+    private static ReceiptJson ReadAnswer(string text)
     {
-        // Gemini answers 429 both for "too many per minute" and for "today's quota is gone"; the text tells them apart.
-        429 when body.Contains("per day", StringComparison.OrdinalIgnoreCase)
-                 || body.Contains("PerDay", StringComparison.Ordinal)
-                 || body.Contains("quota_exceeded", StringComparison.OrdinalIgnoreCase)
-            => new(ReceiptErrorKind.QuotaExceeded, "429: daily quota"),
-        429 => new(ReceiptErrorKind.RateLimited, "429"),
-        408 or 504 => new(ReceiptErrorKind.Timeout, $"{(int)status}"),
-        400 or 401 or 402 or 403 or 404 => new(ReceiptErrorKind.Misconfigured, $"{(int)status}"),
-        _ => new(ReceiptErrorKind.ServiceUnavailable, $"{(int)status}")
-    };
-
-    private static GeminiResponse ReadEnvelope(string body)
-    {
-        try
-        {
-            return JsonSerializer.Deserialize<GeminiResponse>(body, Json)
-                   ?? throw new ReceiptParseException(ReceiptErrorKind.InvalidResponse, "Envelope is null.");
-        }
-        catch (JsonException e)
-        {
-            throw new ReceiptParseException(ReceiptErrorKind.InvalidResponse, "Envelope is not JSON: " + e.Message);
-        }
-    }
-
-    private static ReceiptParseResult ReadAnswer(GeminiResponse response)
-    {
-        var candidate = response.Candidates?.FirstOrDefault();
-        if (candidate is null)
-        {
-            if (response.PromptFeedback?.BlockReason is { } blockReason)
-                throw new ReceiptParseException(ReceiptErrorKind.Blocked, "Prompt blocked: " + blockReason);
-            throw new ReceiptParseException(ReceiptErrorKind.InvalidResponse, "No candidates.");
-        }
-
-        switch (candidate.FinishReason)
-        {
-            case "SAFETY" or "PROHIBITED_CONTENT" or "BLOCKLIST" or "IMAGE_SAFETY" or "SPII" or "RECITATION":
-                throw new ReceiptParseException(ReceiptErrorKind.Blocked, "Finish reason: " + candidate.FinishReason);
-            case "MAX_TOKENS":
-                throw new ReceiptParseException(ReceiptErrorKind.InvalidResponse, "The answer was cut off (MAX_TOKENS).");
-        }
-
-        // Thought summaries, if any, are not part of the answer.
-        var text = string.Concat((candidate.Content?.Parts ?? []).Where(p => p.Thought != true).Select(p => p.Text));
-        if (string.IsNullOrWhiteSpace(text))
-            throw new ReceiptParseException(ReceiptErrorKind.InvalidResponse, "Empty answer.");
-
         ReceiptJson? receipt;
         try
         {
@@ -279,10 +155,7 @@ public sealed class GeminiReceiptParser(HttpClient http, IOptions<GeminiOptions>
         {
             throw new ReceiptParseException(ReceiptErrorKind.InvalidResponse, "Answer is not valid JSON: " + e.Message);
         }
-        if (receipt is null)
-            throw new ReceiptParseException(ReceiptErrorKind.InvalidResponse, "Answer is null.");
-
-        return ToResult(receipt);
+        return receipt ?? throw new ReceiptParseException(ReceiptErrorKind.InvalidResponse, "Answer is null.");
     }
 
     private static ReceiptParseResult ToResult(ReceiptJson receipt)
@@ -316,45 +189,6 @@ public sealed class GeminiReceiptParser(HttpClient http, IOptions<GeminiOptions>
         var store = string.IsNullOrWhiteSpace(receipt.StoreName) ? null : receipt.StoreName.Trim();
 
         return new ReceiptParseResult(receipt.IsReceipt ?? lines.Count > 0, store, date, receipt.Total, discount, lines);
-    }
-
-    private static string Truncate(string text) => text.Length <= 500 ? text : text[..500] + "…";
-
-    private sealed class GeminiResponse
-    {
-        public List<Candidate>? Candidates { get; set; }
-        public Feedback? PromptFeedback { get; set; }
-        public Usage? UsageMetadata { get; set; }
-    }
-
-    /// <summary>Token counts, for the log: a long wait usually shows up as many thinking tokens.</summary>
-    private sealed class Usage
-    {
-        public int? PromptTokenCount { get; set; }
-        public int? CandidatesTokenCount { get; set; }
-        public int? ThoughtsTokenCount { get; set; }
-    }
-
-    private sealed class Candidate
-    {
-        public Content? Content { get; set; }
-        public string? FinishReason { get; set; }
-    }
-
-    private sealed class Content
-    {
-        public List<Part>? Parts { get; set; }
-    }
-
-    private sealed class Part
-    {
-        public string? Text { get; set; }
-        public bool? Thought { get; set; }
-    }
-
-    private sealed class Feedback
-    {
-        public string? BlockReason { get; set; }
     }
 
     private sealed class ReceiptJson
