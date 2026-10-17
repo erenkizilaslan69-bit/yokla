@@ -124,6 +124,13 @@ Ana sayfanın en üstündeki kart "bugün ne kadar harcayabilirim" sorusunu ceva
   - Şu an kalan tam 0 ise ve önde başka gün varsa yine açık sayılır ("harcayacak paran kalmadı"). Gelir yarınsa (kalan gün 1) son hakkı tam harcamak açık değildir, normaldir.
 - Kullanıcının hiç işlemi yoksa kart gösterilmez.
 
+**Tempo satırı (SpendingPace).** Ay sonu tahmini ana sayfada ayrı bir kart olarak gösterilmez; günlük hakla çelişiyor gibi görünüyordu, çünkü başka bir şeyi (bu ayın gelir − gider sonucunu) başka bir birimle ölçüyordu. Onun yerine, aynı parayı ve aynı birimi (gün) kullanan bir satır günlük hak alanının içinde çıkar:
+- Tempo = bu ayki değişken giderler ÷ ayın geçen günleri (bugün dahil), kuruşa yuvarlanır (`BalanceProjection.DailyPace`). Değişken gider, günlük hakkın saydığı harcamayla aynıdır: sabit kategoriler ve tekrarlayan tanımdan oluşanlar hariç.
+- Paranın biteceği gün = bugün + ⌊kullanılabilir ÷ tempo⌋ gün. Kullanılabilir, günlük hakkın bölüştürdüğü paradır (gün başına göre).
+- Satır yalnızca bu gün **sonraki gelirden (dönem sonundan) önceyse** görünür: "Bu ay günde ortalama ₺233,21 harcıyorsun, hakkın ₺159,02. Bu tempoyla elindeki para 27 Ekim'de biter." Bugün ya da yarınsa "bugün biter" / "yarın biter" yazar.
+- Görünmediği durumlar: ayın ilk 3 günü (uyarı kuralı 1 gibi; tek bir büyük harcama tempoyu belirlemesin), bu ay hiç değişken harcama yoksa, kullanılabilir para yoksa (kart zaten "açık" durumundadır).
+- Ay sonu tahmini (bölüm 4) hesaplanmaya devam eder; uyarı kuralı 4 onu kullanır.
+
 **Bilinen sınırlar.**
 - Bakiye geçmiş kayıtlara dayanır: uygulamaya yeni başlayıp cebindeki parayı girmemiş kullanıcıda düşük, biriken parasını hedefe aktarmayan kullanıcıda yüksek çıkar.
 - "Sonraki gelir" tutarına bakılmaksızın en yakın tekrarlayan gelirdir; küçük bir gelir dönemi kısaltır.
