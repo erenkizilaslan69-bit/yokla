@@ -19,10 +19,19 @@
     <h1>İşlemler</h1>
     <div class="d-flex flex-wrap gap-2">
         <a asp-controller="Recurring" asp-action="Index" class="btn btn-outline-primary d-inline-flex align-items-center gap-1"><i class="bi bi-arrow-repeat"></i>Tekrarlayanlar</a>
-        <a asp-action="ExportCsv" asp-route-year="@Model.Year" asp-route-month="@Model.Month"
-           class="btn btn-outline-primary d-inline-flex align-items-center gap-1" title="@Model.Picker.Title işlemlerini Excel için CSV olarak indir">
-            <i class="bi bi-download"></i>CSV indir
-        </a>
+        @* Rarely used actions wait behind ⋯ *@
+        <div class="dropdown">
+            <button class="btn btn-outline-secondary more-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Diğer işlemler">
+                <i class="bi bi-three-dots"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                    <a class="dropdown-item" asp-action="ExportCsv" asp-route-year="@Model.Year" asp-route-month="@Model.Month">
+                        <i class="bi bi-download me-2"></i>@Model.Picker.Title için CSV indir
+                    </a>
+                </li>
+            </ul>
+        </div>
         @if (Receipts.IsEnabled)
         {
             <a asp-controller="Receipts" asp-action="Scan" class="btn btn-outline-primary d-none d-md-inline-flex align-items-center gap-1"><i class="bi bi-receipt"></i>Fiş tara</a>
@@ -33,17 +42,7 @@
 
 <partial name="_MonthPicker" model="Model.Picker" />
 
-<div class="row g-3 mb-4">
-    <div class="col-12 col-md-4">
-        @await Html.PartialAsync("_StatCard", ("Gelir", totals.Income.ToString("C2"), "arrow-down-circle-fill", "income", (string?)null))
-    </div>
-    <div class="col-6 col-md-4">
-        @await Html.PartialAsync("_StatCard", ("Gider", totals.Expense.ToString("C2"), "arrow-up-circle-fill", "expense", (string?)null))
-    </div>
-    <div class="col-6 col-md-4">
-        @await Html.PartialAsync("_StatCard", ("Bakiye", totals.Balance.ToString("C2"), "coin", "balance", (string?)null))
-    </div>
-</div>
+@await Html.PartialAsync("_SummaryLine", (Model.Picker.Title, totals.Income, totals.Expense, true))
 
 @if (Model.Transactions.Count == 0)
 {
@@ -51,10 +50,9 @@
 }
 else
 {
-    @* Phones: rows grouped by day *@
+    @* Phones: rows grouped by day; tapping a row opens it for editing *@
     <div class="card d-md-none">
-        @{ ViewData["Actions"] = true; }
-        <partial name="_TransactionList" model="Model.Transactions" view-data="ViewData" />
+        <partial name="_TransactionList" model="Model.Transactions" />
     </div>
 
     @* Tablets and desktops: a table *@

@@ -11,7 +11,7 @@
         <h3 class="tx-day-title">@BudgetApp.Models.TurkishDates.DayHeading(day.Key, today)</h3>
         @foreach (var transaction in day)
         {
-            <partial name="_TransactionCard" model="transaction" view-data="ViewData" />
+            <partial name="_TransactionCard" model="transaction" />
         }
     </div>
 }

@@ -660,6 +660,12 @@ a:hover { text-decoration: underline; }
 }
 
 .tx-card:last-child { border-bottom: 0; }
+/* A row that opens the transaction: the whole row is the touch target. */
+.tx-link { color: inherit; text-decoration: none; min-height: 60px; }
+.tx-link:hover { color: inherit; text-decoration: none; background: var(--surface-2); }
+.tx-link:focus-visible { outline: 2px solid var(--brand-ink); outline-offset: -2px; }
+.tx-link .tx-title, .tx-link .tx-sub { display: block; }
+.more-toggle { min-width: 44px; }
 
 /* Lists grouped by day: the date is a small heading, not repeated on every row. */
 .tx-day-title { margin: 0; padding: .85rem 1rem .15rem; color: var(--muted); font-size: var(--fs-meta); font-weight: 600; }

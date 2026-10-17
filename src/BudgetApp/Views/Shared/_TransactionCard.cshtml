@@ -1,25 +1,25 @@
 @* One transaction as a row (phones and the dashboard), inside a day group of _TransactionList, so the date is not
-   repeated. Model: the transaction (with Category loaded). *@
+   repeated. The whole row opens the transaction for editing; deleting is on the edit page. Model: the transaction
+   (with Category loaded). *@
 @model BudgetApp.Models.Transaction
 @{
     var income = Model.Type == BudgetApp.Models.TransactionType.Income;
     var title = string.IsNullOrWhiteSpace(Model.ItemName) ? Model.Category?.Name : Model.ItemName;
 }
 
-<div class="tx-card">
+<a class="tx-card tx-link" asp-controller="Transactions" asp-action="Edit" asp-route-id="@Model.Id">
     <partial name="_CategoryIcon" model="Model.Category?.Name" />
-    <div class="tx-main">
-        <div class="tx-title">@title</div>
-        <div class="tx-sub">@Model.Category?.Name <partial name="_RecurringMark" model="Model" /></div>
-    </div>
-    <div class="tx-side">
-        <div class="amount @(income ? "income" : "expense")">@(income ? "+" : "−")@Model.Amount.ToString("C2")</div>
-        @if (ViewData["Actions"] is true)
-        {
-            <div class="tx-actions">
-                <a asp-controller="Transactions" asp-action="Edit" asp-route-id="@Model.Id" class="icon-btn" aria-label="Düzenle" title="Düzenle"><i class="bi bi-pencil-square"></i></a>
-                <a asp-controller="Transactions" asp-action="Delete" asp-route-id="@Model.Id" class="icon-btn danger" aria-label="Sil" title="Sil"><i class="bi bi-trash3"></i></a>
-            </div>
-        }
-    </div>
-</div>
+    <span class="tx-main">
+        <span class="tx-title">@title</span>
+        <span class="tx-sub">
+            @Model.Category?.Name
+            @if (Model.RecurringPeriod is not null)
+            {
+                <i class="bi bi-arrow-repeat recurring-mark" title="Tekrarlayan işlemden otomatik oluştu" aria-label="tekrarlayan"></i>
+            }
+        </span>
+    </span>
+    <span class="tx-side">
+        <span class="amount @(income ? "income" : "expense")">@(income ? "+" : "−")@Model.Amount.ToString("C2")</span>
+    </span>
+</a>
