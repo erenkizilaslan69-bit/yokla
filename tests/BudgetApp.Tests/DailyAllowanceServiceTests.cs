@@ -599,6 +599,17 @@ public class DailyAllowanceServiceTests
     public void SpendingPace_SaysNothingWhenTheMoneyLastsUntilTheNextIncome(string pace) =>
         Assert.Null(SpendingPace.Check(October17(), decimal.Parse(pace, System.Globalization.CultureInfo.InvariantCulture), 17, Oct17));
 
+    [Theory]
+    [InlineData("166.97", false)] // 159,02 x 1,05 = 166,971: just under 5% above the allowance
+    [InlineData("166.98", true)]  // 5% above: it shows
+    [InlineData("162.00", false)] // would run out a day early (14 days), but only 2% above the allowance
+    public void SpendingPace_ShowsOnlyFromFivePercentAboveTheAllowance(string pace, bool shows)
+    {
+        var warning = SpendingPace.Check(October17(), decimal.Parse(pace, System.Globalization.CultureInfo.InvariantCulture), 17, Oct17);
+
+        Assert.Equal(shows, warning is not null);
+    }
+
     [Fact]
     public void SpendingPace_RunningOutOnTheIncomeDayItselfIsNotAWarning()
     {

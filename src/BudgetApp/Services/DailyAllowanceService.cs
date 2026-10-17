@@ -74,14 +74,23 @@ public static class SpendingPace
     public const int MinDaysElapsed = 3;
 
     /// <summary>
+    /// The pace has to be at least this much above today's allowance (5%) before the line shows: a pace a few kuruş
+    /// over the allowance runs out a day early only through rounding, and warning about it would be noise.
+    /// </summary>
+    public const decimal MinOverspend = 1.05m;
+
+    /// <summary>
     /// When the money available now (<see cref="DailyAllowance.Available"/>) would be used up at this month's daily
     /// pace: today + available ÷ pace, counting only whole days. Null when that is not before the next income
-    /// (nothing to warn about), when there is nothing available (the allowance already shows the deficit), when
-    /// nothing was spent, or too early in the month.
+    /// (nothing to warn about), when the pace is less than <see cref="MinOverspend"/> times today's allowance,
+    /// when there is nothing available (the allowance already shows the deficit), when nothing was spent, or too
+    /// early in the month.
     /// </summary>
     public static PaceWarning? Check(DailyAllowance allowance, decimal dailyPace, int daysElapsed, DateTime today)
     {
         if (daysElapsed < MinDaysElapsed || dailyPace <= 0 || allowance.Available <= 0)
+            return null;
+        if (dailyPace < allowance.DailyAmount * MinOverspend)
             return null;
 
         var days = (int)Math.Floor(allowance.Available / dailyPace);

@@ -407,6 +407,38 @@ public class DemoDataSeederTests
         Assert.Equal(1442.04m, allowance.Available);
     }
 
+    [Fact]
+    public async Task SpendingPace_InTheMiddleOfTheMonthRunsClearlyAboveTheAllowance()
+    {
+        var today = new DateTime(2026, 10, 15);
+        using var t = await SeededDb(today);
+
+        var allowance = await new DailyAllowanceService(t.Context).GetAsync(Demo, today);
+        var projection = await new ForecastService(t.Context).GetProjectedBalanceAsync(Demo, today);
+        var warning = SpendingPace.Check(allowance!, projection!.DailyPace, projection.DaysElapsed, today);
+
+        Assert.NotNull(warning);
+        Assert.Equal(129.40m, warning.DailyAmount);
+        Assert.Equal(162.67m, warning.DailyPace);                       // 2.440 over 15 days, the coat included
+        Assert.InRange(warning.DailyPace / warning.DailyAmount, 1.20m, 1.30m);
+        Assert.Equal(new DateTime(2026, 10, 18), warning.RunsOutOn);    // 647,04 / 162,67 = 3,98 days
+        Assert.True(warning.RunsOutOn < allowance!.PeriodEnd);          // before the part-time pay of the 20th
+    }
+
+    [Theory]
+    [InlineData(16)]
+    [InlineData(17)]
+    public async Task SpendingPace_StillShowsOnTheFollowingDays(int day)
+    {
+        var today = new DateTime(2026, 10, day);
+        using var t = await SeededDb(today);
+
+        var allowance = await new DailyAllowanceService(t.Context).GetAsync(Demo, today);
+        var projection = await new ForecastService(t.Context).GetProjectedBalanceAsync(Demo, today);
+
+        Assert.NotNull(SpendingPace.Check(allowance!, projection!.DailyPace, projection.DaysElapsed, today));
+    }
+
     // ---------- the demo tells a story ----------
 
     [Fact]
