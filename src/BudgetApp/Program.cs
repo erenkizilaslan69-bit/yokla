@@ -61,7 +61,8 @@ if (app.Environment.IsDevelopment())
     await DemoDataSeeder.SeedAsync(scope.ServiceProvider, DateTime.Today);
 }
 
-var trCulture = new CultureInfo("tr-TR");
+// tr-TR, with the real minus sign for negative numbers (see AppCulture).
+var trCulture = AppCulture.Turkish;
 app.UseRequestLocalization(new RequestLocalizationOptions
 {
     DefaultRequestCulture = new RequestCulture(trCulture),

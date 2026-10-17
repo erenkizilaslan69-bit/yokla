@@ -127,7 +127,7 @@ else
                 <span class="text-muted">
                     @if (Model.GoalForecast is { Status: BudgetApp.Services.GoalForecastStatus.Reachable, ReachDate: { } reach })
                     {
-                        <span>Bu tempoyla <span class="text-capitalize">@reach.ToString("MMMM yyyy", tr)</span> civarında</span>
+                        <span>Bu tempoyla <span class="text-capitalize">@reach.ToString("MMMM yyyy", tr)</span> civarında ulaşırsın</span>
                     }
                     else if (Model.GoalForecast is not null)
                     {

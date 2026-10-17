@@ -60,7 +60,7 @@ internal static class MonthData
 /// <summary>Turkish (tr-TR) formatting for user-facing sentences produced by services.</summary>
 internal static class Tr
 {
-    public static readonly CultureInfo Culture = CultureInfo.GetCultureInfo("tr-TR");
+    public static readonly CultureInfo Culture = BudgetApp.Localization.AppCulture.Turkish;
 
     public static string Money(decimal value) => value.ToString("N2", Culture) + " TL";
 

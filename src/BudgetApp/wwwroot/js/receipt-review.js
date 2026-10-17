@@ -8,7 +8,9 @@
 
     const TOLERANCE = 0.05; // ReceiptMath.TotalTolerance
     const total = form.dataset.total ? parseFloat(form.dataset.total) : null;
-    const money = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' });
+    const currency = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' });
+    // Same as the server (AppCulture): a negative amount carries the real minus sign (U+2212), not a hyphen.
+    const money = { format: function (value) { return currency.format(value).replace(/^-/, '−'); } };
     const lines = Array.from(form.querySelectorAll('[data-line]'));
 
     function parseAmount(text) {

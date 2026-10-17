@@ -112,7 +112,7 @@ else
                         </td>
                         <td class="text-end num d-none d-sm-table-cell">@c.Previous.ToString("C2")</td>
                         <td class="text-end num d-none d-sm-table-cell">@c.Current.ToString("C2")</td>
-                        <td class="text-end"><span class="delta @cls num"><i class="bi bi-@icon"></i> @(c.Delta > 0 ? "+" : "")@c.Delta.ToString("C2")</span></td>
+                        <td class="text-end"><span class="delta @cls num"><i class="bi bi-@icon"></i> @BudgetApp.Localization.AppCulture.SignedMoney(c.Delta)</span></td>
                         <td class="text-end"><span class="delta @cls num">@(c.Percent is { } p ? $"{(p > 0 ? "+" : "")}{p:N0}%" : "—")</span></td>
                     </tr>
                 }
