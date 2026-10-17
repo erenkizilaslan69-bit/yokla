@@ -9,34 +9,44 @@
 
     // "Tekrarlayan işlemler" is reached from the transactions page, so it lights up the same menu item.
     var inTransactions = controller is "Transactions" or "Recurring";
+    var signedIn = User.Identity?.IsAuthenticated == true;
 }
 <!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#0B7A5C" />
     <title>@ViewData["Title"] - BudgetApp</title>
     <partial name="_ThemeInit" />
     <link rel="preload" href="~/fonts/inter/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="~/fonts/bricolage-grotesque/bricolage-grotesque-latin-opsz-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/lib/bootstrap-icons/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
-<body class="@(ViewData["HasFab"] is true ? "has-fab" : "")">
+@* Signed in on a phone: the bottom tab bar replaces the hamburger menu; the body keeps room for it. *@
+<body class="@(signedIn ? "has-tabbar" : "")">
     <header>
         <nav class="navbar navbar-expand-md app-navbar sticky-top">
             <div class="container">
                 <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
                     <span class="brand-mark"><i class="bi bi-wallet2"></i></span>BudgetApp
                 </a>
-                <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
-                        aria-controls="mainNav" aria-expanded="false" aria-label="Menüyü aç/kapat">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
+                @if (signedIn)
+                {
+                    <partial name="_AccountMenu" />
+                }
+                else
+                {
+                    <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+                            aria-controls="mainNav" aria-expanded="false" aria-label="Menüyü aç/kapat">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                }
                 <div class="navbar-collapse collapse" id="mainNav">
-                    @if (User.Identity?.IsAuthenticated == true)
+                    @if (signedIn)
                     {
                         <ul class="navbar-nav me-auto gap-md-1 ms-md-3">
                             <li class="nav-item">
@@ -76,6 +86,11 @@
             <a asp-area="" asp-controller="Home" asp-action="Privacy">Gizlilik</a>
         </div>
     </footer>
+
+    @if (signedIn)
+    {
+        <partial name="_TabBar" />
+    }
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>

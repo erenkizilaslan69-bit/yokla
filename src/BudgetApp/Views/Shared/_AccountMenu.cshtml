@@ -1,0 +1,28 @@
+@* Phones only: the account button in the header of a signed-in user. It holds what the bottom tab bar has no room
+   for: the theme, the pages reached less often, and signing out. *@
+<div class="dropdown d-md-none">
+    <button class="account-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Hesap ve ayarlar">
+        <i class="bi bi-person-circle"></i>
+    </button>
+    <div class="dropdown-menu dropdown-menu-end account-menu">
+        <div class="account-user">@User.Identity?.Name</div>
+
+        <div class="dropdown-divider"></div>
+        <div class="account-label" id="accountThemeLabel">Tema</div>
+        <div class="theme-segment" role="group" aria-labelledby="accountThemeLabel">
+            <button type="button" data-theme-value="light" aria-pressed="false"><i class="bi bi-sun-fill"></i>Açık</button>
+            <button type="button" data-theme-value="dark" aria-pressed="false"><i class="bi bi-moon-stars-fill"></i>Koyu</button>
+            <button type="button" data-theme-value="auto" aria-pressed="false"><i class="bi bi-circle-half"></i>Sistem</button>
+        </div>
+
+        <div class="dropdown-divider"></div>
+        <a class="dropdown-item" asp-area="" asp-controller="Recurring" asp-action="Index"><i class="bi bi-arrow-repeat"></i>Tekrarlayan işlemler</a>
+        <a class="dropdown-item" asp-area="" asp-controller="Budgets" asp-action="Index"><i class="bi bi-sliders"></i>Kategori bütçeleri</a>
+        <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="Privacy"><i class="bi bi-shield-lock"></i>Gizlilik</a>
+
+        <div class="dropdown-divider"></div>
+        <form method="post" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
+            <button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right"></i>Çıkış yap</button>
+        </form>
+    </div>
+</div>

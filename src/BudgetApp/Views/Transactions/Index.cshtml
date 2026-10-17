@@ -3,7 +3,6 @@
 @inject BudgetApp.Services.IReceiptService Receipts
 @{
     ViewData["Title"] = "İşlemler";
-    ViewData["HasFab"] = true; // the layout adds bottom room for the mobile "+" button
     var totals = Model.Totals;
 }
 
@@ -93,8 +92,3 @@ else
     </div>
 }
 
-@if (Receipts.IsEnabled)
-{
-    <a asp-controller="Receipts" asp-action="Scan" class="fab fab-secondary d-md-none" aria-label="Fiş tara" title="Fiş tara"><i class="bi bi-camera-fill"></i></a>
-}
-<a asp-action="Create" class="fab d-md-none" aria-label="Yeni işlem"><i class="bi bi-plus-lg"></i></a>

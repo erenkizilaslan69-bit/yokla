@@ -1,10 +1,8 @@
 @using System.Globalization
 @model BudgetApp.Models.HomeViewModel
-@inject BudgetApp.Services.IReceiptService Receipts
 @{
     ViewData["Title"] = "Ana sayfa";
     var authenticated = User.Identity?.IsAuthenticated == true;
-    ViewData["HasFab"] = authenticated; // the "+" button only exists for signed-in users
     var userName = User.Identity?.Name?.Split('@')[0];
     var monthTitle = DateTime.Today.ToString("MMMM yyyy", CultureInfo.GetCultureInfo("tr-TR"));
 }
@@ -259,9 +257,4 @@ else
         }
     </div>
 
-    @if (Receipts.IsEnabled)
-    {
-        <a asp-controller="Receipts" asp-action="Scan" class="fab fab-secondary d-md-none" aria-label="Fiş tara" title="Fiş tara"><i class="bi bi-camera-fill"></i></a>
-    }
-    <a asp-controller="Transactions" asp-action="Create" class="fab d-md-none" aria-label="Yeni işlem"><i class="bi bi-plus-lg"></i></a>
 }

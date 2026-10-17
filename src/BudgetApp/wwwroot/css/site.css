@@ -117,7 +117,7 @@
   --hero-line: transparent;
   --carry-grad: linear-gradient(135deg, var(--gold-soft), var(--gold-soft-2));
   --celebrate-grad: radial-gradient(circle at 50% -20%, #FFF1C2 0%, var(--gold-soft) 45%, #FFFDF6 100%);
-  --fab-shadow: 0 8px 22px rgba(11, 122, 92, .45);
+  --fab-shadow: 0 4px 12px rgba(11, 122, 92, .3);
 
   --radius-sm: 8px;
   --radius: 14px;
@@ -202,7 +202,7 @@
   --hero-grad: linear-gradient(135deg, #0A4A39 0%, #0B6B52 55%, #0F8468 100%);
   --hero-line: rgba(255, 255, 255, .08);
   --celebrate-grad: radial-gradient(circle at 50% -20%, #5A4613 0%, var(--gold-soft) 45%, var(--surface-2) 100%);
-  --fab-shadow: 0 8px 22px rgba(0, 0, 0, .55);
+  --fab-shadow: 0 4px 12px rgba(0, 0, 0, .45);
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, .35);
   --shadow: 0 4px 14px rgba(0, 0, 0, .4);
@@ -701,39 +701,129 @@ a:hover { text-decoration: underline; }
 .icon-btn:hover { background: var(--surface-2); color: var(--text); text-decoration: none; }
 .icon-btn.danger:hover { background: var(--expense-soft); color: var(--expense-ink); }
 
-.fab {
+/* ---------- Mobile tab bar, "+" sheet and account menu ----------
+   Phones only (signed in): four destinations and "+" in the middle; theme, rarely used pages and signing out live
+   in the account menu of the header. The bar sits above the home indicator / notch (safe area). */
+:root { --tabbar-h: 64px; }
+
+.tabbar {
   position: fixed;
-  right: 1.1rem;
-  bottom: 1.1rem;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 1030;
-  display: inline-grid;
-  place-items: center;
-  width: 58px;
-  height: 58px;
-  border-radius: 50%;
-  border: 0;
-  color: #fff;
-  background: linear-gradient(135deg, var(--brand), var(--brand-grad-end));
-  box-shadow: var(--fab-shadow);
-  font-size: 1.6rem;
-  transition: transform .15s ease, box-shadow .15s ease;
-}
-
-.fab:hover { color: #fff; transform: translateY(-2px) scale(1.04); text-decoration: none; }
-.fab:active { transform: scale(.96); }
-
-/* "Fiş tara": a smaller, quieter round button just left of the "+". */
-.fab.fab-secondary {
-  right: calc(1.1rem + 58px + .7rem);
-  bottom: calc(1.1rem + 5px);
-  width: 48px;
-  height: 48px;
-  font-size: 1.25rem;
-  color: var(--brand-ink);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  align-items: center;
+  height: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  padding: 0 .25rem env(safe-area-inset-bottom);
   background: var(--surface);
-  border: 1px solid var(--line-strong);
+  border-top: 1px solid var(--line);
 }
-.fab.fab-secondary:hover { color: var(--brand-ink-strong); }
+
+.tabbar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .15rem;
+  min-height: 48px;
+  color: var(--muted);
+  font-size: .75rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color .1s ease;
+}
+.tabbar-item .bi { font-size: 1.3rem; line-height: 1; }
+.tabbar-item:hover { color: var(--text); text-decoration: none; }
+.tabbar-item.active { color: var(--brand-ink); }
+
+.tabbar-add {
+  justify-self: center;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--brand);
+  box-shadow: var(--fab-shadow);
+  font-size: 1.5rem;
+  transition: transform .1s ease;
+}
+.tabbar-add:hover { color: #fff; background: var(--brand-hover); text-decoration: none; }
+.tabbar-add:active { transform: scale(.94); }
+.tabbar-item:focus-visible, .tabbar-add:focus-visible, .account-toggle:focus-visible, .add-option:focus-visible {
+  outline: 2px solid var(--brand-ink);
+  outline-offset: 2px;
+}
+
+.add-sheet.offcanvas-bottom {
+  height: auto;
+  border-radius: 20px 20px 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--surface);
+  color: var(--text);
+}
+.add-sheet .offcanvas-body { display: grid; gap: .25rem; padding-top: 0; }
+.add-option {
+  display: flex;
+  align-items: center;
+  gap: .9rem;
+  min-height: 56px;
+  padding: .6rem .5rem;
+  border-radius: 12px;
+  color: var(--text);
+  text-decoration: none;
+}
+.add-option:hover { background: var(--surface-2); color: var(--text); text-decoration: none; }
+.add-option > .bi {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  font-size: 1.3rem;
+  color: var(--brand-ink);
+  background: var(--brand-soft);
+}
+.add-option strong { display: block; font-weight: 600; }
+.add-option small { color: var(--muted); font-size: var(--fs-meta); }
+
+.account-toggle {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text);
+  font-size: 1.5rem;
+}
+.account-toggle:hover { background: var(--surface-2); }
+.account-menu { min-width: 16rem; }
+.account-menu .dropdown-item { display: flex; align-items: center; gap: .6rem; min-height: 44px; font-weight: 500; }
+.account-user { padding: .35rem 1rem; color: var(--muted); font-size: var(--fs-small); overflow-wrap: anywhere; }
+.account-label { padding: .25rem 1rem; color: var(--muted); font-size: var(--fs-meta); font-weight: 600; }
+.theme-segment { display: grid; grid-template-columns: repeat(3, 1fr); gap: .35rem; padding: .25rem .75rem .5rem; }
+.theme-segment button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .2rem;
+  min-height: 52px;
+  padding: .45rem .25rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-size: var(--fs-meta);
+  font-weight: 600;
+}
+.theme-segment button.active { border-color: var(--brand); color: var(--brand-ink); background: var(--brand-soft); }
 
 /* ---------- Receipts ---------- */
 .receipt-preview { display: flex; gap: 1rem; align-items: center; }
@@ -929,10 +1019,8 @@ a:hover { text-decoration: underline; }
 
 /* ---------- Mobile ---------- */
 @media (max-width: 767.98px) {
-  /* Pages with the floating "+" button (body.has-fab): keep the last content and the footer links clear of it.
-     The button is fixed to the viewport, so the room goes below the footer content. */
-  body.has-fab .app-main { padding-bottom: 2rem; }
-  body.has-fab .site-footer { padding-bottom: 6rem; }
+  /* Signed in: the tab bar is fixed to the bottom, so the footer keeps room for it and for the safe area. */
+  body.has-tabbar .site-footer { padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 1.25rem); }
   .stat-value { font-size: 1.35rem; }
   .goal-hero .goal-percent { font-size: 2.1rem; }
   .month-picker .month-title { min-width: 8.5rem; }
@@ -941,5 +1029,5 @@ a:hover { text-decoration: underline; }
 /* ---------- Motion preferences ---------- */
 @media (prefers-reduced-motion: reduce) {
   .goal-fill { animation: none; }
-  .fab { transition: none; }
+  .tabbar-item, .tabbar-add { transition: none; }
 }

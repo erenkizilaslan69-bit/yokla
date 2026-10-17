@@ -1,0 +1,57 @@
+@* Phones only: the bottom tab bar of a signed-in user. Four destinations and, in the middle, "+" for adding.
+   With receipt reading on, "+" opens a small sheet (add a transaction / scan a receipt); otherwise it goes
+   straight to the new-transaction form. The desktop keeps its top menu (see _Layout). *@
+@inject BudgetApp.Services.IReceiptService Receipts
+@{
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+    var action = ViewContext.RouteData.Values["action"]?.ToString();
+    bool Is(params string[] controllers) => controllers.Contains(controller);
+    var home = controller == "Home" && action == "Index";
+}
+
+<nav class="tabbar d-md-none" aria-label="Ana gezinme">
+    <a class="tabbar-item @(home ? "active" : "")" aria-current="@(home ? "page" : null)" asp-area="" asp-controller="Home" asp-action="Index">
+        <i class="bi @(home ? "bi-house-fill" : "bi-house")"></i><span>Ana sayfa</span>
+    </a>
+    <a class="tabbar-item @(Is("Transactions", "Recurring", "Receipts") ? "active" : "")" aria-current="@(Is("Transactions", "Recurring", "Receipts") ? "page" : null)" asp-area="" asp-controller="Transactions" asp-action="Index">
+        <i class="bi bi-arrow-left-right"></i><span>İşlemler</span>
+    </a>
+
+    @if (Receipts.IsEnabled)
+    {
+        <button type="button" class="tabbar-add" data-bs-toggle="offcanvas" data-bs-target="#addSheet" aria-controls="addSheet" aria-label="Ekle">
+            <i class="bi bi-plus-lg"></i>
+        </button>
+    }
+    else
+    {
+        <a class="tabbar-add" asp-area="" asp-controller="Transactions" asp-action="Create" aria-label="Yeni işlem"><i class="bi bi-plus-lg"></i></a>
+    }
+
+    <a class="tabbar-item @(Is("Analysis", "Budgets") ? "active" : "")" aria-current="@(Is("Analysis", "Budgets") ? "page" : null)" asp-area="" asp-controller="Analysis" asp-action="Index">
+        <i class="bi @(Is("Analysis", "Budgets") ? "bi-pie-chart-fill" : "bi-pie-chart")"></i><span>Analiz</span>
+    </a>
+    <a class="tabbar-item @(Is("Goals") ? "active" : "")" aria-current="@(Is("Goals") ? "page" : null)" asp-area="" asp-controller="Goals" asp-action="Index">
+        <i class="bi bi-bullseye"></i><span>Hedefler</span>
+    </a>
+</nav>
+
+@if (Receipts.IsEnabled)
+{
+    <div class="offcanvas offcanvas-bottom add-sheet d-md-none" tabindex="-1" id="addSheet" aria-labelledby="addSheetTitle">
+        <div class="offcanvas-header">
+            <h2 class="offcanvas-title section-title mb-0" id="addSheetTitle">Ne eklemek istiyorsun?</h2>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Kapat"></button>
+        </div>
+        <div class="offcanvas-body">
+            <a class="add-option" asp-area="" asp-controller="Transactions" asp-action="Create">
+                <i class="bi bi-pencil-square"></i>
+                <span><strong>İşlem ekle</strong><small>Gelir ya da gideri elle gir</small></span>
+            </a>
+            <a class="add-option" asp-area="" asp-controller="Receipts" asp-action="Scan">
+                <i class="bi bi-camera"></i>
+                <span><strong>Fiş tara</strong><small>Fişin fotoğrafını çek, satırlar kendiliğinden gelsin</small></span>
+            </a>
+        </div>
+    </div>
+}
