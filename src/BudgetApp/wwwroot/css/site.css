@@ -261,7 +261,7 @@ h1 { font-size: var(--fs-page); }
 body { line-height: 1.5; }
 
 /* Every amount: the money face, tabular figures so columns line up, never broken across lines. */
-.num, .stat-value, .amount, .money, .carry-amount, .celebrate-amount, .allowance-amount, .budget-percent {
+.num, .amount, .money, .carry-amount, .celebrate-amount, .allowance-amount, .budget-percent {
   font-family: var(--font-money);
   font-variant-numeric: tabular-nums;
   font-optical-sizing: auto;
@@ -582,10 +582,7 @@ a:hover { text-decoration: underline; }
 .home-empty { margin: 0; color: var(--muted); }
 .home-section .tx-card { padding-inline: 0; }
 
-/* ---------- Dashboard: stat cards ---------- */
-.stat-card { padding: 1.1rem 1.25rem; height: 100%; }
-.stat-card .stat-top { display: flex; align-items: center; gap: .6rem; color: var(--muted); font-weight: 600; font-size: .85rem; }
-
+/* ---------- Small icon tile (privacy page) ---------- */
 .stat-icon {
   display: inline-grid;
   place-items: center;
@@ -596,11 +593,6 @@ a:hover { text-decoration: underline; }
 }
 
 .stat-icon.income { background: var(--brand-soft); color: var(--income); }
-.stat-icon.expense { background: var(--expense-soft); color: var(--expense-ink); }
-.stat-icon.balance { background: var(--gold-soft); color: var(--gold-ink); }
-
-.stat-value { font-size: 1.55rem; font-weight: 800; letter-spacing: -.02em; margin-top: .45rem; line-height: 1.15; }
-.stat-sub { color: var(--muted); font-size: .8rem; margin-top: .15rem; }
 
 /* ---------- Goal bar ---------- */
 .goal-track {
@@ -1025,7 +1017,6 @@ a:hover { text-decoration: underline; }
 @media (max-width: 767.98px) {
   /* Signed in: the tab bar is fixed to the bottom, so the footer keeps room for it and for the safe area. */
   body.has-tabbar .site-footer { padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 1.25rem); }
-  .stat-value { font-size: 1.35rem; }
   .month-picker .month-title { min-width: 8.5rem; }
 }
 

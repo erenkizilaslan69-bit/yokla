@@ -22,17 +22,8 @@
 }
 else
 {
-    <div class="row g-3 mb-4">
-        <div class="col-12 col-md-4">
-            @await Html.PartialAsync("_StatCard", ("Aylık gelir", summary.MonthlyIncome.ToString("C2"), "arrow-down-circle-fill", "income", (string?)"Tekrarlayan"))
-        </div>
-        <div class="col-6 col-md-4">
-            @await Html.PartialAsync("_StatCard", ("Aylık gider", summary.MonthlyExpense.ToString("C2"), "arrow-up-circle-fill", "expense", (string?)"Tekrarlayan"))
-        </div>
-        <div class="col-6 col-md-4">
-            @await Html.PartialAsync("_StatCard", ("Aylık net", summary.Net.ToString("C2"), "coin", "balance", (string?)"Gelir − gider"))
-        </div>
-    </div>
+    @* What the active definitions add up to each month, in the same quiet line as the other pages. *@
+    @await Html.PartialAsync("_SummaryLine", ("Her ay", summary.MonthlyIncome, summary.MonthlyExpense, true))
 
     <div class="card">
         @foreach (var item in Model.Items)
