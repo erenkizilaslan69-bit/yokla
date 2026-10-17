@@ -30,6 +30,30 @@ public class ForecastServiceTests
     }
 
     [Fact]
+    public async Task GetProjectedBalanceAsync_GivesTheDailyPaceOfVariableSpendingSoFar()
+    {
+        using var t = new TestDb();
+        // 17 October: 3.964,58 of variable spending is 233,21 a day; rent and recurring items do not count.
+        AddIncome(t.Context, Alice, 9500m, new DateTime(2026, 10, 1));
+        AddExpense(t.Context, Alice, 3000m, new DateTime(2026, 10, 1), Rent);
+        AddGeneratedExpense(t.Context, Alice, 189.99m, new DateTime(2026, 10, 12), Market, "Netflix");
+        AddExpense(t.Context, Alice, 3964.58m, new DateTime(2026, 10, 9), Entertainment);
+
+        var projection = await new ForecastService(t.Context).GetProjectedBalanceAsync(Alice, new DateTime(2026, 10, 17));
+
+        Assert.Equal(17, projection!.DaysElapsed);
+        Assert.Equal(233.21m, projection.DailyPace);
+    }
+
+    [Fact]
+    public void DailyPace_IsZeroBeforeAnyDayHasPassed()
+    {
+        Assert.Equal(0m, new BalanceProjection(100m, 0m, 50m, 0m).DailyPace);
+        Assert.Equal(25m, new BalanceProjection(100m, 0m, 50m, 0m, DaysElapsed: 2).DailyPace);
+        Assert.Equal(16.67m, new BalanceProjection(100m, 0m, 50m, 0m, DaysElapsed: 3).DailyPace); // rounded to the kuruş
+    }
+
+    [Fact]
     public async Task GetProjectedBalanceAsync_TreatsAllFixedCategoriesAsFixed()
     {
         using var t = new TestDb();

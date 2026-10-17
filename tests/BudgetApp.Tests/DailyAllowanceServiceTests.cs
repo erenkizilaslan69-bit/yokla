@@ -573,6 +573,65 @@ public class DailyAllowanceServiceTests
         Assert.Equal(AllowanceStatus.Ok, allowance.Status);
     }
 
+    // ---------- this month's pace against the same money ----------
+
+    /// <summary>The home page of 17 October: 2.385,42 to last until 1 November, 159,02 a day.</summary>
+    private static DailyAllowance October17(decimal available = 2385.42m, DateTime? periodEnd = null) =>
+        new(periodEnd ?? new DateTime(2026, 11, 1), null, null, 15, available, 0m, 159.02m, 0m, 159.02m);
+
+    private static readonly DateTime Oct17 = new(2026, 10, 17);
+
+    [Fact]
+    public void SpendingPace_SaysWhenTheMoneyRunsOutAtThisMonthsPace()
+    {
+        var warning = SpendingPace.Check(October17(), dailyPace: 233.21m, daysElapsed: 17, Oct17);
+
+        Assert.NotNull(warning);
+        // 2.385,42 / 233,21 = 10,2 days: the money lasts 10 whole days
+        Assert.Equal(new DateTime(2026, 10, 27), warning.RunsOutOn);
+        Assert.Equal((233.21m, 159.02m), (warning.DailyPace, warning.DailyAmount));
+    }
+
+    [Theory]
+    [InlineData("150.00")]  // 15,9 days: lasts until the 1st
+    [InlineData("159.02")]  // exactly the allowance
+    [InlineData("50.00")]
+    public void SpendingPace_SaysNothingWhenTheMoneyLastsUntilTheNextIncome(string pace) =>
+        Assert.Null(SpendingPace.Check(October17(), decimal.Parse(pace, System.Globalization.CultureInfo.InvariantCulture), 17, Oct17));
+
+    [Fact]
+    public void SpendingPace_RunningOutOnTheIncomeDayItselfIsNotAWarning()
+    {
+        // 800 until the income of the 20th; 100 a day lasts exactly 8 days (12th..19th)
+        var allowance = new DailyAllowance(Oct(20), Oct(20), "KYK Bursu", 8, 800m, 0m, 100m, 0m, 100m);
+
+        Assert.Null(SpendingPace.Check(allowance, 100m, 12, Today));
+        Assert.Equal(Oct(18), SpendingPace.Check(allowance, 120m, 12, Today)!.RunsOutOn); // 6,7 days
+    }
+
+    [Fact]
+    public void SpendingPace_RunningOutTodayIsAWarning()
+    {
+        var warning = SpendingPace.Check(October17(available: 100m), 233.21m, 17, Oct17);
+
+        Assert.Equal(Oct17, warning!.RunsOutOn);
+    }
+
+    [Theory]
+    [InlineData(2)]  // too early in the month: one purchase would set the pace
+    [InlineData(1)]
+    [InlineData(0)]
+    public void SpendingPace_WaitsForTheFirstThreeDays(int daysElapsed) =>
+        Assert.Null(SpendingPace.Check(October17(), 2000m, daysElapsed, Oct17));
+
+    [Fact]
+    public void SpendingPace_SaysNothingWithoutSpendingOrWithoutMoney()
+    {
+        Assert.Null(SpendingPace.Check(October17(), 0m, 17, Oct17));
+        Assert.Null(SpendingPace.Check(October17(available: 0m), 233.21m, 17, Oct17));   // the allowance already shows the deficit
+        Assert.Null(SpendingPace.Check(October17(available: -50m), 233.21m, 17, Oct17));
+    }
+
     // ---------- whose data ----------
 
     [Fact]

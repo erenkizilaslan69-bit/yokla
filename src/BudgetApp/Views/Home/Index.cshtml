@@ -4,7 +4,9 @@
     ViewData["Title"] = "Ana sayfa";
     var authenticated = User.Identity?.IsAuthenticated == true;
     var userName = User.Identity?.Name?.Split('@')[0];
-    var monthTitle = DateTime.Today.ToString("MMMM yyyy", CultureInfo.GetCultureInfo("tr-TR"));
+    var tr = CultureInfo.GetCultureInfo("tr-TR");
+    var todayTitle = DateTime.Today.ToString("d MMMM dddd", tr);
+    var monthName = DateTime.Today.ToString("MMMM", tr);
 }
 
 @if (!authenticated)
@@ -28,14 +30,15 @@
 }
 else
 {
-    <div class="page-head">
+    @* Quiet on purpose: the one big thing on this page is today's allowance below. *@
+    <div class="home-head">
         <h1>Merhaba, @userName</h1>
-        <span class="text-muted fw-semibold text-capitalize">@monthTitle</span>
+        <span>@todayTitle</span>
     </div>
 
     @if (Model.Allowance is { } dailyAllowance)
     {
-        <partial name="_DailyAllowance" model="dailyAllowance" />
+        @await Html.PartialAsync("_DailyAllowance", (dailyAllowance, Model.Pace))
     }
 
     @if (Model.Pending is { } pending)
@@ -113,110 +116,56 @@ else
 
     @if (Model.Totals is { } totals)
     {
-        <div class="row g-3 mb-4">
-            <div class="col-12 col-md-4">
-                @await Html.PartialAsync("_StatCard", ("Gelir", totals.Income.ToString("C2"), "arrow-down-circle-fill", "income", (string?)"Bu ay"))
-            </div>
-            <div class="col-6 col-md-4">
-                @await Html.PartialAsync("_StatCard", ("Gider", totals.Expense.ToString("C2"), "arrow-up-circle-fill", "expense", (string?)"Bu ay"))
-            </div>
-            <div class="col-6 col-md-4">
-                @if (Model.Projection is { } projection)
-                {
-                    var hasPending = projection.PendingIncome > 0 || projection.PendingExpenses > 0;
-                    @await Html.PartialAsync("_StatCard", ("Tahmini kalan", projection.Projected.ToString("C2"), "graph-up-arrow", "balance", (string?)(hasPending ? "Ay sonunda · bekleyenler dahil" : "Ay sonunda")))
-                }
-                else
-                {
-                    @await Html.PartialAsync("_StatCard", ("Tahmini kalan", "—", "graph-up-arrow", "balance", (string?)"Bu ay henüz işlem yok"))
-                }
-            </div>
-        </div>
+        @await Html.PartialAsync("_SummaryLine", (monthName, totals.Income, totals.Expense, false))
     }
 
-    @if (Model.ActiveGoal is { } active)
-    {
-        <partial name="_GoalHero" model="active" />
-    }
-    else if (Model.Celebration is { } reached)
-    {
-        <div class="card celebrate-card p-4 mb-4 text-center">
-            <span class="celebrate-icon"><i class="bi bi-trophy-fill"></i></span>
-            <h2 class="mb-1">Tebrikler, hedefine ulaştın!</h2>
-            <p class="celebrate-goal mb-1">@reached.Name</p>
-            <div class="celebrate-amount num">@reached.TargetAmount.ToString("C2")</div>
-            <p class="text-muted mb-3">@reached.CompletedAt!.Value.ToString("dd.MM.yyyy") tarihinde tamamlandı.</p>
-            <a asp-controller="Goals" asp-action="Create" class="btn btn-primary btn-lg"><i class="bi bi-plus-lg me-1"></i>Yeni hedef oluştur</a>
-        </div>
-    }
-    else
-    {
-        <div class="mb-4">
-            @await Html.PartialAsync("_EmptyState", ("bullseye", "Henüz bir hedefin yok", "Bir hedef koy; ay sonlarında artan paranı oraya aktaralım ve ne zaman ulaşacağını hesaplayalım.", (string?)"Hedef oluştur", (string?)"Goals", (string?)"Create"))
-        </div>
-    }
-
-    @if (Model.Projection is not null || Model.GoalForecast is not null)
-    {
-        <div class="card p-3 mb-4">
-            <div class="d-flex gap-3 align-items-start">
-                <span class="stat-icon balance flex-shrink-0"><i class="bi bi-stars"></i></span>
-                <div>
-                    @if (Model.Projection is { } p)
+    <section class="home-section home-goal" aria-label="Hedef">
+        @if (Model.ActiveGoal is { } active)
+        {
+            <partial name="_GoalBar" model="active" />
+            <div class="home-goal-foot">
+                <span class="text-muted">
+                    @if (Model.GoalForecast is { Status: BudgetApp.Services.GoalForecastStatus.Reachable, ReachDate: { } reach })
                     {
-                        <p class="mb-1">
-                            @if (p.Projected >= 0)
-                            {
-                                <span>Bu tempoyla ay sonunda tahmini <strong>@p.Projected.ToString("C2")</strong> kalır.</span>
-                            }
-                            else
-                            {
-                                <span>Bu tempoyla ay sonunda tahmini <strong class="text-danger">@((-p.Projected).ToString("C2"))</strong> açık verirsin.</span>
-                            }
-                        </p>
-                        @if (p.PendingIncome > 0 || p.PendingExpenses > 0)
-                        {
-                            <p class="small text-muted mb-1">
-                                Bu ay henüz gelmemiş tekrarlayan işlemler tahmine dahil:
-                                @if (p.PendingIncome > 0)
-                                {
-                                    <span>@p.PendingIncome.ToString("C2") gelir</span>
-                                }
-                                @if (p.PendingIncome > 0 && p.PendingExpenses > 0)
-                                {
-                                    <span>ve</span>
-                                }
-                                @if (p.PendingExpenses > 0)
-                                {
-                                    <span>@p.PendingExpenses.ToString("C2") gider</span>
-                                }.
-                            </p>
-                        }
+                        <span>Bu tempoyla <span class="text-capitalize">@reach.ToString("MMMM yyyy", tr)</span> civarında</span>
                     }
-                    @if (Model.GoalForecast is { } gf)
+                    else if (Model.GoalForecast is not null)
                     {
-                        <p class="mb-0">
-                            @if (gf.Status == BudgetApp.Services.GoalForecastStatus.Reachable)
-                            {
-                                <span>Bu tempoyla @gf.Goal.Name hedefine <strong>@gf.ReachDate!.Value.ToString("MMMM yyyy")</strong> civarında ulaşırsın.</span>
-                            }
-                            else
-                            {
-                                <span>Bu tempoyla hedefe ulaşmak için harcamaları azaltman gerek.</span>
-                            }
-                        </p>
+                        <span>Bu tempoyla ulaşmak için harcamaları azaltman gerek</span>
                     }
-                </div>
+                </span>
+                <a asp-controller="Goals" asp-action="Index">Tüm hedefler</a>
             </div>
-        </div>
-    }
+            @if (!active.Goal.IsCompleted)
+            {
+                @await Html.PartialAsync("_AddMoney", (active, "home", false))
+            }
+        }
+        else if (Model.Celebration is { } reached)
+        {
+            <div class="celebrate-card text-center">
+                <span class="celebrate-icon"><i class="bi bi-trophy-fill"></i></span>
+                <h2 class="mb-1">Tebrikler, hedefine ulaştın!</h2>
+                <p class="celebrate-goal mb-1">@reached.Name</p>
+                <div class="celebrate-amount">@reached.TargetAmount.ToString("C2")</div>
+                <p class="text-muted mb-3">@reached.CompletedAt!.Value.ToString("dd.MM.yyyy") tarihinde tamamlandı.</p>
+                <a asp-controller="Goals" asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Yeni hedef oluştur</a>
+            </div>
+        }
+        else
+        {
+            <p class="home-empty">
+                Henüz bir hedefin yok. <a asp-controller="Goals" asp-action="Create">Bir hedef koy</a>; ay sonlarında artan paranı oraya aktaralım.
+            </p>
+        }
+    </section>
 
     @if (Model.Upcoming.Count > 0)
     {
-        <div class="card mb-4">
-            <div class="d-flex justify-content-between align-items-center px-3 pt-3 pb-2">
-                <h2 class="section-title mb-0"><i class="bi bi-arrow-repeat text-success me-1"></i>Bu ay bekleyenler</h2>
-                <a asp-controller="Recurring" asp-action="Index" class="small fw-semibold">Yönet <i class="bi bi-arrow-right"></i></a>
+        <section class="home-section" aria-labelledby="upcomingTitle">
+            <div class="home-section-head">
+                <h2 class="section-title mb-0" id="upcomingTitle">Bu ay bekleyenler</h2>
+                <a asp-controller="Recurring" asp-action="Index">Yönet</a>
             </div>
             @foreach (var upcoming in Model.Upcoming)
             {
@@ -226,35 +175,29 @@ else
                     <partial name="_CategoryIcon" model="definition.Category?.Name" />
                     <div class="tx-main">
                         <div class="tx-title">@(string.IsNullOrWhiteSpace(definition.ItemName) ? definition.Category?.Name : definition.ItemName)</div>
-                        <div class="tx-sub">@definition.Category?.Name &middot; @upcoming.DueDate.ToString("dd.MM.yyyy")</div>
+                        <div class="tx-sub">@BudgetApp.Models.TurkishDates.DayHeading(upcoming.DueDate, DateTime.Today)</div>
                     </div>
                     <div class="tx-side">
                         <div class="amount @(isIncome ? "income" : "expense")">@(isIncome ? "+" : "−")@definition.Amount.ToString("C2")</div>
                     </div>
                 </div>
             }
-        </div>
+        </section>
     }
 
-    <div class="card mb-4">
-        <div class="d-flex justify-content-between align-items-center px-3 pt-3 pb-2">
-            <h2 class="section-title mb-0">Son işlemler</h2>
-            <a asp-controller="Transactions" asp-action="Index" class="small fw-semibold">Tümünü gör <i class="bi bi-arrow-right"></i></a>
+    <section class="home-section" aria-labelledby="recentTitle">
+        <div class="home-section-head">
+            <h2 class="section-title mb-0" id="recentTitle">Son işlemler</h2>
+            <a asp-controller="Transactions" asp-action="Index">Tümü</a>
         </div>
         @if (Model.Recent.Count == 0)
         {
-            <div class="text-center text-muted px-3 pb-4 pt-2">
-                <p class="mb-2">Henüz işlem yok.</p>
-                <a asp-controller="Transactions" asp-action="Create" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>İlk işlemini ekle</a>
-            </div>
+            <p class="home-empty">Henüz işlem yok. <a asp-controller="Transactions" asp-action="Create">İlk işlemini ekle</a>; günlük hakkın ondan sonra hesaplanır.</p>
         }
         else
         {
-            @foreach (var tx in Model.Recent)
-            {
-                <partial name="_TransactionCard" model="tx" />
-            }
+            <partial name="_TransactionList" model="Model.Recent" />
         }
-    </div>
+    </section>
 
 }

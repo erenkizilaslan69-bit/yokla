@@ -20,12 +20,19 @@ public class HomeController(
             return View(new HomeViewModel());
 
         var today = DateTime.Today;
+        var todaysAllowance = await allowance.GetAsync(userId, today);
+        var projection = await forecast.GetProjectedBalanceAsync(userId, today);
         return View(new HomeViewModel
         {
-            Allowance = await allowance.GetAsync(userId, today),            ActiveGoal = await goals.GetActiveAsync(userId),
+            Allowance = todaysAllowance,
+            // The month's pace measured against the same money as the allowance (see SpendingPace).
+            Pace = todaysAllowance is not null && projection is not null
+                ? SpendingPace.Check(todaysAllowance, projection.DailyPace, projection.DaysElapsed, today)
+                : null,
+            ActiveGoal = await goals.GetActiveAsync(userId),
             Celebration = await goals.GetCelebrationGoalAsync(userId, today),
             Pending = await monthCloses.GetPendingAsync(userId, today),
-            Projection = await forecast.GetProjectedBalanceAsync(userId, today),
+            Projection = projection,
             GoalForecast = await forecast.GetGoalForecastAsync(userId, today),
             Totals = await transactions.GetTotalsAsync(userId, today.Year, today.Month),
             Recent = await transactions.GetRecentAsync(userId, RecentCount),

@@ -59,6 +59,39 @@ public record DailyAllowance(
         : AllowanceStatus.Ok;
 }
 
+/// <summary>
+/// "At this pace the money runs out before the next income": this month's daily pace measured against the same
+/// money the daily allowance is cut from.
+/// </summary>
+/// <param name="DailyPace">This month's variable spending per day so far.</param>
+/// <param name="DailyAmount">Today's allowance, for comparison.</param>
+/// <param name="RunsOutOn">The day the money available now is used up at that pace.</param>
+public record PaceWarning(decimal DailyPace, decimal DailyAmount, DateTime RunsOutOn);
+
+public static class SpendingPace
+{
+    /// <summary>The first days of a month say little about a pace (one big purchase would dominate), as in warning rule 1.</summary>
+    public const int MinDaysElapsed = 3;
+
+    /// <summary>
+    /// When the money available now (<see cref="DailyAllowance.Available"/>) would be used up at this month's daily
+    /// pace: today + available ÷ pace, counting only whole days. Null when that is not before the next income
+    /// (nothing to warn about), when there is nothing available (the allowance already shows the deficit), when
+    /// nothing was spent, or too early in the month.
+    /// </summary>
+    public static PaceWarning? Check(DailyAllowance allowance, decimal dailyPace, int daysElapsed, DateTime today)
+    {
+        if (daysElapsed < MinDaysElapsed || dailyPace <= 0 || allowance.Available <= 0)
+            return null;
+
+        var days = (int)Math.Floor(allowance.Available / dailyPace);
+        var runsOutOn = today.Date.AddDays(days);
+        return runsOutOn < allowance.PeriodEnd.Date
+            ? new PaceWarning(dailyPace, allowance.DailyAmount, runsOutOn)
+            : null;
+    }
+}
+
 public interface IDailyAllowanceService
 {
     /// <summary>Null when the user has no transactions yet (there is nothing to base an allowance on).</summary>

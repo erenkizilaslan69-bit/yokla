@@ -51,13 +51,10 @@
 }
 else
 {
-    @* Phones: one card row per transaction *@
+    @* Phones: rows grouped by day *@
     <div class="card d-md-none">
-        @foreach (var t in Model.Transactions)
-        {
-            ViewData["Actions"] = true;
-            <partial name="_TransactionCard" model="t" view-data="ViewData" />
-        }
+        @{ ViewData["Actions"] = true; }
+        <partial name="_TransactionList" model="Model.Transactions" view-data="ViewData" />
     </div>
 
     @* Tablets and desktops: a table *@

@@ -1,0 +1,17 @@
+@* Transactions grouped by day ("Bugün", "Dün", "10 Ekim Cuma") so a date is written once, not on every row.
+   Model: the transactions, newest first (with Category loaded). *@
+@model IEnumerable<BudgetApp.Models.Transaction>
+@{
+    var today = DateTime.Today;
+}
+
+@foreach (var day in Model.GroupBy(t => t.Date.Date))
+{
+    <div class="tx-day">
+        <h3 class="tx-day-title">@BudgetApp.Models.TurkishDates.DayHeading(day.Key, today)</h3>
+        @foreach (var transaction in day)
+        {
+            <partial name="_TransactionCard" model="transaction" view-data="ViewData" />
+        }
+    </div>
+}

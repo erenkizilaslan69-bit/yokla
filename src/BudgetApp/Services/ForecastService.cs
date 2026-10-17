@@ -12,12 +12,21 @@ namespace BudgetApp.Services;
 /// occurrences that have not been generated yet. Only <see cref="VariableExpenses"/> are extrapolated.
 /// </para>
 /// </summary>
+/// <param name="DaysElapsed">Days of the month so far, today included (the divisor of the pace).</param>
 public record BalanceProjection(
     decimal Income, decimal FixedExpenses, decimal VariableExpenses, decimal Projected,
-    decimal PendingIncome = 0m, decimal PendingExpenses = 0m)
+    decimal PendingIncome = 0m, decimal PendingExpenses = 0m, int DaysElapsed = 0)
 {
     /// <summary>Income recorded so far plus the recurring income still expected this month.</summary>
     public decimal KnownIncome => Income + PendingIncome;
+
+    /// <summary>
+    /// This month's variable spending per day so far (rounded to the kuruş): the same spending the daily allowance
+    /// counts, so the two can be compared. Zero before any day has passed.
+    /// </summary>
+    public decimal DailyPace => DaysElapsed > 0
+        ? Math.Round(VariableExpenses / DaysElapsed, 2, MidpointRounding.AwayFromZero)
+        : 0m;
 }
 
 public enum GoalForecastStatus
@@ -63,7 +72,7 @@ public class ForecastService(ApplicationDbContext db) : IForecastService
         // Multiply before dividing so round figures stay exact in decimal arithmetic.
         var daysInMonth = DateTime.DaysInMonth(today.Year, today.Month);
         var projected = income + pendingIncome - fixedExpenses - pendingExpenses - variableExpenses * daysInMonth / today.Day;
-        return new BalanceProjection(income, fixedExpenses, variableExpenses, projected, pendingIncome, pendingExpenses);
+        return new BalanceProjection(income, fixedExpenses, variableExpenses, projected, pendingIncome, pendingExpenses, today.Day);
     }
 
     public async Task<GoalForecast?> GetGoalForecastAsync(string userId, DateTime today, decimal extraMonthlySaving = 0m)

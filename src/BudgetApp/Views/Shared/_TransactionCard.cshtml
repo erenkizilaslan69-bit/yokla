@@ -1,9 +1,8 @@
-@* One transaction as a card row (phones and the dashboard). Model: the transaction (with Category loaded).
-   ViewData["Actions"] = true shows the edit and delete buttons. *@
+@* One transaction as a row (phones and the dashboard), inside a day group of _TransactionList, so the date is not
+   repeated. Model: the transaction (with Category loaded). *@
 @model BudgetApp.Models.Transaction
 @{
     var income = Model.Type == BudgetApp.Models.TransactionType.Income;
-    var showActions = ViewData["Actions"] is true;
     var title = string.IsNullOrWhiteSpace(Model.ItemName) ? Model.Category?.Name : Model.ItemName;
 }
 
@@ -11,11 +10,11 @@
     <partial name="_CategoryIcon" model="Model.Category?.Name" />
     <div class="tx-main">
         <div class="tx-title">@title</div>
-        <div class="tx-sub">@Model.Category?.Name &middot; @Model.Date.ToString("dd.MM.yyyy") <partial name="_RecurringMark" model="Model" /></div>
+        <div class="tx-sub">@Model.Category?.Name <partial name="_RecurringMark" model="Model" /></div>
     </div>
     <div class="tx-side">
         <div class="amount @(income ? "income" : "expense")">@(income ? "+" : "−")@Model.Amount.ToString("C2")</div>
-        @if (showActions)
+        @if (ViewData["Actions"] is true)
         {
             <div class="tx-actions">
                 <a asp-controller="Transactions" asp-action="Edit" asp-route-id="@Model.Id" class="icon-btn" aria-label="Düzenle" title="Düzenle"><i class="bi bi-pencil-square"></i></a>

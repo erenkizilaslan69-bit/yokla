@@ -113,8 +113,6 @@
   --bar-near: #B08018;        /* gold, darkened: plain --gold is too light for a bar on a light track */
   --bar-over: var(--expense);
 
-  --hero-grad: linear-gradient(135deg, #075E47 0%, #0B7A5C 55%, #0F8263 100%);
-  --hero-line: transparent;
   --carry-grad: linear-gradient(135deg, var(--gold-soft), var(--gold-soft-2));
   --celebrate-grad: radial-gradient(circle at 50% -20%, #FFF1C2 0%, var(--gold-soft) 45%, #FFFDF6 100%);
   --fab-shadow: 0 4px 12px rgba(11, 122, 92, .3);
@@ -199,8 +197,6 @@
   --bar-near: var(--gold);
   --bar-over: #E5665E;
 
-  --hero-grad: linear-gradient(135deg, #0A4A39 0%, #0B6B52 55%, #0F8468 100%);
-  --hero-line: rgba(255, 255, 255, .08);
   --celebrate-grad: radial-gradient(circle at 50% -20%, #5A4613 0%, var(--gold-soft) 45%, var(--surface-2) 100%);
   --fab-shadow: 0 4px 12px rgba(0, 0, 0, .45);
 
@@ -265,7 +261,7 @@ h1 { font-size: var(--fs-page); }
 body { line-height: 1.5; }
 
 /* Every amount: the money face, tabular figures so columns line up, never broken across lines. */
-.num, .stat-value, .amount, .money, .carry-amount, .celebrate-amount, .allowance-amount, .goal-percent, .budget-percent {
+.num, .stat-value, .amount, .money, .carry-amount, .celebrate-amount, .allowance-amount, .budget-percent {
   font-family: var(--font-money);
   font-variant-numeric: tabular-nums;
   font-optical-sizing: auto;
@@ -514,42 +510,76 @@ a:hover { text-decoration: underline; }
   flex: none;
 }
 
-/* ---------- Dashboard: daily allowance ----------
-   One card, three looks. Only tokens are used, so the dark theme needs nothing extra. */
-.allowance-card { border-left: 6px solid var(--brand); box-shadow: var(--shadow); }
-.allowance-label { display: flex; align-items: center; gap: .45rem; color: var(--muted); font-weight: 600; font-size: .85rem; }
-.allowance-amount { font-size: 2.1rem; font-weight: 800; letter-spacing: -.03em; line-height: 1.15; color: var(--brand-ink); }
-.allowance-unit { font-size: 1rem; font-weight: 600; letter-spacing: 0; color: var(--muted); }
-.allowance-next { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; font-size: .9rem; color: var(--text); }
-.allowance-next .bi { color: var(--brand-ink); }
-.allowance-date { color: var(--muted); }
-.allowance-foot, .allowance-hint { color: var(--muted); font-size: .82rem; }
-.allowance-hint { display: flex; gap: .45rem; align-items: baseline; }
-.allowance-hint .bi { color: var(--gold-icon); }
-.allowance-track { height: 8px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; }
+/* ---------- Home: today's allowance ----------
+   The one raised surface and the one big number of the home page; everything around it is quiet. Three looks:
+   is-ok, is-over (today's share is spent, gold), is-deficit (nothing left until the next income, red). */
+.allowance-hero {
+  margin: 0 0 var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+}
+.allowance-label { margin: 0; color: var(--muted); font-size: var(--fs-small); font-weight: 600; letter-spacing: 0; }
+.allowance-amount {
+  margin: var(--space-1) 0 var(--space-2);
+  font-size: var(--fs-hero);
+  font-weight: 700;
+  letter-spacing: -.035em;
+  line-height: 1;
+  color: var(--brand-ink);
+  animation: allowance-in .35s cubic-bezier(.22, 1, .36, 1) both; /* the page's single moment of motion */
+}
+@keyframes allowance-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.allowance-line { margin: 0 0 var(--space-2); }
+.allowance-meta { margin: 0; color: var(--muted); font-size: var(--fs-small); }
+.allowance-meta .money { color: var(--text); font-weight: 600; }
+.allowance-track { height: 6px; margin: 0 0 var(--space-3); border-radius: 999px; background: var(--surface-2); overflow: hidden; }
 .allowance-fill { height: 100%; border-radius: inherit; background: var(--bar-ok); }
+.allowance-pace {
+  display: flex;
+  gap: .6rem;
+  align-items: baseline;
+  margin: var(--space-3) 0 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+.allowance-pace .bi { color: var(--gold-icon); }
+.allowance-hint { margin: var(--space-2) 0 0; color: var(--muted); font-size: var(--fs-small); }
 
-/* Today's spending went above today's share. */
-.allowance-card.is-over { border-color: var(--gold-soft-line); border-left-color: var(--gold); background: var(--gold-soft); }
-.allowance-card.is-over .allowance-amount { color: var(--gold-ink); }
-.allowance-card.is-over .allowance-text { color: var(--gold-soft-ink); }
-.allowance-card.is-over .allowance-next .bi { color: var(--gold-ink); }
+.allowance-hero.is-over { border-color: var(--gold-soft-line); background: var(--gold-soft); }
+.allowance-hero.is-deficit { border-color: var(--expense-soft-line); background: var(--expense-soft); }
+.allowance-hero.is-over .allowance-amount { color: var(--gold-ink); }
+.allowance-hero.is-deficit .allowance-amount { color: var(--expense-soft-ink); }
+/* Muted grey is too weak on the tinted backgrounds: there the text takes the tint's own ink. */
+.allowance-hero.is-over, .allowance-hero.is-over .allowance-label, .allowance-hero.is-over .allowance-meta,
+.allowance-hero.is-over .allowance-meta .money, .allowance-hero.is-over .allowance-hint { color: var(--gold-soft-ink); }
+.allowance-hero.is-deficit, .allowance-hero.is-deficit .allowance-label, .allowance-hero.is-deficit .allowance-meta,
+.allowance-hero.is-deficit .allowance-meta .money, .allowance-hero.is-deficit .allowance-hint { color: var(--expense-soft-ink); }
+.allowance-hero.is-over .allowance-pace, .allowance-hero.is-deficit .allowance-pace { border-top-color: currentColor; }
+.allowance-hero.is-over .allowance-pace .bi { color: inherit; }
+.allowance-hero.is-over a, .allowance-hero.is-deficit a { color: inherit; text-decoration: underline; }
 
-/* Nothing left until the next income. */
-.allowance-card.is-deficit { border-color: var(--expense-soft-line); border-left-color: var(--bar-over); background: var(--expense-soft); }
-.allowance-card.is-deficit .allowance-amount,
-.allowance-card.is-deficit .allowance-text { color: var(--expense-soft-ink); }
-.allowance-card.is-deficit .allowance-next .bi { color: var(--expense-soft-ink); }
+/* ---------- Home: quiet sections around it ----------
+   No cards: a title, the content and a thin rule; the spacing says what belongs together. */
+.home-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .25rem 1rem; margin-bottom: var(--space-3); }
+.home-head h1 { margin: 0; font-size: var(--fs-title); font-weight: 600; }
+.home-head span { color: var(--muted); font-size: var(--fs-small); }
 
-/* Muted grey is too weak on the tinted cards: small print takes the tint's own text colour there. */
-.allowance-card.is-over .allowance-label, .allowance-card.is-over .allowance-unit, .allowance-card.is-over .allowance-date,
-.allowance-card.is-over .allowance-foot, .allowance-card.is-over .allowance-hint { color: var(--gold-soft-ink); }
-.allowance-card.is-deficit .allowance-label, .allowance-card.is-deficit .allowance-unit, .allowance-card.is-deficit .allowance-date,
-.allowance-card.is-deficit .allowance-foot, .allowance-card.is-deficit .allowance-hint { color: var(--expense-soft-ink); }
-.allowance-card.is-over .allowance-hint .bi, .allowance-card.is-deficit .allowance-hint .bi { color: inherit; }
-.allowance-card.is-over a, .allowance-card.is-deficit a { color: inherit; text-decoration: underline; }
+.summary-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .6rem; margin: 0 0 var(--space-4); color: var(--muted); }
+.summary-line .money { color: var(--text); }
+.summary-line .money.income { color: var(--income); }
+.summary-line .money.negative { color: var(--expense-ink); }
+.summary-label { color: var(--text); font-weight: 600; }
+.summary-sep { color: var(--line-strong); }
 
-@media (max-width: 767.98px) { .allowance-amount { font-size: 1.8rem; } }
+.home-section { padding: var(--space-4) 0; border-top: 1px solid var(--line); }
+.home-section-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--space-2); }
+.home-section-head a, .home-goal-foot a { font-size: var(--fs-small); font-weight: 600; }
+.home-goal-foot { display: flex; justify-content: space-between; gap: 1rem; margin: var(--space-1) 0 var(--space-3); font-size: var(--fs-small); }
+.home-goal .goal-fill { animation: none; } /* the allowance is the page's one moment of motion */
+.home-empty { margin: 0; color: var(--muted); }
+.home-section .tx-card { padding-inline: 0; }
 
 /* ---------- Dashboard: stat cards ---------- */
 .stat-card { padding: 1.1rem 1.25rem; height: 100%; }
@@ -571,38 +601,11 @@ a:hover { text-decoration: underline; }
 .stat-value { font-size: 1.55rem; font-weight: 800; letter-spacing: -.02em; margin-top: .45rem; line-height: 1.15; }
 .stat-sub { color: var(--muted); font-size: .8rem; margin-top: .15rem; }
 
-/* ---------- Goal bar ----------
-   The hero card is a dark green panel with white text in both themes; only its depth changes. */
-.goal-hero {
-  border: 1px solid var(--hero-line);
-  color: #fff;
-  background: var(--hero-grad);
-  box-shadow: var(--shadow-lg);
-  border-radius: var(--radius-lg);
-  position: relative;
-  overflow: hidden;
-}
-
-.goal-hero::after {
-  content: "";
-  position: absolute;
-  right: -60px;
-  top: -60px;
-  width: 220px;
-  height: 220px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, .07);
-}
-
-.goal-hero .goal-name { font-weight: 700; font-size: 1.15rem; display: flex; align-items: center; gap: .5rem; }
-.goal-hero .goal-percent { font-size: 2.6rem; font-weight: 800; letter-spacing: -.03em; line-height: 1; }
-.goal-hero .goal-meta { color: rgba(255, 255, 255, .8); font-size: .9rem; }
-.goal-hero .form-label { color: #fff; }
-
+/* ---------- Goal bar ---------- */
 .goal-track {
-  height: 16px;
+  height: 12px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, .22);
+  background: var(--brand-soft);
   overflow: hidden;
 }
 
@@ -610,16 +613,11 @@ a:hover { text-decoration: underline; }
   height: 100%;
   width: var(--w, 0%);
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--gold-light), var(--gold));
-  box-shadow: 0 0 12px rgba(var(--gold-rgb, 224, 165, 38), .55);
+  background: var(--bar-near);
   animation: goal-grow 1.1s cubic-bezier(.22, 1, .36, 1) both;
 }
 
 @keyframes goal-grow { from { width: 0; } to { width: var(--w, 0%); } }
-
-/* The compact variant used in lists on a card. */
-.goal-compact .goal-track { background: var(--brand-soft); height: 12px; }
-.goal-compact .goal-fill { background: var(--bar-near); box-shadow: none; }
 
 /* ---------- Carry-over card ---------- */
 .carry-card {
@@ -662,6 +660,11 @@ a:hover { text-decoration: underline; }
 }
 
 .tx-card:last-child { border-bottom: 0; }
+
+/* Lists grouped by day: the date is a small heading, not repeated on every row. */
+.tx-day-title { margin: 0; padding: .85rem 1rem .15rem; color: var(--muted); font-size: var(--fs-meta); font-weight: 600; }
+.home-section .tx-day-title { padding-inline: 0; }
+.tx-day .tx-card:last-child { border-bottom: 0; }
 .tx-card .tx-main { min-width: 0; flex: 1; }
 .tx-card .tx-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tx-card .tx-sub { color: var(--muted); font-size: .8rem; }
@@ -907,8 +910,6 @@ a:hover { text-decoration: underline; }
 .add-money { margin-top: .85rem; }
 .add-money .collapse, .add-money .collapsing { margin-top: .75rem; }
 .add-money .form-text { margin-top: .35rem; }
-.goal-hero .add-money .form-text { color: rgba(255, 255, 255, .85); }
-.goal-hero .add-money .btn-light { color: #075E47; font-weight: 700; }
 
 /* ---------- Analysis ---------- */
 .chart-wrap { position: relative; max-width: 340px; margin: 0 auto; }
@@ -945,6 +946,8 @@ a:hover { text-decoration: underline; }
 
 /* ---------- Goal reached (home page) ---------- */
 .celebrate-card {
+  padding: var(--space-4);
+  border-radius: 20px;
   border: 1px solid var(--gold-soft-line);
   background: var(--celebrate-grad);
   box-shadow: var(--shadow);
@@ -1022,12 +1025,12 @@ a:hover { text-decoration: underline; }
   /* Signed in: the tab bar is fixed to the bottom, so the footer keeps room for it and for the safe area. */
   body.has-tabbar .site-footer { padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 1.25rem); }
   .stat-value { font-size: 1.35rem; }
-  .goal-hero .goal-percent { font-size: 2.1rem; }
   .month-picker .month-title { min-width: 8.5rem; }
 }
 
 /* ---------- Motion preferences ---------- */
 @media (prefers-reduced-motion: reduce) {
+  .allowance-amount { animation: none; }
   .goal-fill { animation: none; }
   .tabbar-item, .tabbar-add { transition: none; }
 }
