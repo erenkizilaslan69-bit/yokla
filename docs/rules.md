@@ -80,6 +80,38 @@ Metinler belirli bir kesime (öğrenci, çalışan) değil herkese hitap eder; "
   - Aktif hedef yoksa veya hiç geçmiş ay verisi yoksa hesaplanmaz ve cümle gösterilmez.
 - Ana sayfada tek cümle: "Bu tempoyla {Hedef} hedefine {Ay Yıl} civarında ulaşırsın."
 
+## 5. Tekrarlayan işlemler (RecurringTransactionService)
+Maaş, kira, fatura, abonelik, burs gibi her ay aynı gün tekrarlanan gelir ve giderler bir kez tanımlanır; işlemleri uygulama oluşturur. Yalnızca aylık tekrar vardır.
+
+**Oluşturma zamanı.** Arka plan işi yoktur. Giriş yapmış kullanıcının her sayfa isteğinde, sayfa çalışmadan önce günü gelmiş işlemler oluşturulur (`GenerateDueAsync`). Böylece ana sayfa, işlemler, analiz ve ay sonu devri her zaman güncel veriyi görür.
+
+**Vade günü.** Bir ayın vadesi = min(tanımdaki gün, o ayın gün sayısı). 31 seçilirse Şubat'ta 28/29, Nisan'da 30 olur; tanımdaki gün değişmez.
+
+**Hangi aylar oluşur.**
+- Vadesi bugünden sonra olan işlem oluşmaz; oluşan işlem hiçbir zaman ileri tarihli değildir.
+- Vadesi başlangıç tarihinden önce veya bitiş tarihinden sonra olan işlem oluşmaz.
+- Kullanıcı uzun süre girmezse kaçan aylar kendi vade tarihleriyle sonradan oluşturulur (en fazla 12 ay geriye).
+- Başlangıç tarihi, tanım oluşturulurken içinde bulunulan ayın 1'inden eski olamaz; yani yeni bir tanım geçmiş aylara işlem üretmez.
+
+**Aynı ay iki kez oluşmaz.**
+- Tanım, en son işlenen ayı (`LastGeneratedPeriod`) tutar; o ay ve öncesi bir daha ele alınmaz.
+- Veritabanında (tanım, ay) üzerinde benzersiz index vardır; aynı anda gelen iki istek aynı ayı iki kez yazamaz.
+
+**Düzenleme, durdurma, silme.**
+- Tanımı düzenlemek yalnızca bundan sonra oluşacak işlemleri etkiler; oluşmuş işlemler değişmez.
+- Gün değiştirilirse ayda yine en fazla bir işlem oluşur. O ayın işlemi henüz oluşmadıysa ve yeni gün geçmişte kaldıysa, işlem yeni güne tarihlenerek hemen oluşur.
+- Durdurulan tanım işlem üretmez ve tahmine girmez. Devam ettirilince başlangıç tarihi bugüne çekilir: durduğu ayların işlemleri sonradan eklenmez. Bitiş tarihi geçmiş bir tanımın bitiş tarihi uzatılırsa da aynı kural geçerlidir.
+- Tanım silinince oluşmuş işlemler kalır ve normal işleme dönüşür.
+- Kullanıcı oluşmuş bir işlemi silerse o ay için yeniden oluşmaz; tanım sonraki aylarda çalışmaya devam eder.
+- Kullanıcı oluşmuş bir işlemi düzenleyebilir (ör. o ay tutar farklıydı); tanım değişmez.
+
+**"Her ay tekrarla".** Yeni işlem eklerken işaretlenirse, o işlem yeni bir tanımın ilk oluşumu sayılır; tanımın günü işlemin günüdür. İşlem geçmiş bir aya aitse aradaki aylar doldurulmaz, üretim içinde bulunulan aydan başlar.
+
+**Hesaplara etkisi.**
+- Tekrarlayan tanımdan oluşan giderler, kategorisi sabit olmasa da "sabit gider gibi" sayılır: tahminde ölçeklenmez (bkz. 4), kural 1'in ortalamasına girmez (bkz. 2), en çok harcanan ürünlerde görünmez (bkz. 3).
+- Bu ay henüz oluşmamış işlemler ("bekleyenler") tahmine ve kural 4'e tutarlarıyla girer.
+- Otomatik oluşan işlemlerde anında uyarılar çalışmaz; yerine "N tekrarlayan işlem eklendi: …" bildirimi gösterilir.
+
 ## 6. Kategori bütçeleri (BudgetService, WarningService kural 5)
 Kullanıcı bir gider kategorisine aylık limit koyar (ör. Kafe/Kahve 500 TL). Kategori başına en fazla bir limit vardır; gelir kategorilerine limit konamaz. Limit 0'dan büyük olmalı ve 2 ondalığa yuvarlanır.
 
@@ -97,6 +129,20 @@ Kullanıcı bir gider kategorisine aylık limit koyar (ör. Kafe/Kahve 500 TL). 
 - Örnek: "Kafe/Kahve bütçenin %84'ünü kullandın: ₺420,00 / ₺500,00. Ay bitmeden ₺80,00 kaldı." ve "Kafe/Kahve bütçeni aştın: ₺540,00 / ₺500,00 (₺40,00 fazla)."
 
 **Gösterim.** Analiz sayfasında limiti olan her kategori için, seçili ayın harcamasıyla ilerleme çubuğu gösterilir (harcaması olmayanlar dahil; geçmiş aya bakılınca o ayın harcaması güncel limitle karşılaştırılır). Limitler `/Budgets` sayfasından eklenir, değiştirilir ve silinir.
+
+## 7. CSV dışa aktarma (TransactionCsvExporter)
+İşlemler sayfasındaki "CSV indir" düğmesi, **seçili ayın** işlemlerini Türkçe Excel'de doğrudan açılacak biçimde indirir (dosya adı `islemler-2026-10.csv`).
+
+- **Biçim:** UTF-8 + BOM (Excel'in ü, ş, ğ, ı harflerini doğru okuması için); ayraç noktalı virgül (`;`); satır sonu CRLF; ondalık virgül.
+- **Sütunlar:** `Tarih;Tür;Kategori;Ürün;Not;Tutar`
+  - Tarih `gg.aa.yyyy`; Tür "Gelir" veya "Gider".
+  - Tutar her zaman pozitiftir (yönü Tür sütunu belirler), iki ondalıkla ve binlik ayırıcı olmadan yazılır (`1234,50`); para simgesi yoktur, böylece Excel sayı olarak okur.
+  - Biçim sunucunun kültüründen bağımsızdır (hep tr-TR).
+- **Sıra:** Eskiden yeniye (ekrandaki liste ise yeniden eskiye). O ay işlem yoksa dosyada yalnızca başlık satırı olur.
+- **Kaçışlar:** Ayraç, çift tırnak veya satır sonu içeren alan çift tırnak içine alınır, içindeki tırnaklar ikiye katlanır.
+- **Formül koruması:** Alan `=`, `+`, `-`, `@` (veya sekme/satır başı) ile başlıyorsa başına `'` konur; yoksa Excel hücreyi formül gibi çalıştırır. Dosya başkasıyla paylaşılırsa bu bir güvenlik riskidir. Sonuç olarak "-5 indirim" gibi bir not dosyada `'-5 indirim` görünür.
+- Yalnızca kullanıcının kendi işlemleri; geçersiz veya gelecek bir ay istenirse içinde bulunulan ay indirilir. Tekrarlayan tanımdan oluşan işlemler de dahildir.
+- Not: Bölgesel ayarı Türkçe olmayan bir Excel `;` ayracını sütunlara bölmeyebilir; bu durumda "Veri → Metinden/CSV'den" ile içe aktarılır.
 
 ## 8. Günlük harcama hakkı (DailyAllowanceService)
 Ana sayfanın en üstündeki kart "bugün ne kadar harcayabilirim" sorusunu cevaplar: eldeki para, bir sonraki gelire kadar gün gün bölünür.
@@ -265,49 +311,3 @@ Komut dosyayı uygulamanın kullandığı gerçek ayrıştırıcıyla Gemini'ye 
 - Mikrofon yalnızca HTTPS'te ya da localhost'ta açılır.
 - "Geri al", bildirim gösterildikten sonra kullanıcının o satırlarda yaptığı değişiklikleri de siler.
 - "yüz elli" / "yüz, elli", "iki buçuk" (2,5 mi 250 mi) gibi belirsizlikler modele bırakılır; şüphe varsa onay ekranı açılır.
-
-## 7. CSV dışa aktarma (TransactionCsvExporter)
-İşlemler sayfasındaki "CSV indir" düğmesi, **seçili ayın** işlemlerini Türkçe Excel'de doğrudan açılacak biçimde indirir (dosya adı `islemler-2026-10.csv`).
-
-- **Biçim:** UTF-8 + BOM (Excel'in ü, ş, ğ, ı harflerini doğru okuması için); ayraç noktalı virgül (`;`); satır sonu CRLF; ondalık virgül.
-- **Sütunlar:** `Tarih;Tür;Kategori;Ürün;Not;Tutar`
-  - Tarih `gg.aa.yyyy`; Tür "Gelir" veya "Gider".
-  - Tutar her zaman pozitiftir (yönü Tür sütunu belirler), iki ondalıkla ve binlik ayırıcı olmadan yazılır (`1234,50`); para simgesi yoktur, böylece Excel sayı olarak okur.
-  - Biçim sunucunun kültüründen bağımsızdır (hep tr-TR).
-- **Sıra:** Eskiden yeniye (ekrandaki liste ise yeniden eskiye). O ay işlem yoksa dosyada yalnızca başlık satırı olur.
-- **Kaçışlar:** Ayraç, çift tırnak veya satır sonu içeren alan çift tırnak içine alınır, içindeki tırnaklar ikiye katlanır.
-- **Formül koruması:** Alan `=`, `+`, `-`, `@` (veya sekme/satır başı) ile başlıyorsa başına `'` konur; yoksa Excel hücreyi formül gibi çalıştırır. Dosya başkasıyla paylaşılırsa bu bir güvenlik riskidir. Sonuç olarak "-5 indirim" gibi bir not dosyada `'-5 indirim` görünür.
-- Yalnızca kullanıcının kendi işlemleri; geçersiz veya gelecek bir ay istenirse içinde bulunulan ay indirilir. Tekrarlayan tanımdan oluşan işlemler de dahildir.
-- Not: Bölgesel ayarı Türkçe olmayan bir Excel `;` ayracını sütunlara bölmeyebilir; bu durumda "Veri → Metinden/CSV'den" ile içe aktarılır.
-
-## 5. Tekrarlayan işlemler (RecurringTransactionService)
-Maaş, kira, fatura, abonelik, burs gibi her ay aynı gün tekrarlanan gelir ve giderler bir kez tanımlanır; işlemleri uygulama oluşturur. Yalnızca aylık tekrar vardır.
-
-**Oluşturma zamanı.** Arka plan işi yoktur. Giriş yapmış kullanıcının her sayfa isteğinde, sayfa çalışmadan önce günü gelmiş işlemler oluşturulur (`GenerateDueAsync`). Böylece ana sayfa, işlemler, analiz ve ay sonu devri her zaman güncel veriyi görür.
-
-**Vade günü.** Bir ayın vadesi = min(tanımdaki gün, o ayın gün sayısı). 31 seçilirse Şubat'ta 28/29, Nisan'da 30 olur; tanımdaki gün değişmez.
-
-**Hangi aylar oluşur.**
-- Vadesi bugünden sonra olan işlem oluşmaz; oluşan işlem hiçbir zaman ileri tarihli değildir.
-- Vadesi başlangıç tarihinden önce veya bitiş tarihinden sonra olan işlem oluşmaz.
-- Kullanıcı uzun süre girmezse kaçan aylar kendi vade tarihleriyle sonradan oluşturulur (en fazla 12 ay geriye).
-- Başlangıç tarihi, tanım oluşturulurken içinde bulunulan ayın 1'inden eski olamaz; yani yeni bir tanım geçmiş aylara işlem üretmez.
-
-**Aynı ay iki kez oluşmaz.**
-- Tanım, en son işlenen ayı (`LastGeneratedPeriod`) tutar; o ay ve öncesi bir daha ele alınmaz.
-- Veritabanında (tanım, ay) üzerinde benzersiz index vardır; aynı anda gelen iki istek aynı ayı iki kez yazamaz.
-
-**Düzenleme, durdurma, silme.**
-- Tanımı düzenlemek yalnızca bundan sonra oluşacak işlemleri etkiler; oluşmuş işlemler değişmez.
-- Gün değiştirilirse ayda yine en fazla bir işlem oluşur. O ayın işlemi henüz oluşmadıysa ve yeni gün geçmişte kaldıysa, işlem yeni güne tarihlenerek hemen oluşur.
-- Durdurulan tanım işlem üretmez ve tahmine girmez. Devam ettirilince başlangıç tarihi bugüne çekilir: durduğu ayların işlemleri sonradan eklenmez. Bitiş tarihi geçmiş bir tanımın bitiş tarihi uzatılırsa da aynı kural geçerlidir.
-- Tanım silinince oluşmuş işlemler kalır ve normal işleme dönüşür.
-- Kullanıcı oluşmuş bir işlemi silerse o ay için yeniden oluşmaz; tanım sonraki aylarda çalışmaya devam eder.
-- Kullanıcı oluşmuş bir işlemi düzenleyebilir (ör. o ay tutar farklıydı); tanım değişmez.
-
-**"Her ay tekrarla".** Yeni işlem eklerken işaretlenirse, o işlem yeni bir tanımın ilk oluşumu sayılır; tanımın günü işlemin günüdür. İşlem geçmiş bir aya aitse aradaki aylar doldurulmaz, üretim içinde bulunulan aydan başlar.
-
-**Hesaplara etkisi.**
-- Tekrarlayan tanımdan oluşan giderler, kategorisi sabit olmasa da "sabit gider gibi" sayılır: tahminde ölçeklenmez (bkz. 4), kural 1'in ortalamasına girmez (bkz. 2), en çok harcanan ürünlerde görünmez (bkz. 3).
-- Bu ay henüz oluşmamış işlemler ("bekleyenler") tahmine ve kural 4'e tutarlarıyla girer.
-- Otomatik oluşan işlemlerde anında uyarılar çalışmaz; yerine "N tekrarlayan işlem eklendi: …" bildirimi gösterilir.

@@ -36,16 +36,20 @@ The exact formulas and thresholds are documented in [docs/rules.md](docs/rules.m
 
 ## Screenshots
 
-Screenshots go in [docs/screenshots/](docs/screenshots/). Placeholders:
+The demo account on 15 October 2026 (the date is pinned with `Clock:Today`, see [Demo account](#demo-account)). GitHub shows the light or the dark theme to match yours; every image exists in both, in [docs/screenshots/](docs/screenshots/).
 
-| Screen | File |
-| --- | --- |
-| Home: goal bar, carry-over card, forecast | `docs/screenshots/home.png` |
-| Transactions with month picker and totals | `docs/screenshots/transactions.png` |
-| Instant warnings after saving an expense | `docs/screenshots/warnings.png` |
-| Monthly analysis with pie chart and tips | `docs/screenshots/analysis.png` |
-
-<!-- Once the images exist, replace the table with e.g. ![Home](docs/screenshots/home.png) -->
+<table>
+<tr><td colspan="2"><b>Home</b> — today's allowance with the pace line, the month-end carry-over card, the month and the goal</td></tr>
+<tr><td valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/home-desktop-dark.png"><img src="docs/screenshots/home-desktop-light.png" alt="Home on a computer" width="560"></picture></td><td valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/home-phone-dark.png"><img src="docs/screenshots/home-phone-light.png" alt="Home on a phone" width="200"></picture></td></tr>
+<tr><td colspan="2"><b>Transactions</b> — month picker, totals and the list</td></tr>
+<tr><td valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/transactions-desktop-dark.png"><img src="docs/screenshots/transactions-desktop-light.png" alt="Transactions on a computer" width="560"></picture></td><td valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/transactions-phone-dark.png"><img src="docs/screenshots/transactions-phone-light.png" alt="Transactions on a phone" width="200"></picture></td></tr>
+<tr><td colspan="2"><b>Analysis</b> — category budgets in all three colours, spending by category, most bought items</td></tr>
+<tr><td valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/analysis-desktop-dark.png"><img src="docs/screenshots/analysis-desktop-light.png" alt="Analysis on a computer" width="560"></picture></td><td valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/analysis-phone-dark.png"><img src="docs/screenshots/analysis-phone-light.png" alt="Analysis on a phone" width="200"></picture></td></tr>
+<tr><td colspan="2"><b>Receipt confirmation</b> — lines read from a receipt, ready to check (demo reader)</td></tr>
+<tr><td valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/receipt-review-desktop-dark.png"><img src="docs/screenshots/receipt-review-desktop-light.png" alt="Receipt confirmation on a computer" width="560"></picture></td><td valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/receipt-review-phone-dark.png"><img src="docs/screenshots/receipt-review-phone-light.png" alt="Receipt confirmation on a phone" width="200"></picture></td></tr>
+<tr><td colspan="2"><b>Söyle ya da yaz</b> — say or type what you spent</td></tr>
+<tr><td valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/quick-entry-desktop-dark.png"><img src="docs/screenshots/quick-entry-desktop-light.png" alt="Söyle ya da yaz on a computer" width="560"></picture></td><td valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/quick-entry-phone-dark.png"><img src="docs/screenshots/quick-entry-phone-light.png" alt="Söyle ya da yaz on a phone" width="200"></picture></td></tr>
+</table>
 
 ## Tech stack
 
@@ -94,7 +98,7 @@ cd <repository-folder>
 dotnet run --project src/BudgetApp
 ```
 
-The app listens on `http://localhost:5277` (and `https://localhost:7138`). In the **Development** environment (the default when launched through `dotnet run`) it creates the SQLite database file, applies the migrations and adds a demo account, so no extra setup is needed.
+The app listens on `http://localhost:5277` (`dotnet run --project src/BudgetApp --launch-profile https` adds `https://localhost:7138`; the microphone of "Söyle ya da yaz" needs HTTPS or localhost). In the **Development** environment (the default when launched through `dotnet run`) it creates the SQLite database file, applies the migrations and adds a demo account, so no extra setup is needed.
 
 To manage the database manually instead:
 
@@ -173,6 +177,24 @@ In Development only, a demo user is created on first start with about three mont
 | Password | `Demo123!` |
 
 The monthly items (rent, scholarship, family support, bills, subscriptions, part-time pay) are set up as recurring definitions, so they keep arriving on their own after the first start. The dates are generated relative to the current day, so the data always looks fresh. The demo account is never created outside the Development environment.
+
+To see the demo on a particular day (for example the 15th, when the pace line and all three budget colours show up), pin the date in Development; it is refused in any other environment:
+
+```bash
+dotnet run --project src/BudgetApp -- --Clock:Today=2026-10-15
+```
+
+Delete `src/BudgetApp/app.db` first so the demo data is generated around that date.
+
+## If you deploy it
+
+The project is shared as code and has not been hardened for a public server. Before putting it online:
+
+- **Time zone.** Every "today" is read from the server's clock (`DateTime.Today`). On a server in UTC a Turkish user between 00:00 and 03:00 would get yesterday: today's date is refused as "in the future", the month-end card and the daily allowance move three hours late. Run the server in Turkish time (for example the environment variable `TZ=Europe/Istanbul` on Linux), or give the app's one clock (`AppClock`, registered in `Program.cs`) a `TimeProvider` whose `LocalTimeZone` is `Europe/Istanbul`.
+- **Abuse and rate limits.** Anyone can register, and five wrong passwords only lock an account for five minutes. Add ASP.NET Core's built-in rate limiter (no extra package) to sign-in, sign-up, receipt reading and quick entry; otherwise a few accounts are enough to use up the shared daily Gemini limit (and, on the paid tier, money).
+- **Security headers.** Add `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `Referrer-Policy` and `Permissions-Policy: microphone=(self), camera=(self)`; `X-Frame-Options` is only sent on pages with a form today.
+- **Data protection keys and database.** The keys that protect the sign-in cookie and TempData are kept in memory by default in a container, so every restart signs everyone out: persist them (`AddDataProtection().PersistKeysToFileSystem(...)`). Outside Development the database is not migrated on start: run `dotnet ef database update` (or a migration bundle) as part of the deployment, and keep `app.db` on a persistent volume.
+- **Gemini terms.** Read the notes under [Receipt scanning setup](#receipt-scanning-setup): age limit, free-tier data use, paid tier for the EU, UK and Switzerland.
 
 ## Future improvements
 
