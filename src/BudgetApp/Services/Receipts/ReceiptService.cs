@@ -27,7 +27,7 @@ public sealed record ReceiptReview(
     public decimal LinesTotal => Lines.Sum(l => l.Amount);
 
     /// <summary>The lines do not add up to the printed total (beyond a few kuruş of rounding).</summary>
-    public bool HasTotalMismatch => ReceiptTotal is { } total && Math.Abs(total - LinesTotal) > ReceiptMath.TotalTolerance;
+    public bool HasTotalMismatch => ReceiptMath.IsMismatch(ReceiptTotal, LinesTotal);
 }
 
 public sealed record ReceiptSaveLine(string Name, decimal Amount, int CategoryId);
@@ -62,6 +62,10 @@ public static class ReceiptMath
 {
     /// <summary>Lines and total may differ by this much before the user is warned (rounding on the receipt).</summary>
     public const decimal TotalTolerance = 0.05m;
+
+    /// <summary>True when there is a printed total and the lines differ from it by more than the tolerance.</summary>
+    public static bool IsMismatch(decimal? receiptTotal, decimal linesTotal) =>
+        receiptTotal is { } total && Math.Abs(total - linesTotal) > TotalTolerance;
 
     /// <summary>
     /// Spreads a discount on the whole receipt over its lines in proportion to their amounts, rounded down to the

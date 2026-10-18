@@ -25,8 +25,8 @@ public class MonthCloseService(ApplicationDbContext db) : IMonthCloseService
 {
     public async Task<decimal> CalculateRemainingAsync(string userId, int year, int month)
     {
-        var rows = await MonthRowsAsync(userId, year, month);
-        return Sum(rows);
+        var rows = await MonthData.GetMonthAsync(db, userId, year, month);
+        return Balance(rows);
     }
 
     public async Task<PendingMonthClose?> GetPendingAsync(string userId, DateTime today)
@@ -36,11 +36,11 @@ public class MonthCloseService(ApplicationDbContext db) : IMonthCloseService
         if (await db.MonthCloses.AnyAsync(m => m.UserId == userId && m.Year == previous.Year && m.Month == previous.Month))
             return null;
 
-        var rows = await MonthRowsAsync(userId, previous.Year, previous.Month);
+        var rows = await MonthData.GetMonthAsync(db, userId, previous.Year, previous.Month);
         if (rows.Count == 0)
             return null;
 
-        var remaining = Sum(rows);
+        var remaining = Balance(rows);
         var alreadyAdded = await ManualContributionsAsync(userId, previous.Year, previous.Month);
         var transferable = Transferable(remaining, alreadyAdded);
         var goal = transferable > 0 ? await GoalQueries.GetActiveAsync(db, userId) : null;
@@ -103,19 +103,6 @@ public class MonthCloseService(ApplicationDbContext db) : IMonthCloseService
         return close;
     }
 
-    private async Task<List<(TransactionType Type, decimal Amount)>> MonthRowsAsync(string userId, int year, int month)
-    {
-        var start = new DateTime(year, month, 1);
-        var end = start.AddMonths(1);
-
-        var rows = await db.Transactions
-            .AsNoTracking()
-            .Where(t => t.UserId == userId && t.Date >= start && t.Date < end)
-            .Select(t => new { t.Type, t.Amount })
-            .ToListAsync();
-        return rows.Select(r => (r.Type, r.Amount)).ToList();
-    }
-
     /// <summary>
     /// What the user manually added to any of their goals during that month. That money was already taken out of
     /// the month's surplus by hand, so the month-end transfer must not move it a second time.
@@ -136,7 +123,5 @@ public class MonthCloseService(ApplicationDbContext db) : IMonthCloseService
     private static decimal Transferable(decimal remaining, decimal alreadyAdded) =>
         Math.Max(0m, remaining - alreadyAdded);
 
-    // Summed in memory: SQLite cannot aggregate decimal columns reliably.
-    private static decimal Sum(List<(TransactionType Type, decimal Amount)> rows) =>
-        rows.Sum(r => r.Type == TransactionType.Income ? r.Amount : -r.Amount);
+    private static decimal Balance(List<MonthRow> rows) => MonthData.Income(rows) - MonthData.Expense(rows);
 }

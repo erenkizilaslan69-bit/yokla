@@ -109,6 +109,17 @@ Run the tests:
 dotnet test
 ```
 
+They cover the services (in-memory SQLite with the real schema) and, through `Microsoft.AspNetCore.Mvc.Testing`, the whole app over HTTP: sign-in only pages, antiforgery on every POST, one user never reaching another's data, the closed Identity pages and the lockout. Gemini is never called; its readers are tested against canned HTTP answers.
+
+Two more checks live in [tools/](tools/) and need no packages:
+
+```bash
+node tools/js/run-all.js                                          # the browser scripts (theme switch, receipt and quick entry screens) against a fake DOM; Node 18+
+powershell -ExecutionPolicy Bypass -File tools/contrast.ps1 -OnlyFailures   # WCAG contrast of the colour pairs in both themes; Windows PowerShell or pwsh
+```
+
+Both exit with a non-zero code when something fails.
+
 ### Receipt scanning setup
 
 Receipt scanning needs a Gemini API key from [Google AI Studio](https://aistudio.google.com/). Keep it out of the code and out of `appsettings.json`:

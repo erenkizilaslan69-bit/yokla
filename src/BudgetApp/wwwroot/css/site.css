@@ -55,7 +55,6 @@
 :root {
   --brand: #0B7A5C;
   --brand-hover: #075E47;
-  --brand-grad-end: #14A07A;
   --brand-ink: #0B7A5C;
   --brand-ink-strong: #075E47;
   --brand-soft: #E3F4EE;
@@ -84,7 +83,6 @@
   --gold-soft-2: #FFFAF0;
   --gold-soft-line: #F0D58A;
   --gold-soft-ink: #5F4508;
-  --gold-rgb: 224, 165, 38;
 
   --bg: #F5F8F6;
   --surface: #FFFFFF;
@@ -131,20 +129,18 @@
   /* Type scale: a few fixed sizes. Text never goes below 13px. */
   --fs-meta: .8125rem;    /* 13px: dates, captions */
   --fs-small: .875rem;    /* 14px: secondary text */
-  --fs-body: 1rem;        /* 16px */
   --fs-title: 1.125rem;   /* 18px: section titles */
   --fs-page: 1.625rem;    /* 26px: page titles */
   --fs-hero: clamp(3rem, 14vw, 4.5rem); /* 48-72px: today's allowance, the one big number */
 
   /* Spacing rhythm (4/8): sections are separated by these, by importance. */
-  --space-1: .25rem; --space-2: .5rem; --space-3: 1rem; --space-4: 1.5rem; --space-5: 2rem; --space-6: 3rem;
+  --space-1: .25rem; --space-2: .5rem; --space-3: 1rem; --space-4: 1.5rem; --space-5: 2rem;
 }
 
 /* ---------- Tokens: dark theme ---------- */
 [data-bs-theme="dark"] {
   --brand: #0D8263;
   --brand-hover: #0A6E54;
-  --brand-grad-end: #12A27D;
   --brand-ink: #4FD1A9;
   --brand-ink-strong: #7FE3C4;
   --brand-soft: #153B31;

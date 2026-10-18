@@ -23,7 +23,7 @@
 else
 {
     @* What the active definitions add up to each month, in the same quiet line as the other pages. *@
-    @await Html.PartialAsync("_SummaryLine", ("Her ay", summary.MonthlyIncome, summary.MonthlyExpense, true))
+    @await Html.PartialAsync("_SummaryLine", ("Her ay", new BudgetApp.Services.TransactionTotals(summary.MonthlyIncome, summary.MonthlyExpense), true))
 
     <div class="card">
         @foreach (var item in Model.Items)

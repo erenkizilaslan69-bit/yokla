@@ -47,7 +47,7 @@
 
 <partial name="_MonthPicker" model="Model.Picker" />
 
-@await Html.PartialAsync("_SummaryLine", (Model.Picker.Title, totals.Income, totals.Expense, true))
+@await Html.PartialAsync("_SummaryLine", (Model.Picker.Title, totals, true))
 
 @if (Model.Transactions.Count == 0)
 {

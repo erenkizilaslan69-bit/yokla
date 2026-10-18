@@ -1,13 +1,13 @@
-@* A month's money in one quiet line instead of three boxes. Model: (label, income, expense, show the balance). *@
-@model (string Label, decimal Income, decimal Expense, bool ShowBalance)
+@* A month's money in one quiet line instead of three boxes. Model: (label, the totals, show the balance). *@
+@model (string Label, BudgetApp.Services.TransactionTotals Totals, bool ShowBalance)
 @{
-    var balance = Model.Income - Model.Expense;
+    var balance = Model.Totals.Balance;
 }
 <p class="summary-line">
     <span class="summary-label text-capitalize">@Model.Label</span>
-    <span>Gelir <span class="money income">@Model.Income.ToString("C2")</span></span>
+    <span>Gelir <span class="money income">@Model.Totals.Income.ToString("C2")</span></span>
     <span class="summary-sep" aria-hidden="true">·</span>
-    <span>Gider <span class="money">@Model.Expense.ToString("C2")</span></span>
+    <span>Gider <span class="money">@Model.Totals.Expense.ToString("C2")</span></span>
     @if (Model.ShowBalance)
     {
         <span class="summary-sep" aria-hidden="true">·</span>

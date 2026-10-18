@@ -4,7 +4,7 @@
     var tr = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
     string Money(decimal value) => value.ToString("0.00", tr);
     var linesTotal = Model.Lines.Where(l => l.Include).Sum(l => l.Amount ?? 0m);
-    var mismatch = Model.ReceiptTotal is { } printed && Math.Abs(printed - linesTotal) > BudgetApp.Services.ReceiptMath.TotalTolerance;
+    var mismatch = BudgetApp.Services.ReceiptMath.IsMismatch(Model.ReceiptTotal, linesTotal);
 }
 
 <div class="page-head">

@@ -167,18 +167,8 @@ public class TransactionService(ApplicationDbContext db, TimeProvider? timeProvi
 
     public async Task<TransactionTotals> GetTotalsAsync(string userId, int year, int month)
     {
-        var (start, end) = MonthRange(year, month);
-
-        // Amounts are projected first and summed in memory: SQLite cannot aggregate decimal columns reliably.
-        var rows = await db.Transactions
-            .AsNoTracking()
-            .Where(t => t.UserId == userId && t.Date >= start && t.Date < end)
-            .Select(t => new { t.Type, t.Amount })
-            .ToListAsync();
-
-        var income = rows.Where(r => r.Type == TransactionType.Income).Sum(r => r.Amount);
-        var expense = rows.Where(r => r.Type == TransactionType.Expense).Sum(r => r.Amount);
-        return new TransactionTotals(income, expense);
+        var rows = await MonthData.GetMonthAsync(db, userId, year, month);
+        return new TransactionTotals(MonthData.Income(rows), MonthData.Expense(rows));
     }
 
     private async Task ValidateAsync(Transaction input)

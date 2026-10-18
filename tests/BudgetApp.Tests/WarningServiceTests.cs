@@ -717,4 +717,28 @@ public class WarningServiceTests
 
         Assert.Equal([WarningRule.LargeExpense, WarningRule.UnnecessaryShare, WarningRule.CategoryIncrease, WarningRule.NegativeForecast], rules);
     }
+
+    [Fact]
+    public async Task CheckManyAsync_GivesEachMessageOnceInTheOrderTheyCameUp()
+    {
+        using var t = new TestDb();
+        AddSalary(t, 1_000m);
+        var first = AddExpense(t.Context, Alice, 900m, Today, Coffee);
+        var second = AddExpense(t.Context, Alice, 900m, Today, Coffee);
+        var income = AddIncome(t.Context, Alice, 50m, Today);
+
+        var messages = await NewService(t).CheckManyAsync(Alice, [first, second, income], Today);
+        var one = (await NewService(t).CheckAsync(Alice, first, Today)).Select(w => w.Message).ToList();
+        var two = (await NewService(t).CheckAsync(Alice, second, Today)).Select(w => w.Message).ToList();
+
+        Assert.Equal(one.Concat(two).Distinct(), messages);
+        Assert.True(one.Intersect(two).Any()); // the two lines do share a warning, which is shown once
+    }
+
+    [Fact]
+    public async Task CheckManyAsync_NothingSavedNothingToSay()
+    {
+        using var t = new TestDb();
+        Assert.Empty(await NewService(t).CheckManyAsync(Alice, [], Today));
+    }
 }

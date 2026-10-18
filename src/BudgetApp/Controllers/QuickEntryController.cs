@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using System.Text.Json;
+using BudgetApp.Infrastructure;
 using BudgetApp.Models;
 using BudgetApp.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -91,35 +91,19 @@ public class QuickEntryController(
         if (!quickEntry.IsEnabled)
             return NotFound();
 
-        var all = (await categories.GetAllAsync()).ToDictionary(c => c.Id);
-        var chosen = new List<QuickEntrySaveLine>();
-        for (var i = 0; i < form.Lines.Count; i++)
-        {
-            var row = form.Lines[i];
-            if (!row.Include)
-                continue;
-
-            if (string.IsNullOrWhiteSpace(row.Name))
-                ModelState.AddModelError($"Lines[{i}].Name", "Açıklama yaz.");
-            if (row.Amount is not > 0)
-                ModelState.AddModelError($"Lines[{i}].Amount", "Tutar 0'dan büyük olmalı.");
-            if (!all.TryGetValue(row.CategoryId, out var category))
-                ModelState.AddModelError($"Lines[{i}].CategoryId", "Bir kategori seç.");
-            if (row.Date is not { } date)
-                ModelState.AddModelError($"Lines[{i}].Date", "Tarihi gir.");
-            else if (date.Date > DateTime.Today)
-                ModelState.AddModelError($"Lines[{i}].Date", "Tarih ileride olamaz.");
-
-            if (category is not null)
-                chosen.Add(new QuickEntrySaveLine(row.Name ?? "", row.Amount ?? 0m, category.Type, row.CategoryId, row.Date ?? DateTime.Today));
-        }
-        if (form.Lines.All(l => !l.Include))
-            ModelState.AddModelError("", "Kaydetmek için en az bir satır seç.");
+        var rows = form.Lines.Select(l => new ReviewRow(l.Include, l.Name, l.Amount, l.CategoryId, l.Date)).ToList();
+        var check = ReviewLines.Check(rows, await categories.GetAllAsync(), ReviewLines.QuickEntry, DateTime.Today);
+        foreach (var error in check.Errors)
+            ModelState.AddModelError(error.Line < 0 ? "" : $"Lines[{error.Line}].{error.Field}", error.Message);
 
         if (ModelState.IsValid)
         {
             try
             {
+                // The category decides whether a line is an expense or an income.
+                var chosen = check.Chosen
+                    .Select(c => new QuickEntrySaveLine(c.Row.Name!, c.Row.Amount!.Value, c.Category.Type, c.Category.Id, c.Row.Date!.Value))
+                    .ToList();
                 var saved = form.IsEdit
                     ? await quickEntry.ReplaceAsync(UserId, form.EditIds, chosen)
                     : await quickEntry.SaveAsync(UserId, chosen);
@@ -168,11 +152,7 @@ public class QuickEntryController(
     /// <summary>The usual warnings (once per message), the message with "Geri al" and "Düzenle", then the month's list.</summary>
     private async Task<IActionResult> AfterSaveAsync(List<Transaction> saved, string? heard)
     {
-        var warnings = new List<string>();
-        foreach (var transaction in saved)
-            warnings.AddRange((await warningService.CheckAsync(UserId, transaction, DateTime.Today)).Select(w => w.Message));
-        if (warnings.Count > 0)
-            TempData[TransactionsController.WarningsKey] = JsonSerializer.Serialize(warnings.Distinct());
+        WarningsFlash.Set(TempData, await warningService.CheckManyAsync(UserId, saved, DateTime.Today));
 
         TempData[QuickEntryFlash.Key] = new QuickEntryFlash(saved.Select(t => t.Id).ToList(),
             QuickEntryRules.Summary(saved), string.IsNullOrWhiteSpace(heard) ? null : heard).ToJson();

@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using System.Text.Json;
+using BudgetApp.Infrastructure;
 using BudgetApp.Models;
 using BudgetApp.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -70,37 +70,18 @@ public class ReceiptsController(
         if (!receipts.IsEnabled)
             return NotFound();
 
-        var expenseIds = (await categories.GetByTypeAsync(TransactionType.Expense)).Select(c => c.Id).ToHashSet();
-        var chosen = new List<ReceiptSaveLine>();
-        for (var i = 0; i < form.Lines.Count; i++)
-        {
-            var row = form.Lines[i];
-            if (!row.Include)
-                continue;
-
-            if (string.IsNullOrWhiteSpace(row.Name))
-                ModelState.AddModelError($"Lines[{i}].Name", "Ürün adını yaz.");
-            if (row.Amount is not > 0)
-                ModelState.AddModelError($"Lines[{i}].Amount", "Tutar 0'dan büyük olmalı.");
-            if (!expenseIds.Contains(row.CategoryId))
-                ModelState.AddModelError($"Lines[{i}].CategoryId", "Bir gider kategorisi seç.");
-            chosen.Add(new ReceiptSaveLine(row.Name ?? "", row.Amount ?? 0m, row.CategoryId));
-        }
-        if (chosen.Count == 0)
-            ModelState.AddModelError("", "Kaydetmek için en az bir satır seç.");
+        var rows = form.Lines.Select(l => new ReviewRow(l.Include, l.Name, l.Amount, l.CategoryId)).ToList();
+        var check = ReviewLines.Check(rows, await categories.GetAllAsync(), ReviewLines.Receipt, DateTime.Today);
+        foreach (var error in check.Errors)
+            ModelState.AddModelError(error.Line < 0 ? "" : $"Lines[{error.Line}].{error.Field}", error.Message);
 
         if (ModelState.IsValid)
         {
             try
             {
+                var chosen = check.Chosen.Select(c => new ReceiptSaveLine(c.Row.Name!, c.Row.Amount!.Value, c.Category.Id)).ToList();
                 var saved = await receipts.SaveAsync(UserId, new ReceiptSaveInput(form.Date!.Value, form.StoreName, chosen));
-
-                // The usual warnings, once per message even when several lines trigger the same one.
-                var warnings = new List<string>();
-                foreach (var transaction in saved)
-                    warnings.AddRange((await warningService.CheckAsync(UserId, transaction, DateTime.Today)).Select(w => w.Message));
-                if (warnings.Count > 0)
-                    TempData[TransactionsController.WarningsKey] = JsonSerializer.Serialize(warnings.Distinct());
+                WarningsFlash.Set(TempData, await warningService.CheckManyAsync(UserId, saved, DateTime.Today));
 
                 TempData["Message"] = saved.Count == 1 ? "Fişten 1 işlem eklendi." : $"Fişten {saved.Count} işlem eklendi.";
                 var date = form.Date.Value;

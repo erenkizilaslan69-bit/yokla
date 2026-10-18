@@ -125,7 +125,7 @@ else
 
     @if (Model.Totals is { } totals)
     {
-        @await Html.PartialAsync("_SummaryLine", (monthName, totals.Income, totals.Expense, false))
+        @await Html.PartialAsync("_SummaryLine", (monthName, totals, false))
     }
 
     <section class="home-section home-goal" aria-label="Hedef">

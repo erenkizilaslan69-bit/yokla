@@ -17,7 +17,7 @@
             <label asp-for="TargetAmount" class="form-label"></label>
             <div class="input-group">
                 <span class="input-group-text">₺</span>
-                <input asp-for="TargetAmount" type="text" inputmode="decimal" class="form-control" placeholder="0,00" />
+                <input asp-for="TargetAmount" asp-format="{0:0.00}" type="text" inputmode="decimal" class="form-control" placeholder="0,00" />
             </div>
             <span asp-validation-for="TargetAmount" class="text-danger small"></span>
         </div>

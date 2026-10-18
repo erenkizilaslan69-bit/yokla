@@ -19,7 +19,7 @@
             <label asp-for="Amount" class="form-label"></label>
             <div class="input-group">
                 <span class="input-group-text">₺</span>
-                <input asp-for="Amount" type="text" inputmode="decimal" class="form-control" placeholder="0,00" />
+                <input asp-for="Amount" asp-format="{0:0.00}" type="text" inputmode="decimal" class="form-control" placeholder="0,00" />
             </div>
             <span asp-validation-for="Amount" class="text-danger small"></span>
             <div class="form-text">Tutar her ay değişiyorsa tahmini tutarı yaz; oluşan işlemi sonradan düzeltebilirsin.</div>

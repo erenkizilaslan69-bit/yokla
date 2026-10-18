@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using System.Text.Json;
+using BudgetApp.Infrastructure;
 using BudgetApp.Models;
 using BudgetApp.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -13,9 +13,6 @@ public class TransactionsController(
     ITransactionService transactions, ICategoryService categories, IWarningService warningService,
     IRecurringTransactionService recurring, ITransactionCsvExporter csvExporter) : Controller
 {
-    /// <summary>TempData key of the warnings shown above the list (also filled after a receipt is saved).</summary>
-    internal const string WarningsKey = "Warnings";
-
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
     public async Task<IActionResult> Index(int? year, int? month)
@@ -30,7 +27,7 @@ public class TransactionsController(
             IsCurrentMonth = y == today.Year && m == today.Month,
             Transactions = await transactions.GetByMonthAsync(UserId, y, m),
             Totals = await transactions.GetTotalsAsync(UserId, y, m),
-            Warnings = TakeWarnings()
+            Warnings = WarningsFlash.Take(TempData)
         });
     }
 
@@ -66,9 +63,7 @@ public class TransactionsController(
                 }
 
                 // Warnings are shown right after an expense is saved, above the transaction list.
-                var warnings = await warningService.CheckAsync(UserId, created, DateTime.Today);
-                if (warnings.Count > 0)
-                    TempData[WarningsKey] = JsonSerializer.Serialize(warnings.Select(w => w.Message));
+                WarningsFlash.Set(TempData, await warningService.CheckManyAsync(UserId, [created], DateTime.Today));
                 return RedirectToMonthOf(model);
             }
         }
@@ -173,9 +168,6 @@ public class TransactionsController(
     /// <summary>After saving, show the month the transaction belongs to so it is visible in the list.</summary>
     private RedirectToActionResult RedirectToMonthOf(TransactionFormViewModel model) =>
         RedirectToAction(nameof(Index), new { year = model.Date!.Value.Year, month = model.Date.Value.Month });
-
-    private List<string> TakeWarnings() =>
-        TempData[WarningsKey] is string json ? JsonSerializer.Deserialize<List<string>>(json) ?? [] : [];
 
     private async Task FillCategoriesAsync(TransactionFormViewModel model)
     {

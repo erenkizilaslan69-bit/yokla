@@ -21,6 +21,12 @@ public interface IWarningService
 {
     /// <summary>Evaluates the warning rules for an expense that was just saved (it must already be persisted).</summary>
     Task<List<Warning>> CheckAsync(string userId, Transaction saved, DateTime today);
+
+    /// <summary>
+    /// The warnings for several transactions saved together (receipt lines, a quick entry): each message once, in
+    /// the order they first came up.
+    /// </summary>
+    Task<List<string>> CheckManyAsync(string userId, IReadOnlyList<Transaction> saved, DateTime today);
 }
 
 public class WarningService(ApplicationDbContext db, IForecastService forecast) : IWarningService
@@ -29,6 +35,16 @@ public class WarningService(ApplicationDbContext db, IForecastService forecast) 
     private const decimal LargeExpenseFactor = 3m;
     private const decimal UnnecessaryShareLimit = 0.20m;
     private const decimal CategoryIncreaseLimit = 1.30m;
+
+    public async Task<List<string>> CheckManyAsync(string userId, IReadOnlyList<Transaction> saved, DateTime today)
+    {
+        var messages = new List<string>();
+        foreach (var transaction in saved)
+            foreach (var warning in await CheckAsync(userId, transaction, today))
+                if (!messages.Contains(warning.Message))
+                    messages.Add(warning.Message);
+        return messages;
+    }
 
     public async Task<List<Warning>> CheckAsync(string userId, Transaction saved, DateTime today)
     {
