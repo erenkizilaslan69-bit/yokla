@@ -81,7 +81,7 @@ public class BudgetService(ApplicationDbContext db) : IBudgetService
 
     public async Task<CategoryBudget> SetAsync(string userId, int categoryId, decimal monthlyLimit)
     {
-        var limit = Math.Round(monthlyLimit, 2, MidpointRounding.AwayFromZero);
+        var limit = MoneyMath.Round(monthlyLimit);
         if (limit <= 0)
             throw new ArgumentException("Limit must be greater than zero.", nameof(monthlyLimit));
 

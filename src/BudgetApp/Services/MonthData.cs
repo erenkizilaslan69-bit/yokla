@@ -62,7 +62,5 @@ internal static class Tr
 {
     public static readonly CultureInfo Culture = BudgetApp.Localization.AppCulture.Turkish;
 
-    public static string Money(decimal value) => value.ToString("N2", Culture) + " TL";
-
     public static int Percent(decimal ratio) => (int)Math.Round(ratio * 100m, MidpointRounding.AwayFromZero);
 }

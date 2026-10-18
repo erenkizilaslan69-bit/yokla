@@ -63,9 +63,9 @@ else
                         {
                             @* Part of the surplus was already put into goals by hand: only the rest is offered. *@
                             <p class="mb-1">
-                                @Model.PendingMonthName ayında <span class="carry-amount">@pending.Remaining.ToString("N2") TL</span> artırdın;
-                                @pending.AlreadyAdded.ToString("N2") TL'sini zaten hedefe eklemiştin.
-                                Kalan <span class="carry-amount">@pending.Transferable.ToString("N2") TL</span>'yi aktaralım mı?
+                                @Model.PendingMonthName ayında <span class="carry-amount">@pending.Remaining.ToString("C2")</span> artırdın;
+                                bunun @pending.AlreadyAdded.ToString("C2") kadarını zaten hedefe eklemiştin.
+                                Kalan <span class="carry-amount">@pending.Transferable.ToString("C2")</span> tutarını <strong>@goal.Goal.Name</strong> hedefine aktaralım mı?
                             </p>
                         }
                         else
@@ -101,8 +101,8 @@ else
                             else if (pending.AlreadyAdded > 0)
                             {
                                 <span>
-                                    @Model.PendingMonthName ayında <span class="carry-amount">@pending.Remaining.ToString("N2") TL</span> artırdın;
-                                    @pending.AlreadyAdded.ToString("N2") TL'sini zaten hedefe eklemiştin.
+                                    @Model.PendingMonthName ayında <span class="carry-amount">@pending.Remaining.ToString("C2")</span> artırdın;
+                                    bunun @pending.AlreadyAdded.ToString("C2") kadarını zaten hedefe eklemiştin.
                                     @(pending.Transferable <= 0 ? "Aktarılacak tutar kalmadı." : "Aktarılacak aktif bir hedefin yok.")
                                 </span>
                             }

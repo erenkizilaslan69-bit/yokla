@@ -75,7 +75,7 @@ public class RecurringTransactionService(ApplicationDbContext db) : IRecurringTr
 
     public async Task<RecurringTransaction> CreateAsync(string userId, RecurringTransaction input, DateTime today)
     {
-        var amount = Round(input.Amount);
+        var amount = MoneyMath.Round(input.Amount);
         await ValidateAsync(input.Type, amount, input.CategoryId, input.DayOfMonth);
 
         // No bulk generation into earlier months (they may already have been closed and carried over).
@@ -109,7 +109,7 @@ public class RecurringTransactionService(ApplicationDbContext db) : IRecurringTr
         if (entity is null)
             return false;
 
-        var amount = Round(input.Amount);
+        var amount = MoneyMath.Round(input.Amount);
         await ValidateAsync(input.Type, amount, input.CategoryId, input.DayOfMonth);
         ValidateEndDate(entity.StartDate, input.EndDate);
 
@@ -310,8 +310,6 @@ public class RecurringTransactionService(ApplicationDbContext db) : IRecurringTr
         if (end is { } value && value.Date < start.Date)
             throw new ArgumentException("End date cannot be before the start date.");
     }
-
-    private static decimal Round(decimal amount) => Math.Round(amount, 2, MidpointRounding.AwayFromZero);
 
     private static string? Clean(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

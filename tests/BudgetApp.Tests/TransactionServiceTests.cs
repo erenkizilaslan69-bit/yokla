@@ -494,4 +494,39 @@ public class TransactionServiceTests
         await Assert.ThrowsAsync<ArgumentException>(() => service.ReplaceManyAsync(Alice, [old.Id], []));
         Assert.Single(db.Context.Transactions);
     }
+
+    [Fact]
+    public async Task CreateAsync_KeepsTheAmountToTheKurus()
+    {
+        using var db = new TestDb();
+
+        var created = await NewService(db).CreateAsync(Alice, Expense(12.345m));
+        var many = await NewService(db).CreateManyAsync(Alice, [Expense(0.125m), Expense(9.994m)]);
+
+        Assert.Equal(12.35m, created.Amount);
+        Assert.Equal([0.13m, 9.99m], many.Select(t => t.Amount));
+    }
+
+    [Fact]
+    public async Task UpdateAsync_KeepsTheAmountToTheKurus()
+    {
+        using var db = new TestDb();
+        var service = NewService(db);
+        var created = await service.CreateAsync(Alice, Expense(10m));
+        var update = Expense(20.005m);
+        update.Id = created.Id;
+
+        await service.UpdateAsync(Alice, update);
+
+        Assert.Equal(20.01m, (await service.GetAsync(Alice, created.Id))!.Amount);
+    }
+
+    [Fact]
+    public async Task CreateAsync_RejectsAnAmountThatRoundsToZero()
+    {
+        using var db = new TestDb();
+
+        await Assert.ThrowsAsync<ArgumentException>(() => NewService(db).CreateAsync(Alice, Expense(0.004m)));
+        Assert.Empty(db.Context.Transactions);
+    }
 }

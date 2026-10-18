@@ -25,7 +25,7 @@ public record BalanceProjection(
     /// counts, so the two can be compared. Zero before any day has passed.
     /// </summary>
     public decimal DailyPace => DaysElapsed > 0
-        ? Math.Round(VariableExpenses / DaysElapsed, 2, MidpointRounding.AwayFromZero)
+        ? MoneyMath.Round(VariableExpenses / DaysElapsed)
         : 0m;
 }
 

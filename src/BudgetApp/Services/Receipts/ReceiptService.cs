@@ -1,3 +1,4 @@
+using BudgetApp.Localization;
 using BudgetApp.Data;
 using BudgetApp.Models;
 using Microsoft.EntityFrameworkCore;
@@ -173,12 +174,12 @@ public class ReceiptService(
         var saved = amounts.Sum();
         var shop = string.IsNullOrWhiteSpace(storeName) ? "" : $"{storeName.Trim()}, ";
         if (Math.Abs(saved - total) <= ReceiptMath.TotalTolerance)
-            return $"Bu fiş zaten kaydedilmiş görünüyor ({shop}{day:dd.MM.yyyy}, {Tr.Money(saved)}). " +
+            return $"Bu fiş zaten kaydedilmiş görünüyor ({shop}{day:dd.MM.yyyy}, {AppCulture.Money(saved)}). " +
                    "İki kez eklememek için İşlemler sayfasını kontrol et.";
 
         // Same day and shop but another total: maybe some lines were left out last time, maybe a second visit.
         return $"Bu tarihte bu işletmenin fişinden zaten {amounts.Count} işlem kaydedilmiş ({shop}{day:dd.MM.yyyy}, " +
-               $"{Tr.Money(saved)}). Aynı fişse iki kez eklememek için kontrol et.";
+               $"{AppCulture.Money(saved)}). Aynı fişse iki kez eklememek için kontrol et.";
     }
 
     public Task<List<Transaction>> SaveAsync(string userId, ReceiptSaveInput input)
@@ -195,7 +196,7 @@ public class ReceiptService(
             return new Transaction
             {
                 Type = TransactionType.Expense,
-                Amount = Math.Round(line.Amount, 2, MidpointRounding.AwayFromZero),
+                Amount = MoneyMath.Round(line.Amount),
                 Date = input.Date.Date,
                 CategoryId = line.CategoryId,
                 ItemName = ReceiptMath.Shorten(name, 200),
@@ -252,11 +253,11 @@ public class ReceiptService(
             if (discount < amounts.Sum())
             {
                 amounts = ReceiptMath.DistributeDiscount(amounts, discount);
-                notes.Add($"Fişteki {Tr.Money(discount)} genel indirim, tutarlarına oranla satırlara dağıtıldı.");
+                notes.Add($"Fişteki {AppCulture.Money(discount)} genel indirim, tutarlarına oranla satırlara dağıtıldı.");
             }
             else
             {
-                notes.Add($"Fişte {Tr.Money(discount)} tutarında bir indirim okundu ama satırlara dağıtılamadı; tutarları kontrol et.");
+                notes.Add($"Fişte {AppCulture.Money(discount)} tutarında bir indirim okundu ama satırlara dağıtılamadı; tutarları kontrol et.");
                 discount = 0;
             }
         }

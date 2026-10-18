@@ -420,8 +420,8 @@ public class WarningServiceTests
         Assert.NotNull(warning);
         Assert.Contains("Kafe/Kahve", warning.Message);
         Assert.Contains("%80", warning.Message);
-        Assert.Contains("401,00 TL / 500,00 TL", warning.Message);
-        Assert.Contains("99,00 TL kaldı", warning.Message);
+        Assert.Contains("₺401,00 / ₺500,00", warning.Message);
+        Assert.Contains("₺99,00 kaldı", warning.Message);
     }
 
     [Fact]
@@ -472,8 +472,8 @@ public class WarningServiceTests
         var warning = BudgetWarning(await Check(t, saved));
 
         Assert.Contains("aştın", warning!.Message);
-        Assert.Contains("540,00 TL / 500,00 TL", warning.Message);
-        Assert.Contains("40,00 TL fazla", warning.Message);
+        Assert.Contains("₺540,00 / ₺500,00", warning.Message);
+        Assert.Contains("₺40,00 fazla", warning.Message);
     }
 
     [Fact]

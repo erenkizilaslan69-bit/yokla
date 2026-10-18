@@ -188,7 +188,7 @@ public class QuickEntryService(
             return new Transaction
             {
                 Type = line.Type,
-                Amount = Math.Round(line.Amount, 2, MidpointRounding.AwayFromZero),
+                Amount = MoneyMath.Round(line.Amount),
                 Date = line.Date.Date,
                 CategoryId = line.CategoryId,
                 ItemName = ReceiptMath.Shorten(name, 200),

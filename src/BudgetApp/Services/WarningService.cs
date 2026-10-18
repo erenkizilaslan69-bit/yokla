@@ -1,3 +1,4 @@
+using BudgetApp.Localization;
 using BudgetApp.Data;
 using BudgetApp.Models;
 using Microsoft.EntityFrameworkCore;
@@ -73,12 +74,12 @@ public class WarningService(ApplicationDbContext db, IForecastService forecast) 
         var limit = budget.MonthlyLimit;
         if (level == BudgetLevel.Exceeded)
             return new Warning(WarningRule.CategoryBudget,
-                $"{saved.CategoryName} bütçeni aştın: {Tr.Money(spent)} / {Tr.Money(limit)} ({Tr.Money(spent - limit)} fazla).");
+                $"{saved.CategoryName} bütçeni aştın: {AppCulture.Money(spent)} / {AppCulture.Money(limit)} ({AppCulture.Money(spent - limit)} fazla).");
 
         var usedPercent = (int)Math.Floor(spent / limit * 100m); // rounding down: 99,6% must not read as "%100"
         return new Warning(WarningRule.CategoryBudget,
-            $"{saved.CategoryName} bütçenin %{usedPercent}'ini kullandın: {Tr.Money(spent)} / {Tr.Money(limit)}. " +
-            $"Ay bitmeden {Tr.Money(limit - spent)} kaldı.");
+            $"{saved.CategoryName} bütçenin %{usedPercent}'ini kullandın: {AppCulture.Money(spent)} / {AppCulture.Money(limit)}. " +
+            $"Ay bitmeden {AppCulture.Money(limit - spent)} kaldı.");
     }
 
     private static void AddIfNotNull(List<Warning> list, Warning? warning)
@@ -101,8 +102,8 @@ public class WarningService(ApplicationDbContext db, IForecastService forecast) 
             return null;
 
         return new Warning(WarningRule.LargeExpense,
-            $"{saved.CategoryName} için tek seferde {Tr.Money(saved.Amount)} harcadın; bu ayki günlük ortalaman " +
-            $"{Tr.Money(dailyAverage)}. Bu, ortalamanın üç katından fazla!");
+            $"{saved.CategoryName} için tek seferde {AppCulture.Money(saved.Amount)} harcadın; bu ayki günlük ortalaman " +
+            $"{AppCulture.Money(dailyAverage)}. Bu, ortalamanın üç katından fazla!");
     }
 
     // Rule 2: "unnecessary" categories took more than 20% of this month's income.
@@ -120,7 +121,7 @@ public class WarningService(ApplicationDbContext db, IForecastService forecast) 
             return null;
 
         return new Warning(WarningRule.UnnecessaryShare,
-            $"Gereksiz sayılan harcamalara bu ay {Tr.Money(total)} gitti; bu, gelirinin %{Tr.Percent(total / income)}'i " +
+            $"Gereksiz sayılan harcamalara bu ay {AppCulture.Money(total)} gitti; bu, gelirinin %{Tr.Percent(total / income)}'i " +
             "(sınır %20). Kemerleri biraz sıkma zamanı.");
     }
 
@@ -142,8 +143,8 @@ public class WarningService(ApplicationDbContext db, IForecastService forecast) 
             return null;
 
         return new Warning(WarningRule.CategoryIncrease,
-            $"Bu ay {saved.CategoryName} için {Tr.Money(thisMonth)} harcadın; geçen ay aynı güne kadar " +
-            $"{Tr.Money(lastMonth)} idi (%{Tr.Percent(thisMonth / lastMonth - 1m)} fazla).");
+            $"Bu ay {saved.CategoryName} için {AppCulture.Money(thisMonth)} harcadın; geçen ay aynı güne kadar " +
+            $"{AppCulture.Money(lastMonth)} idi (%{Tr.Percent(thisMonth / lastMonth - 1m)} fazla).");
     }
 
     // Rule 4: the month-end projection is below zero. Without any known income this month (recorded, or still
@@ -156,6 +157,6 @@ public class WarningService(ApplicationDbContext db, IForecastService forecast) 
             return null;
 
         return new Warning(WarningRule.NegativeForecast,
-            $"Bu hızla ay sonunda {Tr.Money(-projection.Projected)} açık verirsin. Menüde makarna var.");
+            $"Bu hızla ay sonunda {AppCulture.Money(-projection.Projected)} açık verirsin. Menüde makarna var.");
     }
 }

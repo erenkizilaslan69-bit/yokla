@@ -352,7 +352,7 @@ public class ReceiptServiceTests
         Assert.Equal([90m, 270m], review.Lines.Select(l => l.Amount));
         Assert.Equal(40m, review.GeneralDiscount);
         Assert.False(review.HasTotalMismatch);
-        Assert.Contains(review.Notes, n => n.Contains("40,00 TL genel indirim") && n.Contains("oranla"));
+        Assert.Contains(review.Notes, n => n.Contains("₺40,00 genel indirim") && n.Contains("oranla"));
     }
 
     [Fact]
@@ -437,7 +437,7 @@ public class ReceiptServiceTests
 
         Assert.NotNull(second.DuplicateWarning);
         Assert.Contains("zaten kaydedilmiş", second.DuplicateWarning);
-        Assert.Contains("Köşe Market, 15.10.2026, 76,50 TL", second.DuplicateWarning);
+        Assert.Contains("Köşe Market, 15.10.2026, ₺76,50", second.DuplicateWarning);
     }
 
     [Fact]
@@ -467,7 +467,7 @@ public class ReceiptServiceTests
 
         var warning = await service.FindDuplicateAsync(Alice, Today, "Köşe Market", 141.40m);
 
-        Assert.Equal("Bu tarihte bu işletmenin fişinden zaten 2 işlem kaydedilmiş (Köşe Market, 16.10.2026, 76,50 TL). " +
+        Assert.Equal("Bu tarihte bu işletmenin fişinden zaten 2 işlem kaydedilmiş (Köşe Market, 16.10.2026, ₺76,50). " +
                      "Aynı fişse iki kez eklememek için kontrol et.", warning);
     }
 

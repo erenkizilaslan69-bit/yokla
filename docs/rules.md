@@ -1,5 +1,7 @@
 # İş kuralları
 
+Kullanıcıya gösterilen bütün tutarlar tek biçimde yazılır: `₺1.234,50`, eksi tutarlar gerçek eksi işaretiyle (`−₺120,00`; `AppCulture.Money`). Saklanan tutarlar kuruşa yuvarlanır, yarımlar sıfırdan uzağa (`MoneyMath.Round`).
+
 Hedef kitle: öğrenciler ve çalışanlar dahil herkes. Kurallar gelirin türüne (maaş, burs, serbest çalışma, aile desteği) bakmaz.
 
 ## 1. Ay sonu devri (MonthCloseService)
@@ -92,7 +94,7 @@ Kullanıcı bir gider kategorisine aylık limit koyar (ör. Kafe/Kahve 500 TL). 
 - Limit değiştirilirse hatırlanan düzey sıfırlanır (aynı değer yeniden kaydedilirse sıfırlanmaz).
 - Harcama silinip toplam düşse de uyarı geri alınmaz ve aynı ayda aynı düzey yeniden bildirilmez.
 - Yalnızca bu ay tarihli, kullanıcının kendi kaydettiği giderde çalışır; otomatik oluşan tekrarlayan işlemler uyarı üretmez ama toplama girer.
-- Örnek: "Kafe/Kahve bütçenin %84'ünü kullandın: 420,00 TL / 500,00 TL. Ay bitmeden 80,00 TL kaldı." ve "Kafe/Kahve bütçeni aştın: 540,00 TL / 500,00 TL (40,00 TL fazla)."
+- Örnek: "Kafe/Kahve bütçenin %84'ünü kullandın: ₺420,00 / ₺500,00. Ay bitmeden ₺80,00 kaldı." ve "Kafe/Kahve bütçeni aştın: ₺540,00 / ₺500,00 (₺40,00 fazla)."
 
 **Gösterim.** Analiz sayfasında limiti olan her kategori için, seçili ayın harcamasıyla ilerleme çubuğu gösterilir (harcaması olmayanlar dahil; geçmiş aya bakılınca o ayın harcaması güncel limitle karşılaştırılır). Limitler `/Budgets` sayfasından eklenir, değiştirilir ve silinir.
 

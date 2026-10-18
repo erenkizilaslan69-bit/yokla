@@ -62,7 +62,7 @@ public static class QuickEntryRules
             if (issue is not null)
                 problems.Add(issue);
 
-            decimal? amount = item.Amount is > 0 and var a ? Math.Round(a, 2, MidpointRounding.AwayFromZero) : null;
+            decimal? amount = item.Amount is > 0 and var a ? MoneyMath.Round(a) : null;
             if (amount is null or 0m)
             {
                 amount = null;

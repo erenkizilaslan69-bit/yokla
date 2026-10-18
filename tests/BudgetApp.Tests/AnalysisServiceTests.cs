@@ -131,7 +131,7 @@ public class AnalysisServiceTests
 
         var analysis = await Analyze(t);
 
-        Assert.Contains(analysis.Advice, a => a.Contains("3 kez toplam 90,00"));
+        Assert.Contains(analysis.Advice, a => a.Contains("3 kez toplam ₺90,00"));
     }
 
     [Theory]
@@ -440,7 +440,7 @@ public class AnalysisServiceTests
 
         var analysis = await Analyze(t);
 
-        Assert.Contains(analysis.Advice, a => a.Contains("Süt için bu ay 3 kez toplam 90,00"));
+        Assert.Contains(analysis.Advice, a => a.Contains("Süt için bu ay 3 kez toplam ₺90,00"));
     }
 
     [Fact]

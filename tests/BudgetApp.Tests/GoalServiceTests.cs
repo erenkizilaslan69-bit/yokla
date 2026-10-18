@@ -493,4 +493,15 @@ public class GoalServiceTests
         Assert.Equal(0, progress.Percent);
         Assert.Equal(100m, progress.Missing);
     }
+
+    [Fact]
+    public async Task CreateAsync_KeepsTheTargetToTheKurus()
+    {
+        using var t = new TestDb();
+
+        var goal = await new GoalService(t.Context).CreateAsync(Alice, "Kulaklık", 2999.995m, Now);
+
+        Assert.Equal(3000.00m, goal.TargetAmount);
+        await Assert.ThrowsAsync<ArgumentException>(() => new GoalService(t.Context).CreateAsync(Alice, "Sakız", 0.004m, Now));
+    }
 }

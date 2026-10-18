@@ -71,6 +71,7 @@ public class GoalService(ApplicationDbContext db) : IGoalService
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Goal name is required.", nameof(name));
+        targetAmount = MoneyMath.Round(targetAmount);
         if (targetAmount <= 0)
             throw new ArgumentException("Target amount must be greater than zero.", nameof(targetAmount));
 
@@ -103,7 +104,7 @@ public class GoalService(ApplicationDbContext db) : IGoalService
     public async Task<ManualContributionResult?> AddManualContributionAsync(
         string userId, int goalId, decimal amount, DateTime date)
     {
-        var requested = Math.Round(amount, 2, MidpointRounding.AwayFromZero);
+        var requested = MoneyMath.Round(amount);
         if (requested <= 0)
             throw new ArgumentException("Amount must be greater than zero.", nameof(amount));
 

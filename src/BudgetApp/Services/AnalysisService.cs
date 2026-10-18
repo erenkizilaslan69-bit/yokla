@@ -1,3 +1,4 @@
+using BudgetApp.Localization;
 using BudgetApp.Data;
 
 namespace BudgetApp.Services;
@@ -139,7 +140,7 @@ public class AnalysisService(ApplicationDbContext db, IForecastService forecast)
         // 2. An item bought again and again.
         var frequent = topItems.Where(i => i.Count >= FrequentItemMinCount).OrderByDescending(i => i.Amount).FirstOrDefault();
         if (frequent is not null)
-            advice.Add($"{frequent.ItemName} için bu ay {frequent.Count} kez toplam {Tr.Money(frequent.Amount)} ödedin.");
+            advice.Add($"{frequent.ItemName} için bu ay {frequent.Count} kez toplam {AppCulture.Money(frequent.Amount)} ödedin.");
 
         // 3. General observations fill the list up to the maximum so there are always at least two tips.
         if (advice.Count < MaxAdvice)
@@ -151,14 +152,14 @@ public class AnalysisService(ApplicationDbContext db, IForecastService forecast)
         if (advice.Count < MaxAdvice)
         {
             if (previousTotal <= 0)
-                advice.Add($"Bu ay toplam {Tr.Money(total)} harcadın.");
+                advice.Add($"Bu ay toplam {AppCulture.Money(total)} harcadın.");
             else if (total == previousTotal)
-                advice.Add($"Bu ay toplam {Tr.Money(total)} harcadın; geçen ayla aynı.");
+                advice.Add($"Bu ay toplam {AppCulture.Money(total)} harcadın; geçen ayla aynı.");
             else
             {
                 var percent = Tr.Percent(Math.Abs(total - previousTotal) / previousTotal);
                 var direction = total > previousTotal ? "fazla" : "az";
-                advice.Add($"Bu ay toplam {Tr.Money(total)} harcadın; geçen aya göre %{percent} {direction}.");
+                advice.Add($"Bu ay toplam {AppCulture.Money(total)} harcadın; geçen aya göre %{percent} {direction}.");
             }
         }
 
@@ -178,6 +179,6 @@ public class AnalysisService(ApplicationDbContext db, IForecastService forecast)
                 return $"{category.Name} harcamanı yarıya indirsen hedefine {monthsEarlier} ay erken ulaşırsın.";
         }
 
-        return $"{category.Name} harcamanı yarıya indirsen ayda {Tr.Money(saving)} cebinde kalır.";
+        return $"{category.Name} harcamanı yarıya indirsen ayda {AppCulture.Money(saving)} cebinde kalır.";
     }
 }

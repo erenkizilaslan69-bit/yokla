@@ -333,7 +333,7 @@ public class DemoDataSeederTests
             .Single(w => w.Rule == WarningRule.CategoryBudget);
 
         Assert.Contains("aştın", warning.Message);
-        Assert.Contains("570,00 TL / 500,00 TL", warning.Message);
+        Assert.Contains("₺570,00 / ₺500,00", warning.Message);
     }
 
     // ---------- daily allowance ----------
@@ -469,7 +469,7 @@ public class DemoDataSeederTests
         Assert.InRange(result.Advice.Count, 2, 3);
         Assert.Contains("Kafe/Kahve", result.Advice[0]);
         Assert.Contains("ay erken", result.Advice[0]); // halving coffee brings the goal closer
-        Assert.Contains(result.Advice, a => a.Contains("Latte için bu ay 11 kez toplam 990,00"));
+        Assert.Contains(result.Advice, a => a.Contains("Latte için bu ay 11 kez toplam ₺990,00"));
         Assert.True(result.Changes.Single(c => c.Name == "Kafe/Kahve").Delta > 0);
     }
 

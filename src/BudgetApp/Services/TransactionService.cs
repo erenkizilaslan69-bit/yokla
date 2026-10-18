@@ -100,7 +100,7 @@ public class TransactionService(ApplicationDbContext db, TimeProvider? timeProvi
     private static Transaction NewEntity(string userId, Transaction input) => new()
     {
         UserId = userId,
-        Amount = input.Amount,
+        Amount = MoneyMath.Round(input.Amount),
         Type = input.Type,
         Date = input.Date.Date,
         CategoryId = input.CategoryId,
@@ -116,7 +116,7 @@ public class TransactionService(ApplicationDbContext db, TimeProvider? timeProvi
 
         await ValidateAsync(input);
 
-        entity.Amount = input.Amount;
+        entity.Amount = MoneyMath.Round(input.Amount);
         entity.Type = input.Type;
         entity.Date = input.Date.Date;
         entity.CategoryId = input.CategoryId;
@@ -183,7 +183,8 @@ public class TransactionService(ApplicationDbContext db, TimeProvider? timeProvi
 
     private async Task ValidateAsync(Transaction input)
     {
-        if (input.Amount <= 0)
+        // Checked as it will be stored: 0,004 rounds to 0,00 and is not an amount.
+        if (MoneyMath.Round(input.Amount) <= 0)
             throw new ArgumentException("Amount must be greater than zero.", nameof(input));
 
         if (input.Date.Date > _time.GetLocalNow().Date)
