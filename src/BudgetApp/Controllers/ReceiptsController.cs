@@ -13,7 +13,7 @@ namespace BudgetApp.Controllers;
 [Authorize]
 public class ReceiptsController(
     IReceiptService receipts, ICategoryService categories, IWarningService warningService,
-    IOptions<ReceiptOptions> options) : Controller
+    IOptions<ReceiptOptions> options, AppClock clock) : Controller
 {
     /// <summary>Room for a 4 MB picture plus the form around it.</summary>
     private const long RequestLimit = 6_000_000;
@@ -53,7 +53,7 @@ public class ReceiptsController(
 
         try
         {
-            var review = await receipts.ScanAsync(UserId, data, DateTime.Now, HttpContext.RequestAborted);
+            var review = await receipts.ScanAsync(UserId, data, clock.Now, HttpContext.RequestAborted);
             var form = ReceiptReviewForm.From(review);
             await FillCategoriesAsync(form);
             return View("Review", form);
@@ -71,7 +71,7 @@ public class ReceiptsController(
             return NotFound();
 
         var rows = form.Lines.Select(l => new ReviewRow(l.Include, l.Name, l.Amount, l.CategoryId)).ToList();
-        var check = ReviewLines.Check(rows, await categories.GetAllAsync(), ReviewLines.Receipt, DateTime.Today);
+        var check = ReviewLines.Check(rows, await categories.GetAllAsync(), ReviewLines.Receipt, clock.Today);
         foreach (var error in check.Errors)
             ModelState.AddModelError(error.Line < 0 ? "" : $"Lines[{error.Line}].{error.Field}", error.Message);
 
@@ -81,7 +81,7 @@ public class ReceiptsController(
             {
                 var chosen = check.Chosen.Select(c => new ReceiptSaveLine(c.Row.Name!, c.Row.Amount!.Value, c.Category.Id)).ToList();
                 var saved = await receipts.SaveAsync(UserId, new ReceiptSaveInput(form.Date!.Value, form.StoreName, chosen));
-                WarningsFlash.Set(TempData, await warningService.CheckManyAsync(UserId, saved, DateTime.Today));
+                WarningsFlash.Set(TempData, await warningService.CheckManyAsync(UserId, saved, clock.Today));
 
                 TempData["Message"] = saved.Count == 1 ? "Fişten 1 işlem eklendi." : $"Fişten {saved.Count} işlem eklendi.";
                 var date = form.Date.Value;
@@ -99,7 +99,7 @@ public class ReceiptsController(
 
     private async Task<ReceiptScanViewModel> ScanModelAsync(string? error) => new()
     {
-        Quota = await receipts.GetQuotaAsync(UserId, DateTime.Now),
+        Quota = await receipts.GetQuotaAsync(UserId, clock.Now),
         Error = error,
         MaxImageEdge = options.Value.MaxImageEdge,
         MaxUploadBytes = options.Value.MaxUploadBytes

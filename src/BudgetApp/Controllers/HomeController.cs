@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Security.Claims;
+using BudgetApp.Infrastructure;
 using BudgetApp.Models;
 using BudgetApp.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +9,7 @@ namespace BudgetApp.Controllers;
 
 public class HomeController(
     IGoalService goals, IMonthCloseService monthCloses, IForecastService forecast, ITransactionService transactions,
-    IRecurringTransactionService recurring, IDailyAllowanceService allowance)
+    IRecurringTransactionService recurring, IDailyAllowanceService allowance, AppClock clock)
     : Controller
 {
     private const int RecentCount = 5;
@@ -19,7 +20,7 @@ public class HomeController(
         if (userId is null)
             return View(new HomeViewModel());
 
-        var today = DateTime.Today;
+        var today = clock.Today;
         var todaysAllowance = await allowance.GetAsync(userId, today);
         var projection = await forecast.GetProjectedBalanceAsync(userId, today);
         return View(new HomeViewModel

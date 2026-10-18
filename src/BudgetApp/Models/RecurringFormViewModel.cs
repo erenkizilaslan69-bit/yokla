@@ -48,7 +48,7 @@ public class RecurringFormViewModel : IValidatableObject
     {
         if (IsNew)
         {
-            var today = DateTime.Today;
+            var today = (validationContext.GetService(typeof(BudgetApp.Infrastructure.AppClock)) as BudgetApp.Infrastructure.AppClock)?.Today ?? DateTime.Today;
             if (StartDate is null)
                 yield return new ValidationResult("Başlangıç tarihi zorunlu.", [nameof(StartDate)]);
             else if (StartDate.Value.Date < new DateTime(today.Year, today.Month, 1))

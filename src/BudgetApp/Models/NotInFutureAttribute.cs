@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using BudgetApp.Infrastructure;
 
 namespace BudgetApp.Models;
 
@@ -8,6 +9,11 @@ public sealed class NotInFutureAttribute : ValidationAttribute
 {
     public NotInFutureAttribute() : base("Tarih bugünden ileri olamaz.") { }
 
-    public override bool IsValid(object? value) =>
-        value is not DateTime date || date.Date <= DateTime.Today;
+    protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
+    {
+        var today = (validationContext.GetService(typeof(AppClock)) as AppClock)?.Today ?? DateTime.Today;
+        return value is not DateTime date || date.Date <= today
+            ? ValidationResult.Success
+            : new ValidationResult(ErrorMessage, validationContext.MemberName is { } member ? [member] : null);
+    }
 }

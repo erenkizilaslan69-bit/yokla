@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using BudgetApp.Infrastructure;
 using BudgetApp.Models;
 using BudgetApp.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -8,13 +9,13 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 namespace BudgetApp.Controllers;
 
 [Authorize]
-public class RecurringController(IRecurringTransactionService recurring, ICategoryService categories) : Controller
+public class RecurringController(IRecurringTransactionService recurring, ICategoryService categories, AppClock clock) : Controller
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
     public async Task<IActionResult> Index()
     {
-        var today = DateTime.Today;
+        var today = clock.Today;
         return View(new RecurringIndexViewModel
         {
             Items = await recurring.GetAllAsync(UserId, today),
@@ -24,7 +25,7 @@ public class RecurringController(IRecurringTransactionService recurring, ICatego
 
     public async Task<IActionResult> Create()
     {
-        var today = DateTime.Today;
+        var today = clock.Today;
         var model = new RecurringFormViewModel { DayOfMonth = today.Day, StartDate = today };
         await FillCategoriesAsync(model);
         return View(model);
@@ -37,7 +38,7 @@ public class RecurringController(IRecurringTransactionService recurring, ICatego
         {
             try
             {
-                await recurring.CreateAsync(UserId, ToEntity(model), DateTime.Today);
+                await recurring.CreateAsync(UserId, ToEntity(model), clock.Today);
                 TempData["Message"] = "Tekrarlayan işlem kaydedildi.";
                 return RedirectToAction(nameof(Index));
             }
@@ -93,7 +94,7 @@ public class RecurringController(IRecurringTransactionService recurring, ICatego
         {
             try
             {
-                await recurring.UpdateAsync(UserId, ToEntity(model), DateTime.Today);
+                await recurring.UpdateAsync(UserId, ToEntity(model), clock.Today);
                 TempData["Message"] = "Değişiklikler kaydedildi; bundan sonra oluşacak işlemlere uygulanır.";
                 return RedirectToAction(nameof(Index));
             }
@@ -120,7 +121,7 @@ public class RecurringController(IRecurringTransactionService recurring, ICatego
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Resume(int id)
     {
-        if (!await recurring.ResumeAsync(UserId, id, DateTime.Today))
+        if (!await recurring.ResumeAsync(UserId, id, clock.Today))
             return NotFound();
 
         TempData["Message"] = "Tekrarlayan işlem devam ediyor. Durduğu ayların işlemleri sonradan eklenmez.";
@@ -143,7 +144,7 @@ public class RecurringController(IRecurringTransactionService recurring, ICatego
         return RedirectToAction(nameof(Index));
     }
 
-    private static RecurringTransaction ToEntity(RecurringFormViewModel model) => new()
+    private RecurringTransaction ToEntity(RecurringFormViewModel model) => new()
     {
         Id = model.Id,
         Type = model.Type,
@@ -152,7 +153,7 @@ public class RecurringController(IRecurringTransactionService recurring, ICatego
         DayOfMonth = model.DayOfMonth,
         ItemName = model.ItemName,
         Note = model.Note,
-        StartDate = model.StartDate ?? DateTime.Today,
+        StartDate = model.StartDate ?? clock.Today,
         EndDate = model.EndDate
     };
 

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using BudgetApp.Infrastructure;
 using BudgetApp.Models;
 using BudgetApp.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -8,7 +9,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 namespace BudgetApp.Controllers;
 
 [Authorize]
-public class BudgetsController(IBudgetService budgets, ICategoryService categories) : Controller
+public class BudgetsController(IBudgetService budgets, ICategoryService categories, AppClock clock) : Controller
 {
     /// <summary>The form is a nested part of the page model (<c>Form.CategoryId</c> ...), so it binds with this prefix.</summary>
     private const string FormPrefix = nameof(BudgetsIndexViewModel.Form);
@@ -62,7 +63,7 @@ public class BudgetsController(IBudgetService budgets, ICategoryService categori
 
     private Task<List<BudgetProgress>> LoadItemsAsync()
     {
-        var today = DateTime.Today;
+        var today = clock.Today;
         return budgets.GetProgressAsync(UserId, today.Year, today.Month);
     }
 
@@ -71,7 +72,7 @@ public class BudgetsController(IBudgetService budgets, ICategoryService categori
         var expenseCategories = await categories.GetByTypeAsync(TransactionType.Expense);
         form.Categories = expenseCategories.Select(c => new SelectListItem(c.Name, c.Id.ToString())).ToList();
 
-        var today = DateTime.Today;
+        var today = clock.Today;
         return new BudgetsIndexViewModel { Items = items, Form = form, Month = new DateTime(today.Year, today.Month, 1) };
     }
 }

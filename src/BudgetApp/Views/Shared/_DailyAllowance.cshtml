@@ -6,7 +6,7 @@
 @model (DailyAllowance Allowance, PaceWarning? Pace)
 @{
     var a = Model.Allowance;
-    var today = DateTime.Today;
+    var today = Clock.Today;
     var css = a.Status switch
     {
         AllowanceStatus.Deficit => "is-deficit",

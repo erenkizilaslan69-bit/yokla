@@ -11,7 +11,7 @@ namespace BudgetApp.Infrastructure;
 /// due are generated. This keeps every page (dashboard, list, analysis, month close) on up-to-date data without
 /// each controller having to remember it. The service call is idempotent and costs one small query.
 /// </summary>
-public class RecurringGenerationFilter(IRecurringTransactionService recurring) : IAsyncActionFilter
+public class RecurringGenerationFilter(IRecurringTransactionService recurring, AppClock clock) : IAsyncActionFilter
 {
     /// <summary>TempData key read by the _Flash partial.</summary>
     public const string FlashKey = "Recurring";
@@ -23,7 +23,7 @@ public class RecurringGenerationFilter(IRecurringTransactionService recurring) :
         var userId = context.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId is not null)
         {
-            var created = await recurring.GenerateDueAsync(userId, DateTime.Today);
+            var created = await recurring.GenerateDueAsync(userId, clock.Today);
             if (created.Count > 0 && context.Controller is Controller controller)
                 controller.TempData[FlashKey] = Describe(created);
         }

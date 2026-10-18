@@ -16,7 +16,7 @@ namespace BudgetApp.Controllers;
 [Authorize]
 public class QuickEntryController(
     IQuickEntryService quickEntry, ICategoryService categories, IWarningService warningService,
-    IOptions<QuickEntryOptions> options) : Controller
+    IOptions<QuickEntryOptions> options, AppClock clock) : Controller
 {
     /// <summary>Room for the largest accepted recording plus the form around it.</summary>
     private const long RequestLimit = 3_000_000;
@@ -57,7 +57,7 @@ public class QuickEntryController(
         QuickEntryProposal proposal;
         try
         {
-            proposal = await quickEntry.ParseAsync(UserId, input, DateTime.Now, HttpContext.RequestAborted);
+            proposal = await quickEntry.ParseAsync(UserId, input, clock.Now, HttpContext.RequestAborted);
         }
         catch (QuickEntryException e)
         {
@@ -92,7 +92,7 @@ public class QuickEntryController(
             return NotFound();
 
         var rows = form.Lines.Select(l => new ReviewRow(l.Include, l.Name, l.Amount, l.CategoryId, l.Date)).ToList();
-        var check = ReviewLines.Check(rows, await categories.GetAllAsync(), ReviewLines.QuickEntry, DateTime.Today);
+        var check = ReviewLines.Check(rows, await categories.GetAllAsync(), ReviewLines.QuickEntry, clock.Today);
         foreach (var error in check.Errors)
             ModelState.AddModelError(error.Line < 0 ? "" : $"Lines[{error.Line}].{error.Field}", error.Message);
 
@@ -152,7 +152,7 @@ public class QuickEntryController(
     /// <summary>The usual warnings (once per message), the message with "Geri al" and "Düzenle", then the month's list.</summary>
     private async Task<IActionResult> AfterSaveAsync(List<Transaction> saved, string? heard)
     {
-        WarningsFlash.Set(TempData, await warningService.CheckManyAsync(UserId, saved, DateTime.Today));
+        WarningsFlash.Set(TempData, await warningService.CheckManyAsync(UserId, saved, clock.Today));
 
         TempData[QuickEntryFlash.Key] = new QuickEntryFlash(saved.Select(t => t.Id).ToList(),
             QuickEntryRules.Summary(saved), string.IsNullOrWhiteSpace(heard) ? null : heard).ToJson();
@@ -163,7 +163,7 @@ public class QuickEntryController(
 
     private async Task<QuickEntryViewModel> PageAsync(string? error, string? text) => new()
     {
-        Quota = await quickEntry.GetQuotaAsync(UserId, DateTime.Now),
+        Quota = await quickEntry.GetQuotaAsync(UserId, clock.Now),
         Error = error,
         Text = text,
         MaxRecordingSeconds = options.Value.MaxRecordingSeconds,

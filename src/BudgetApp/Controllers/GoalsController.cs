@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using BudgetApp.Infrastructure;
 using BudgetApp.Models;
 using BudgetApp.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -7,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace BudgetApp.Controllers;
 
 [Authorize]
-public class GoalsController(IGoalService goals) : Controller
+public class GoalsController(IGoalService goals, AppClock clock) : Controller
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
@@ -21,7 +22,7 @@ public class GoalsController(IGoalService goals) : Controller
         if (!ModelState.IsValid)
             return View(model);
 
-        await goals.CreateAsync(UserId, model.Name, model.TargetAmount!.Value, DateTime.Now);
+        await goals.CreateAsync(UserId, model.Name, model.TargetAmount!.Value, clock.Now);
         return RedirectToAction("Index", "Home");
     }
 
@@ -40,7 +41,7 @@ public class GoalsController(IGoalService goals) : Controller
 
         try
         {
-            var result = await goals.AddManualContributionAsync(UserId, id, amount.Value, DateTime.Today);
+            var result = await goals.AddManualContributionAsync(UserId, id, amount.Value, clock.Today);
             if (result is null)
                 return NotFound();
 

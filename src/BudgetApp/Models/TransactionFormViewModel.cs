@@ -19,7 +19,7 @@ public class TransactionFormViewModel
     [Required(ErrorMessage = "Tarih zorunlu.")]
     [DataType(DataType.Date)]
     [NotInFuture]
-    public DateTime? Date { get; set; } = DateTime.Today;
+    public DateTime? Date { get; set; }
 
     [Display(Name = "Kategori")]
     [Range(1, int.MaxValue, ErrorMessage = "Kategori seçin.")]

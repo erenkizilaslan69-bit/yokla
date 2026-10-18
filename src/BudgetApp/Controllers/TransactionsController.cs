@@ -11,13 +11,13 @@ namespace BudgetApp.Controllers;
 [Authorize]
 public class TransactionsController(
     ITransactionService transactions, ICategoryService categories, IWarningService warningService,
-    IRecurringTransactionService recurring, ITransactionCsvExporter csvExporter) : Controller
+    IRecurringTransactionService recurring, ITransactionCsvExporter csvExporter, AppClock clock) : Controller
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
     public async Task<IActionResult> Index(int? year, int? month)
     {
-        var today = DateTime.Today;
+        var today = clock.Today;
         var (y, m) = MonthPickerViewModel.Resolve(year, month, today);
 
         return View(new TransactionsIndexViewModel
@@ -35,14 +35,14 @@ public class TransactionsController(
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> ExportCsv(int? year, int? month)
     {
-        var (y, m) = MonthPickerViewModel.Resolve(year, month, DateTime.Today);
+        var (y, m) = MonthPickerViewModel.Resolve(year, month, clock.Today);
         var bytes = await csvExporter.ExportMonthAsync(UserId, y, m);
         return File(bytes, "text/csv; charset=utf-8", $"islemler-{y}-{m:00}.csv");
     }
 
     public async Task<IActionResult> Create()
     {
-        var model = new TransactionFormViewModel();
+        var model = new TransactionFormViewModel { Date = clock.Today };
         await FillCategoriesAsync(model);
         return View(model);
     }
@@ -58,12 +58,12 @@ public class TransactionsController(
                 if (model.RepeatMonthly)
                 {
                     // "Her ay tekrarla": this transaction is the first occurrence of a new monthly definition.
-                    await recurring.CreateFromTransactionAsync(UserId, created.Id, DateTime.Today);
+                    await recurring.CreateFromTransactionAsync(UserId, created.Id, clock.Today);
                     TempData["Message"] = $"Bu işlem her ayın {created.Date.Day}. günü otomatik eklenecek.";
                 }
 
                 // Warnings are shown right after an expense is saved, above the transaction list.
-                WarningsFlash.Set(TempData, await warningService.CheckManyAsync(UserId, [created], DateTime.Today));
+                WarningsFlash.Set(TempData, await warningService.CheckManyAsync(UserId, [created], clock.Today));
                 return RedirectToMonthOf(model);
             }
         }

@@ -62,7 +62,7 @@ public static class QuickEntryProbe
         Console.WriteLine();
 
         var all = await scope.ServiceProvider.GetRequiredService<ICategoryService>().GetAllAsync();
-        var today = DateTime.Today;
+        var today = scope.ServiceProvider.GetRequiredService<AppClock>().Today;
         var context = new QuickEntryContext(today,
             all.Where(c => c.Type == TransactionType.Expense).Select(c => c.Name).ToList(),
             all.Where(c => c.Type == TransactionType.Income).Select(c => c.Name).ToList());

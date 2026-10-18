@@ -2,7 +2,7 @@
    Model: the transactions, newest first (with Category loaded). *@
 @model IEnumerable<BudgetApp.Models.Transaction>
 @{
-    var today = DateTime.Today;
+    var today = Clock.Today;
 }
 
 @foreach (var day in Model.GroupBy(t => t.Date.Date))

@@ -28,6 +28,9 @@ builder.Services.AddControllersWithViews(options =>
     // Generates due recurring transactions before every action (see RecurringGenerationFilter).
     options.Filters.AddService<RecurringGenerationFilter>();
 });
+// One clock for the whole app; in Development "Clock:Today" can pin the date (see AppClock).
+builder.Services.AddSingleton(AppClock.For(builder.Configuration, builder.Environment));
+builder.Services.AddSingleton<AppClock>();
 builder.Services.AddScoped<RecurringGenerationFilter>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
@@ -68,7 +71,7 @@ if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
     await scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.MigrateAsync();
-    await DemoDataSeeder.SeedAsync(scope.ServiceProvider, DateTime.Today);
+    await DemoDataSeeder.SeedAsync(scope.ServiceProvider, scope.ServiceProvider.GetRequiredService<AppClock>().Today);
 }
 
 // Development only: `dotnet run --project src/BudgetApp -- quick-entry-test <recording>` sends one recording to the

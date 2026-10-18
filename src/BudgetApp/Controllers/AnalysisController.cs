@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using BudgetApp.Infrastructure;
 using BudgetApp.Models;
 using BudgetApp.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -7,13 +8,13 @@ using Microsoft.AspNetCore.Mvc;
 namespace BudgetApp.Controllers;
 
 [Authorize]
-public class AnalysisController(IAnalysisService analysis, IBudgetService budgets) : Controller
+public class AnalysisController(IAnalysisService analysis, IBudgetService budgets, AppClock clock) : Controller
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
     public async Task<IActionResult> Index(int? year, int? month)
     {
-        var today = DateTime.Today;
+        var today = clock.Today;
         var (y, m) = MonthPickerViewModel.Resolve(year, month, today);
 
         return View(new AnalysisViewModel

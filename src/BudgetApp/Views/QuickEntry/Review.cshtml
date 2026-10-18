@@ -3,7 +3,7 @@
     ViewData["Title"] = Model.IsEdit ? "İşlemleri düzenle" : "Kontrol et";
     var tr = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
     string Money(decimal value) => value.ToString("0.00", tr);
-    var today = DateTime.Today.ToString("yyyy-MM-dd");
+    var today = Clock.Today.ToString("yyyy-MM-dd");
 }
 
 <div class="page-head">
