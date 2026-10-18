@@ -80,7 +80,7 @@ Design decisions worth knowing:
 - **Per-user isolation.** Every query filters by `UserId`; asking for someone else's record behaves like "not found".
 - **An LLM only reads input.** Receipt scanning and "Söyle ya da yaz" are the only places an external API is used, and only to turn a photo or a sentence into lines; anything doubtful is shown to the user before it is saved, and saved lines can be undone. The warnings, tips and forecasts are plain, deterministic rules, so every number can be traced back to the data.
 - **The readers are replaceable.** `IReceiptParser` and `IQuickEntryParser` hide the provider; the Gemini readers share one `GeminiClient` that calls the REST API with plain `HttpClient` (no SDK package) and a JSON schema for the answer. Their tests use canned HTTP answers and never call the real API.
-- **One bold thing per page.** The home page has a single raised surface and a single big number, today's allowance; everything else is a quiet section. Amounts use [Bricolage Grotesque](https://fonts.google.com/specimen/Bricolage+Grotesque) (SIL OFL, bundled under `wwwroot/fonts`) with tabular figures; text stays in Inter. Expense amounts are not red: red is kept for problems. On phones a bottom tab bar replaces the hamburger menu. The design guide is [docs/design-brief.md](docs/design-brief.md).
+- **One bold thing per page.** The home page has a single raised surface and a single big number, today's allowance; everything else is a quiet section. Amounts use [Bricolage Grotesque](https://fonts.google.com/specimen/Bricolage+Grotesque) (SIL OFL, bundled under `wwwroot/fonts`) with tabular figures; text stays in Inter. Expense amounts are not red: red is kept for problems. On phones a bottom tab bar replaces the hamburger menu. The design guide is [docs/design-brief.md](docs/notes/design-brief.md).
 - **Light and dark theme from one set of variables.** `wwwroot/css/site.css` defines every colour as a CSS variable and redefines them under Bootstrap 5.3's `[data-bs-theme="dark"]`. A few lines of inline script in `<head>` set the theme before the first paint, so the page never flashes in the wrong theme. Each category has a light and a dark tone in `Models/CategoryStyle.cs`; the analysis chart repaints itself when the theme changes.
 
 ## Getting started
@@ -173,3 +173,7 @@ The monthly items (rent, scholarship, family support, bills, subscriptions, part
 - **Push notifications** for warnings and month-end reminders.
 - **Bank integration** to import transactions automatically.
 - **Investment module** for longer-term goals.
+
+## License
+
+[MIT](LICENSE). The bundled libraries and fonts keep their own licenses (see the LICENSE files under src/BudgetApp/wwwroot/lib and src/BudgetApp/wwwroot/fonts).

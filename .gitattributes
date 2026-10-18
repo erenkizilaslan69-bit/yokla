@@ -1,0 +1,21 @@
+# Text files are stored with LF in the repository; each checkout uses the platform's line ending.
+* text=auto
+
+*.cs      text diff=csharp
+*.cshtml  text diff=html
+*.css     text diff=css
+*.js      text
+*.json    text
+*.md      text diff=markdown
+*.svg     text
+*.slnx    text
+*.csproj  text
+
+# Windows-only scripts keep CRLF.
+*.ps1     text eol=crlf
+
+*.png     binary
+*.ico     binary
+*.woff    binary
+*.woff2   binary
+*.map     binary
