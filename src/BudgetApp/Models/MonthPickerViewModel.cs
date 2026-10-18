@@ -22,7 +22,7 @@ public class MonthPickerViewModel
     /// <summary>Falls back to the current month for missing, invalid or future values.</summary>
     public static (int Year, int Month) Resolve(int? year, int? month, DateTime today)
     {
-        var valid = year is >= 2000 && month is >= 1 and <= 12
+        var valid = year is >= 2000 and <= 9999 && month is >= 1 and <= 12
             && new DateTime(year.Value, month.Value, 1) <= new DateTime(today.Year, today.Month, 1);
         return valid ? (year!.Value, month!.Value) : (today.Year, today.Month);
     }

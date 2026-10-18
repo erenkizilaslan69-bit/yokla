@@ -19,6 +19,9 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = false)
     .AddErrorDescriber<TurkishIdentityErrorDescriber>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
+// The Identity UI package brings many pages (account management, password reset, two-factor, delete personal data);
+// only the app's own sign-in, sign-up and sign-out pages are reachable, the rest answer 404 (see IdentityPages).
+builder.Services.AddRazorPages(options => IdentityPages.CloseAllExceptOwn(options.Conventions));
 builder.Services.AddControllersWithViews(options =>
 {
     TurkishValidationMessages.Apply(options.ModelBindingMessageProvider);

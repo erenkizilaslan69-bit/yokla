@@ -42,12 +42,15 @@ public class LoginModel(SignInManager<IdentityUser> signInManager) : PageModel
         if (!ModelState.IsValid)
             return Page();
 
+        // After 5 wrong passwords in a row the account is locked for 5 minutes (Identity's defaults).
         var result = await signInManager.PasswordSignInAsync(
-            Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+            Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: true);
         if (result.Succeeded)
             return LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl! : "~/");
 
-        ModelState.AddModelError(string.Empty, "E-posta veya şifre hatalı.");
+        ModelState.AddModelError(string.Empty, result.IsLockedOut
+            ? "Çok fazla hatalı deneme yapıldı. Birkaç dakika sonra tekrar dene."
+            : "E-posta veya şifre hatalı.");
         return Page();
     }
 }

@@ -29,7 +29,7 @@ A simple income and expense tracker for everyone — students and people with a 
 - **Category budgets** — set a monthly limit on an expense category (e.g. coffee, 500 TL). You are warned once when you pass 80% and once when you pass 100% of it each month, and the analysis page shows a progress bar for every limit. Limits are managed on their own small page.
 - **Monthly analysis** — Chart.js pie chart by category, the 10 most expensive items, change versus the previous month, and 2–3 rule-based tips.
 - **Forecast** — projected month-end balance and "at this pace you reach your goal around *month year*". Recurring income and expenses that are still to come this month are included, so a salary due on the 20th no longer makes the first half of the month look like a deficit.
-- **Accounts** — registration and login with ASP.NET Core Identity; every user only ever sees their own data.
+- **Accounts** — registration and login with ASP.NET Core Identity; every user only ever sees their own data. Five wrong passwords in a row lock the account for five minutes. Only the app's own sign-in, sign-up and sign-out pages exist: the other pages of the Identity UI package (account management, password reset, two-factor, "delete personal data") are closed and answer 404.
 - **Dark theme** — follows the operating system by default; a switch in the navbar chooses light, dark or system and the choice is remembered in the browser.
 
 The exact formulas and thresholds are documented in [docs/rules.md](docs/rules.md) and the data model in [docs/model.md](docs/model.md) (both written in Turkish).
@@ -168,7 +168,7 @@ The monthly items (rent, scholarship, family support, bills, subscriptions, part
 - **More receipt readers** — another `IReceiptParser` (e.g. a different LLM provider or on-device OCR) can be added without touching the pages.
 - **LLM-written tips** — keep all numbers computed by the services and let an LLM only phrase the advice sentences more naturally.
 - **Mobile app** — a companion app for entering expenses on the go.
-- **Change password and profile pages** — currently only registration, login and logout exist; the Identity management pages are not included.
+- **Account management** — changing the password or e-mail and deleting the account. The Identity UI package's own pages are closed on purpose: they are in English, outside the app's design, and its "delete personal data" removes only the login while the transactions, goals and other data stay. The app's own version should delete all of the user's data in one database transaction.
 - **E-mail confirmation and password reset** — needs an e-mail sender; accounts are active immediately today.
 - **Push notifications** for warnings and month-end reminders.
 - **Bank integration** to import transactions automatically.
