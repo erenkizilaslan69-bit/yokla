@@ -150,7 +150,7 @@ Settings in `appsettings.json`:
 | `Gemini:TimeoutSeconds` | `60` | How long one receipt may take |
 | `Gemini:ThinkingLevel` | `low` | How much the model thinks before answering (`low`, `medium`, `high`; `low` is the lowest `gemini-3.8-flash` accepts). Empty = the model's default |
 | `Gemini:RetryDelaysSeconds` | `[1, 2]` | When the model is overloaded (HTTP 503) the request is sent again after these waits, each a little longer; all tries together stay within `TimeoutSeconds`. Other errors are not retried. Empty = no retry |
-| `Gemini:FallbackModel` | `gemini-3.5-flash-lite` | Asked once when `Gemini:Model` is still overloaded after the retries, within the same timeout; it takes pictures, audio and a JSON schema. The log says when it was used. Empty = no fallback |
+| `Gemini:FallbackModel` | `gemini-3.5-flash-lite` | Asked once when `Gemini:Model` is still overloaded after the retries or answers 429 (daily quota or rate limit, which Gemini counts per model), within the same timeout; it takes pictures, audio and a JSON schema. The log says when it was used. Empty = no fallback |
 | `Receipts:DailyLimitPerUser` | `10` | Receipts one user may scan per day (attempts that got no answer, such as timeouts, do not count) |
 | `Receipts:DailyLimitTotal` | `300` | Requests the whole app may send per day, receipts and quick entries together (the free quota belongs to the one key) |
 | `Receipts:MaxUploadBytes` | `4000000` | Largest accepted photo |

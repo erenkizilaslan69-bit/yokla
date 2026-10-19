@@ -277,10 +277,10 @@ public class GeminiClientTests
     }
 
     [Theory]
-    [InlineData(HttpStatusCode.TooManyRequests)]
     [InlineData(HttpStatusCode.InternalServerError)]
     [InlineData(HttpStatusCode.BadRequest)]
-    public async Task GenerateAsync_OnlyAnOverloadedModelSwitchesToTheFallback(HttpStatusCode status)
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task GenerateAsync_OnlyAnOverloadOrAQuotaSwitchesToTheFallback(HttpStatusCode status)
     {
         var asked = new List<string>();
 
@@ -357,4 +357,94 @@ public class GeminiClientTests
     [Fact]
     public void Options_FallBackToGemini35FlashLiteByDefault() =>
         Assert.Equal("gemini-3.5-flash-lite", new GeminiOptions().FallbackModel);
+
+    // ---------- out of quota (429): the fallback model has a quota of its own ----------
+
+    private const string DailyQuota = """{"error":{"code":429,"message":"Quota exceeded for metric: generate_content_free_tier_requests, limit: 250, model: gemini-3.8-flash. GenerateRequestsPerDayPerProjectPerModel-FreeTier","status":"RESOURCE_EXHAUSTED"}}""";
+    private const string PerMinute = """{"error":{"code":429,"message":"Quota exceeded: GenerateRequestsPerMinutePerProjectPerModel-FreeTier","status":"RESOURCE_EXHAUSTED"}}""";
+
+    /// <summary>The main model answers with <paramref name="mainBody"/> (429), the fallback with 200 or its own 429 body.</summary>
+    private static FakeHttpHandler Quota(List<string> asked, string mainBody, string? fallbackBody = null) =>
+        new((request, _) =>
+        {
+            var model = request.RequestUri!.AbsolutePath.Split('/').Last().Split(':')[0];
+            asked.Add(model);
+            var (status, body) = model == "gemini-3.8-flash" ? (HttpStatusCode.TooManyRequests, mainBody)
+                : fallbackBody is null ? (HttpStatusCode.OK, Envelope("""{"model":"answered"}"""))
+                : (HttpStatusCode.TooManyRequests, fallbackBody);
+            return Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json") });
+        });
+
+    [Theory]
+    [InlineData(true)]   // the day's quota of the main model is used up
+    [InlineData(false)]  // too many requests to the main model this minute
+    public async Task GenerateAsync_OutOfQuotaAsksTheFallbackModelOnceWithoutRetrying(bool daily)
+    {
+        var asked = new List<string>();
+        var waits = new List<TimeSpan>();
+        var logger = new ListLogger<GeminiClientTests>();
+
+        var answer = await Client(Quota(asked, daily ? DailyQuota : PerMinute), logger,
+            o => { o.Model = "gemini-3.8-flash"; o.FallbackModel = "gemini-3.5-flash-lite"; }, waits).GenerateAsync(Request, default);
+
+        Assert.Equal("""{"model":"answered"}""", answer);
+        Assert.Equal(["gemini-3.8-flash", "gemini-3.5-flash-lite"], asked);   // one try each, no retry of a 429
+        Assert.Empty(waits);
+        Assert.Contains(logger.Entries, e => e.Message.Contains(
+            $"gemini-3.8-flash is out of quota ({(daily ? "daily quota" : "rate limit")}); using the fallback model gemini-3.5-flash-lite once"));
+        Assert.Contains(logger.Entries, e => e.Message.Contains("Gemini gemini-3.5-flash-lite answered HTTP 200"));
+    }
+
+    [Fact]
+    public async Task GenerateAsync_WhenTheFallbackIsOutOfQuotaTooTheQuotaIsReported()
+    {
+        var asked = new List<string>();
+
+        var e = await Assert.ThrowsAsync<GeminiCallException>(() =>
+            WithFallback(Quota(asked, DailyQuota, DailyQuota)).GenerateAsync(Request, default));
+
+        Assert.Equal(GeminiFailure.QuotaExceeded, e.Failure);
+        Assert.Equal(["gemini-3.8-flash", "gemini-3.5-flash-lite"], asked);
+    }
+
+    [Theory]
+    [InlineData(true, GeminiFailure.QuotaExceeded)]
+    [InlineData(false, GeminiFailure.RateLimited)]
+    public async Task GenerateAsync_TheFallbacksOwn429DecidesTheMessage(bool fallbackDaily, GeminiFailure expected)
+    {
+        var e = await Assert.ThrowsAsync<GeminiCallException>(() =>
+            WithFallback(Quota([], DailyQuota, fallbackDaily ? DailyQuota : PerMinute)).GenerateAsync(Request, default));
+
+        Assert.Equal(expected, e.Failure);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_OutOfQuotaWithoutAFallbackIsReportedStraightAway()
+    {
+        var asked = new List<string>();
+
+        var e = await Assert.ThrowsAsync<GeminiCallException>(() =>
+            WithFallback(Quota(asked, DailyQuota), configure: o => o.FallbackModel = "").GenerateAsync(Request, default));
+
+        Assert.Equal(GeminiFailure.QuotaExceeded, e.Failure);
+        Assert.Equal(["gemini-3.8-flash"], asked);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_AnOverloadedFallbackAfterAQuotaIsReportedAsBusy()
+    {
+        var handler = new FakeHttpHandler((request, _) =>
+        {
+            var main = request.RequestUri!.AbsolutePath.Contains("gemini-3.8-flash");
+            return Task.FromResult(new HttpResponseMessage(main ? HttpStatusCode.TooManyRequests : HttpStatusCode.ServiceUnavailable)
+            {
+                Content = new StringContent(main ? DailyQuota : Busy)
+            });
+        });
+
+        var e = await Assert.ThrowsAsync<GeminiCallException>(() => WithFallback(handler).GenerateAsync(Request, default));
+
+        Assert.Equal(GeminiFailure.Overloaded, e.Failure);
+        Assert.Equal(2, handler.Calls);   // the fallback is asked once, not retried
+    }
 }

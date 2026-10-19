@@ -45,9 +45,10 @@ public sealed record GeminiRequest(string Instructions, GeminiMedia? Media, stri
 /// One "generateContent" call to the Google Gemini API (which keeps nothing on Google's side between calls), over plain
 /// HttpClient, with the answer constrained to a JSON schema. The API key travels in the "x-goog-api-key" header, never
 /// in the URL, so it cannot end up in a log line. An overloaded model (503) is asked again after short, growing waits
-/// (<see cref="GeminiOptions.RetryDelaysSeconds"/>); if it is still overloaded, the fallback model
-/// (<see cref="GeminiOptions.FallbackModel"/>) is asked once. All of it stays within the one timeout. Used by the
-/// receipt reader and quick entry; the log lines go to the caller's logger.
+/// (<see cref="GeminiOptions.RetryDelaysSeconds"/>); if it is still overloaded, or out of quota (429, daily or per
+/// minute: Gemini counts both per model), the fallback model (<see cref="GeminiOptions.FallbackModel"/>) is asked
+/// once. All of it stays within the one timeout. Used by the receipt reader and quick entry; the log lines go to the
+/// caller's logger.
 /// </summary>
 /// <param name="delay">How to wait between tries; tests pass one that does not really wait.</param>
 public sealed class GeminiClient(HttpClient http, GeminiOptions settings, ILogger logger, Func<TimeSpan, CancellationToken, Task>? delay = null)
@@ -73,7 +74,7 @@ public sealed class GeminiClient(HttpClient http, GeminiOptions settings, ILogge
         var watch = Stopwatch.StartNew();
         var delays = settings.RetryDelaysSeconds ?? [];
 
-        GeminiCallException overloaded;
+        GeminiCallException failure;
         var tries = 0;
         for (var retry = 0; ; retry++)
         {
@@ -82,9 +83,15 @@ public sealed class GeminiClient(HttpClient http, GeminiOptions settings, ILogge
                 tries++;
                 return await SendOnceAsync(call, json, settings.Model, timeout.Token, cancellationToken, watch);
             }
+            catch (GeminiCallException e) when (e.Failure is GeminiFailure.QuotaExceeded or GeminiFailure.RateLimited)
+            {
+                // Never retried (that would only use more of the quota), but the fallback model has a quota of its own.
+                failure = e;
+                break;
+            }
             catch (GeminiCallException e) when (e.Failure == GeminiFailure.Overloaded)
             {
-                overloaded = e;
+                failure = e;
                 if (retry >= delays.Length)
                     break;
 
@@ -109,13 +116,18 @@ public sealed class GeminiClient(HttpClient http, GeminiOptions settings, ILogge
             }
         }
 
-        // Still overloaded: one try with the fallback model, in what is left of the same timeout.
+        // Still overloaded or out of quota: one try with the fallback model, in what is left of the same timeout. If it
+        // fails too, its own error is reported (a 429 of its own: the quota or rate-limit message).
         var fallback = settings.FallbackModel?.Trim();
         if (string.IsNullOrEmpty(fallback) || string.Equals(fallback, settings.Model, StringComparison.OrdinalIgnoreCase))
-            throw overloaded;
+            throw failure;
 
-        logger.LogWarning("Gemini {Model} is still overloaded after {Tries} tries; using the fallback model {FallbackModel} once.",
-            settings.Model, tries, fallback);
+        if (failure.Failure == GeminiFailure.Overloaded)
+            logger.LogWarning("Gemini {Model} is still overloaded after {Tries} tries; using the fallback model {FallbackModel} once.",
+                settings.Model, tries, fallback);
+        else
+            logger.LogWarning("Gemini {Model} is out of quota ({Kind}); using the fallback model {FallbackModel} once.",
+                settings.Model, failure.Failure == GeminiFailure.QuotaExceeded ? "daily quota" : "rate limit", fallback);
         return await SendOnceAsync(call, json, fallback, timeout.Token, cancellationToken, watch);
     }
 

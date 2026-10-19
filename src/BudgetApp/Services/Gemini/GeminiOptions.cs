@@ -24,8 +24,8 @@ public sealed class GeminiOptions
     public double[] RetryDelaysSeconds { get; set; } = [1, 2];
 
     /// <summary>
-    /// Asked once when <see cref="Model"/> is still overloaded after the retries (and only then), within the same
-    /// timeout. It must take pictures, audio and a JSON schema: gemini-3.5-flash-lite does (and accepts the "low"
+    /// Asked once when <see cref="Model"/> is still overloaded after the retries, or answers 429 (daily quota or rate
+    /// limit; Gemini counts both per model, so the fallback has its own), within the same timeout. It must take pictures, audio and a JSON schema: gemini-3.5-flash-lite does (and accepts the "low"
     /// thinking level). Empty, or the same as <see cref="Model"/>, switches the fallback off.
     /// </summary>
     public string? FallbackModel { get; set; } = "gemini-3.5-flash-lite";

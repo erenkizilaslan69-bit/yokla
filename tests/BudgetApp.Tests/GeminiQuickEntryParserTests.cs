@@ -199,4 +199,39 @@ public class GeminiQuickEntryParserTests
         Assert.Equal(3, result.Items.Count);
         Assert.EndsWith("/models/gemini-3.5-flash-lite:generateContent", asked[^1]);
     }
+
+    [Fact]
+    public async Task ParseAsync_ARecordingIsReadByTheFallbackWhenTheMainModelsDailyQuotaIsUsedUp()
+    {
+        var asked = new List<string>();
+        var handler = new FakeHttpHandler((request, _) =>
+        {
+            asked.Add(request.RequestUri!.AbsolutePath);
+            var lite = request.RequestUri.AbsolutePath.Contains("gemini-3.5-flash-lite");
+            return Task.FromResult(new HttpResponseMessage(lite ? HttpStatusCode.OK : HttpStatusCode.TooManyRequests)
+            {
+                Content = new StringContent(lite ? Envelope(ThreeLines)
+                    : """{"error":{"code":429,"message":"GenerateRequestsPerDayPerProjectPerModel-FreeTier","status":"RESOURCE_EXHAUSTED"}}""")
+            });
+        });
+
+        var result = await Parse(handler);
+
+        Assert.Equal(3, result.Items.Count);
+        Assert.Equal(2, asked.Count);
+        Assert.EndsWith("/models/gemini-3.5-flash-lite:generateContent", asked[^1]);
+    }
+
+    [Fact]
+    public async Task ParseAsync_BothModelsOutOfQuotaShowsTheQuotaMessage()
+    {
+        var handler = FakeHttpHandler.Returning(HttpStatusCode.TooManyRequests,
+            """{"error":{"code":429,"message":"GenerateRequestsPerDayPerProjectPerModel-FreeTier","status":"RESOURCE_EXHAUSTED"}}""");
+
+        var e = await Assert.ThrowsAsync<QuickEntryException>(() => Parse(handler));
+
+        Assert.Equal(QuickEntryErrorKind.QuotaExceeded, e.Kind);
+        Assert.Equal(QuickEntryMessages.For(QuickEntryErrorKind.QuotaExceeded), e.Message);
+        Assert.Equal(2, handler.Calls);
+    }
 }
