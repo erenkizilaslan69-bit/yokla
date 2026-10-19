@@ -147,7 +147,7 @@ public class QuickEntryService(
     /// these attempts do not use up the user's daily allowance.
     /// </summary>
     public static bool IsUnanswered(QuickEntryErrorKind kind) => kind is
-        QuickEntryErrorKind.Timeout or QuickEntryErrorKind.ServiceUnavailable or QuickEntryErrorKind.RateLimited
+        QuickEntryErrorKind.Timeout or QuickEntryErrorKind.ServiceUnavailable or QuickEntryErrorKind.Overloaded or QuickEntryErrorKind.RateLimited
         or QuickEntryErrorKind.QuotaExceeded or QuickEntryErrorKind.Misconfigured;
 
     // ---------- helpers ----------

@@ -405,6 +405,7 @@ public class QuickEntryServiceTests
     [Theory]
     [InlineData(QuickEntryErrorKind.Timeout, true)]
     [InlineData(QuickEntryErrorKind.ServiceUnavailable, true)]
+    [InlineData(QuickEntryErrorKind.Overloaded, true)]
     [InlineData(QuickEntryErrorKind.RateLimited, true)]
     [InlineData(QuickEntryErrorKind.QuotaExceeded, true)]
     [InlineData(QuickEntryErrorKind.Misconfigured, true)]

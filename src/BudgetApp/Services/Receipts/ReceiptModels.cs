@@ -75,8 +75,10 @@ public enum ReceiptErrorKind
     Blocked,
     /// <summary>A problem on our side: wrong key, unknown model, bad request. Details go to the log only.</summary>
     Misconfigured,
-    /// <summary>The provider is down, overloaded or failed.</summary>
-    ServiceUnavailable
+    /// <summary>The provider is down or failed.</summary>
+    ServiceUnavailable,
+    /// <summary>The model is overloaded right now (HTTP 503, also after the retries).</summary>
+    Overloaded
 }
 
 /// <summary>A receipt could not be read. <see cref="Exception.Message"/> is a Turkish sentence for the user.</summary>
@@ -108,6 +110,7 @@ public static class ReceiptMessages
         ReceiptErrorKind.Blocked => "Bu görsel işlenemedi. Başka bir fotoğraf dene.",
         ReceiptErrorKind.Misconfigured => "Fiş okuma şu an kullanılamıyor.",
         ReceiptErrorKind.ServiceUnavailable => "Fiş okuma servisine şu an ulaşılamıyor. Biraz sonra tekrar dene.",
+        ReceiptErrorKind.Overloaded => "Google'ın fiş okuma servisi şu an çok yoğun. Birkaç dakika sonra tekrar dene.",
         _ => "Fiş okunamadı."
     };
 }

@@ -17,7 +17,7 @@ public class GeminiQuickEntryParserTests
         ["Market", "Ulaşım", "Dışarıda Yemek", "Diğer Gider"], ["KYK Bursu", "Diğer Gelir"]);
 
     private static GeminiQuickEntryParser Parser(FakeHttpHandler handler, ListLogger<GeminiQuickEntryParser>? logger = null) =>
-        new(new HttpClient(handler), Options.Create(new GeminiOptions { ApiKey = Key, TimeoutSeconds = 5 }),
+        new(new HttpClient(handler), Options.Create(new GeminiOptions { ApiKey = Key, TimeoutSeconds = 5, RetryDelaysSeconds = [0, 0] }),
             logger ?? (Microsoft.Extensions.Logging.ILogger<GeminiQuickEntryParser>)NullLogger<GeminiQuickEntryParser>.Instance);
 
     private static string Envelope(object answer) => JsonSerializer.Serialize(new
@@ -150,7 +150,8 @@ public class GeminiQuickEntryParserTests
     [Theory]
     [InlineData(HttpStatusCode.TooManyRequests, QuickEntryErrorKind.RateLimited)]
     [InlineData(HttpStatusCode.BadRequest, QuickEntryErrorKind.Misconfigured)] // e.g. an audio type Gemini refuses
-    [InlineData(HttpStatusCode.ServiceUnavailable, QuickEntryErrorKind.ServiceUnavailable)]
+    [InlineData(HttpStatusCode.InternalServerError, QuickEntryErrorKind.ServiceUnavailable)]
+    [InlineData(HttpStatusCode.ServiceUnavailable, QuickEntryErrorKind.Overloaded)]
     [InlineData(HttpStatusCode.GatewayTimeout, QuickEntryErrorKind.Timeout)]
     public async Task ParseAsync_MapsHttpErrors(HttpStatusCode status, QuickEntryErrorKind expected)
     {

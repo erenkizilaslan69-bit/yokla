@@ -12,8 +12,16 @@ public sealed class GeminiOptions
 
     public string BaseUrl { get; set; } = "https://generativelanguage.googleapis.com/v1beta";
 
-    /// <summary>How long one receipt may take before the user is told to try again.</summary>
+    /// <summary>How long one receipt or quick entry may take, retries included, before the user is told to try again.</summary>
     public double TimeoutSeconds { get; set; } = 60;
+
+    /// <summary>
+    /// When the model is overloaded (HTTP 503) the request is sent again after these waits, one per retry, each a
+    /// little longer: by default after 1 s and then after 2 s, so three tries at most. A wait that would pass
+    /// <see cref="TimeoutSeconds"/> is not started. Empty switches retrying off. Other errors are never retried
+    /// (a 429 means the quota is used up, and trying again would only use more).
+    /// </summary>
+    public double[] RetryDelaysSeconds { get; set; } = [1, 2];
 
     /// <summary>
     /// "generationConfig.thinkingConfig.thinkingLevel": how much the model thinks before answering. Reading a receipt

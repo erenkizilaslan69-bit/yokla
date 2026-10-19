@@ -96,6 +96,7 @@ public sealed class GeminiReceiptParser(HttpClient http, IOptions<GeminiOptions>
         GeminiFailure.QuotaExceeded => ReceiptErrorKind.QuotaExceeded,
         GeminiFailure.Blocked => ReceiptErrorKind.Blocked,
         GeminiFailure.InvalidResponse => ReceiptErrorKind.InvalidResponse,
+        GeminiFailure.Overloaded => ReceiptErrorKind.Overloaded,
         _ => ReceiptErrorKind.ServiceUnavailable
     };
 

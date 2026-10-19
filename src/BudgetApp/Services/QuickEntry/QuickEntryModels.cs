@@ -108,7 +108,9 @@ public enum QuickEntryErrorKind
     InvalidResponse,
     Blocked,
     Misconfigured,
-    ServiceUnavailable
+    ServiceUnavailable,
+    /// <summary>The model is overloaded right now (HTTP 503, also after the retries).</summary>
+    Overloaded
 }
 
 /// <summary>A quick entry could not be read. <see cref="Exception.Message"/> is a Turkish sentence for the user.</summary>
@@ -128,6 +130,7 @@ public sealed class QuickEntryException(QuickEntryErrorKind kind, string? detail
         GeminiFailure.QuotaExceeded => QuickEntryErrorKind.QuotaExceeded,
         GeminiFailure.Blocked => QuickEntryErrorKind.Blocked,
         GeminiFailure.InvalidResponse => QuickEntryErrorKind.InvalidResponse,
+        GeminiFailure.Overloaded => QuickEntryErrorKind.Overloaded,
         _ => QuickEntryErrorKind.ServiceUnavailable
     };
 }
@@ -153,6 +156,7 @@ public static class QuickEntryMessages
         QuickEntryErrorKind.Blocked => "Bu kayıt işlenemedi. Tekrar dene ya da yazarak gir.",
         QuickEntryErrorKind.Misconfigured => "Söyle ya da yaz şu an kullanılamıyor.",
         QuickEntryErrorKind.ServiceUnavailable => "Servise şu an ulaşılamıyor. Biraz sonra tekrar dene.",
+        QuickEntryErrorKind.Overloaded => "Google'ın servisi şu an çok yoğun. Birkaç dakika sonra tekrar dene ya da işlemleri elle ekle.",
         _ => "Söylediğin ayrılamadı."
     };
 }

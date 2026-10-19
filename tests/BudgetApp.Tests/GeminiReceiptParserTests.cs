@@ -19,7 +19,8 @@ public class GeminiReceiptParserTests
     private static GeminiReceiptParser Parser(FakeHttpHandler handler, Action<GeminiOptions>? configure = null,
         ILogger<GeminiReceiptParser>? logger = null)
     {
-        var options = new GeminiOptions { ApiKey = Key, Model = "gemini-3.8-flash", TimeoutSeconds = 5 };
+        // Retries keep their count but do not really wait, so a 503 test does not take seconds.
+        var options = new GeminiOptions { ApiKey = Key, Model = "gemini-3.8-flash", TimeoutSeconds = 5, RetryDelaysSeconds = [0, 0] };
         configure?.Invoke(options);
         return new GeminiReceiptParser(new HttpClient(handler), Options.Create(options), logger ?? NullLogger<GeminiReceiptParser>.Instance);
     }
@@ -192,13 +193,13 @@ public class GeminiReceiptParserTests
         var logger = new ListLogger<GeminiReceiptParser>();
 
         await Assert.ThrowsAsync<ReceiptParseException>(() =>
-            Parser(FakeHttpHandler.Returning(HttpStatusCode.ServiceUnavailable, """{"error":{"code":503,"message":"overloaded"}}"""), logger: logger)
+            Parser(FakeHttpHandler.Returning(HttpStatusCode.InternalServerError, """{"error":{"code":500,"message":"internal"}}"""), logger: logger)
                 .ParseAsync(Image, Categories, default));
 
-        var line = Assert.Single(logger.Entries, e => e.Message.Contains("HTTP 503")).Message;
+        var line = Assert.Single(logger.Entries, e => e.Message.Contains("HTTP 500")).Message;
         Assert.Matches(@"in \d+ ms", line);
-        Assert.Contains("overloaded", line);
-        Assert.Equal(LogLevel.Warning, logger.Entries.Single(e => e.Message.Contains("HTTP 503")).Level);
+        Assert.Contains("internal", line);
+        Assert.Equal(LogLevel.Warning, logger.Entries.Single(e => e.Message.Contains("HTTP 500")).Level);
     }
 
     [Fact]
@@ -390,7 +391,8 @@ public class GeminiReceiptParserTests
     [InlineData(403, ReceiptErrorKind.Misconfigured)]   // wrong key
     [InlineData(404, ReceiptErrorKind.Misconfigured)]   // unknown model
     [InlineData(500, ReceiptErrorKind.ServiceUnavailable)]
-    [InlineData(503, ReceiptErrorKind.ServiceUnavailable)]
+    [InlineData(502, ReceiptErrorKind.ServiceUnavailable)]
+    [InlineData(503, ReceiptErrorKind.Overloaded)]       // still busy after the retries
     [InlineData(504, ReceiptErrorKind.Timeout)]
     public async Task ParseAsync_MapsHttpErrors(int status, ReceiptErrorKind expected) =>
         Assert.Equal(expected, await FailureOf(FakeHttpHandler.Returning((HttpStatusCode)status, """{"error":{"code":1,"message":"x"}}""")));

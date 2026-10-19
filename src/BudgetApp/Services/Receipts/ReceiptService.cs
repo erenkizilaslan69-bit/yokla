@@ -223,7 +223,7 @@ public class ReceiptService(
     /// these attempts do not use up the user's daily allowance.
     /// </summary>
     public static bool IsUnanswered(ReceiptErrorKind kind) => kind is
-        ReceiptErrorKind.Timeout or ReceiptErrorKind.ServiceUnavailable or ReceiptErrorKind.RateLimited
+        ReceiptErrorKind.Timeout or ReceiptErrorKind.ServiceUnavailable or ReceiptErrorKind.Overloaded or ReceiptErrorKind.RateLimited
         or ReceiptErrorKind.QuotaExceeded or ReceiptErrorKind.Misconfigured;
 
     private async Task FinishAsync(ReceiptScan scan, ReceiptScanOutcome outcome)

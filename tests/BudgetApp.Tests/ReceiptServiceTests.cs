@@ -226,6 +226,7 @@ public class ReceiptServiceTests
     [Theory]
     [InlineData(ReceiptErrorKind.Timeout, true)]
     [InlineData(ReceiptErrorKind.ServiceUnavailable, true)]
+    [InlineData(ReceiptErrorKind.Overloaded, true)]
     [InlineData(ReceiptErrorKind.RateLimited, true)]
     [InlineData(ReceiptErrorKind.QuotaExceeded, true)]
     [InlineData(ReceiptErrorKind.Misconfigured, true)]

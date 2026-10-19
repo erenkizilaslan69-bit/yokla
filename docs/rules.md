@@ -233,10 +233,11 @@ Kullanıcı fişin fotoğrafını çeker; okunan satırları onaylar, her onayla
 | Geçersiz JSON, şemaya uymayan ya da kesilmiş cevap | Fiş okunurken bir sorun oldu, sonuç anlaşılamadı. Tekrar dene. |
 | Güvenlik engeli | Bu görsel işlenemedi. Başka bir fotoğraf dene. |
 | 400 / 401 / 403 / 404 (anahtar, model, istek) | Fiş okuma şu an kullanılamıyor. (ayrıntı yalnızca loga yazılır) |
-| 5xx, ağ hatası | Fiş okuma servisine şu an ulaşılamıyor. Biraz sonra tekrar dene. |
+| 503, model aşırı yoğun ("high demand"; yeniden denemelerden sonra da) | Google'ın fiş okuma servisi şu an çok yoğun. Birkaç dakika sonra tekrar dene. |
+| Diğer 5xx, ağ hatası | Fiş okuma servisine şu an ulaşılamıyor. Biraz sonra tekrar dene. |
 | Dosya türü / boyutu | Bu dosya kabul edilmedi: JPEG, PNG, WebP veya HEIC bir fotoğraf, en fazla 4 MB. |
 
-Otomatik yeniden deneme yoktur (kota dolmuşken tekrar denemek kotayı daha da harcar).
+**Yeniden deneme yalnızca 503'te.** Model aşırı yoğun olduğunda (HTTP 503) istek kısa ve giderek uzayan aralarla yeniden gönderilir: önce 1 sn, sonra 2 sn bekleyip (`Gemini:RetryDelaysSeconds`, varsayılan `[1, 2]`), en fazla üç deneme. Denemeler ve aralar birlikte tek zaman aşımının (`Gemini:TimeoutSeconds`, 60 sn) içinde kalır: bir sonraki bekleme süreyi aşacaksa başlatılmaz ve kullanıcıya "çok yoğun" mesajı gösterilir. Her deneme loga yazılır. 503 cevabı token harcamaz; yine de yoğunluk sürerse deneme kullanıcının hakkından düşmez (cevap gelmedi sayılır). Diğer hatalarda yeniden deneme yoktur: 429'da kota dolmuştur ve tekrar denemek kotayı daha da harcar; 500 ve ağ hataları da hemen bildirilir. Söyle ya da yaz aynı istemciyi kullanır, kural ikisinde aynıdır.
 
 **Gizlilik.** Yükleme sayfası, fotoğrafın okunması için Google'ın Gemini servisine gönderildiğini, sunucuda saklanmadığını ve ücretsiz kullanımda Google'ın içeriği ürünlerini geliştirmek için kullanabileceğini, insanların inceleyebileceğini söyler; fişteki kart numarası, ad soyad gibi bilgilerin kapatılmasını önerir. Gemini API şartları 18 yaş sınırı ve AB/İngiltere/İsviçre kullanıcıları için ücretli katman şartı da getirir (bkz. README).
 
@@ -302,6 +303,7 @@ Komut dosyayı uygulamanın kullandığı gerçek ayrıştırıcıyla Gemini'ye 
 | Ses dosyası değil / çok büyük | Ses kaydı alınamadı. Tekrar kaydet ya da yazarak gir. |
 | Para geçmiyor | Söylediğinde bir harcama ya da gelir bulamadım. "Simitçiye 20, otobüse 15" gibi tutarlarla tekrar dener misin? |
 | Kullanıcının günlük sınırı | Bugünkü söyle ya da yaz hakkını kullandın (30/30). … |
+| Model aşırı yoğun (503, yeniden denemelerden sonra) | Google'ın servisi şu an çok yoğun. Birkaç dakika sonra tekrar dene ya da işlemleri elle ekle. |
 | Zaman aşımı, kota, ağ, yapılandırma | Fiş okumadaki karşılıklarıyla aynı anlamda, "Söyle ya da yaz" diliyle |
 
 **Gizlilik.** Sayfa ve Gizlilik sayfası, ses kaydının ya da metnin işlenmek üzere Google'ın Gemini servisine gönderildiğini, Yokla'nın sesi saklamadığını, ücretsiz katmanda Google'ın içeriği ürünlerini geliştirmek için kullanabileceğini söyler; kayıtta kart numarası gibi bilgilerin söylenmemesini ve yanındakilerin sesinin de kayda girebileceğini hatırlatır.
