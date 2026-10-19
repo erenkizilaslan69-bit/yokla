@@ -150,6 +150,7 @@ Settings in `appsettings.json`:
 | `Gemini:TimeoutSeconds` | `60` | How long one receipt may take |
 | `Gemini:ThinkingLevel` | `low` | How much the model thinks before answering (`low`, `medium`, `high`; `low` is the lowest `gemini-3.8-flash` accepts). Empty = the model's default |
 | `Gemini:RetryDelaysSeconds` | `[1, 2]` | When the model is overloaded (HTTP 503) the request is sent again after these waits, each a little longer; all tries together stay within `TimeoutSeconds`. Other errors are not retried. Empty = no retry |
+| `Gemini:FallbackModel` | `gemini-3.5-flash-lite` | Asked once when `Gemini:Model` is still overloaded after the retries, within the same timeout; it takes pictures, audio and a JSON schema. The log says when it was used. Empty = no fallback |
 | `Receipts:DailyLimitPerUser` | `10` | Receipts one user may scan per day (attempts that got no answer, such as timeouts, do not count) |
 | `Receipts:DailyLimitTotal` | `300` | Requests the whole app may send per day, receipts and quick entries together (the free quota belongs to the one key) |
 | `Receipts:MaxUploadBytes` | `4000000` | Largest accepted photo |
@@ -200,7 +201,6 @@ The project is shared as code and has not been hardened for a public server. Bef
 ## Future improvements
 
 - **More receipt readers** — another `IReceiptParser` (e.g. a different LLM provider or on-device OCR) can be added without touching the pages.
-- **A fallback model** — when the model stays overloaded (503) after the retries, try a second, configurable model (e.g. `Gemini:FallbackModel`) before telling the user it is busy. Its reading quality and quota would need checking first.
 - **LLM-written tips** — keep all numbers computed by the services and let an LLM only phrase the advice sentences more naturally.
 - **Mobile app** — a companion app for entering expenses on the go.
 - **Account management** — changing the password or e-mail and deleting the account. The Identity UI package's own pages are closed on purpose: they are in English, outside the app's design, and its "delete personal data" removes only the login while the transactions, goals and other data stay. The app's own version should delete all of the user's data in one database transaction.

@@ -24,6 +24,13 @@ public sealed class GeminiOptions
     public double[] RetryDelaysSeconds { get; set; } = [1, 2];
 
     /// <summary>
+    /// Asked once when <see cref="Model"/> is still overloaded after the retries (and only then), within the same
+    /// timeout. It must take pictures, audio and a JSON schema: gemini-3.5-flash-lite does (and accepts the "low"
+    /// thinking level). Empty, or the same as <see cref="Model"/>, switches the fallback off.
+    /// </summary>
+    public string? FallbackModel { get; set; } = "gemini-3.5-flash-lite";
+
+    /// <summary>
     /// "generationConfig.thinkingConfig.thinkingLevel": how much the model thinks before answering. Reading a receipt
     /// needs little, and thinking is what makes an answer slow, so the default is the lowest level gemini-3.8-flash
     /// accepts ("low"; it rejects "minimal", other models accept it). "medium" and "high" are the other values.

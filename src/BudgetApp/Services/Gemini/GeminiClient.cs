@@ -45,8 +45,9 @@ public sealed record GeminiRequest(string Instructions, GeminiMedia? Media, stri
 /// One "generateContent" call to the Google Gemini API (which keeps nothing on Google's side between calls), over plain
 /// HttpClient, with the answer constrained to a JSON schema. The API key travels in the "x-goog-api-key" header, never
 /// in the URL, so it cannot end up in a log line. An overloaded model (503) is asked again after short, growing waits
-/// (<see cref="GeminiOptions.RetryDelaysSeconds"/>), all within the one timeout. Used by the receipt reader and quick
-/// entry; the log lines go to the caller's logger.
+/// (<see cref="GeminiOptions.RetryDelaysSeconds"/>); if it is still overloaded, the fallback model
+/// (<see cref="GeminiOptions.FallbackModel"/>) is asked once. All of it stays within the one timeout. Used by the
+/// receipt reader and quick entry; the log lines go to the caller's logger.
 /// </summary>
 /// <param name="delay">How to wait between tries; tests pass one that does not really wait.</param>
 public sealed class GeminiClient(HttpClient http, GeminiOptions settings, ILogger logger, Func<TimeSpan, CancellationToken, Task>? delay = null)
@@ -72,20 +73,27 @@ public sealed class GeminiClient(HttpClient http, GeminiOptions settings, ILogge
         var watch = Stopwatch.StartNew();
         var delays = settings.RetryDelaysSeconds ?? [];
 
+        GeminiCallException overloaded;
+        var tries = 0;
         for (var retry = 0; ; retry++)
         {
             try
             {
-                return await SendOnceAsync(call, json, timeout.Token, cancellationToken, watch);
+                tries++;
+                return await SendOnceAsync(call, json, settings.Model, timeout.Token, cancellationToken, watch);
             }
-            catch (GeminiCallException e) when (e.Failure == GeminiFailure.Overloaded && retry < delays.Length)
+            catch (GeminiCallException e) when (e.Failure == GeminiFailure.Overloaded)
             {
+                overloaded = e;
+                if (retry >= delays.Length)
+                    break;
+
                 var wait = TimeSpan.FromSeconds(delays[retry]);
                 if (watch.Elapsed + wait >= limit)
                 {
                     logger.LogWarning("Gemini {Model} is overloaded; not trying again, a {WaitSeconds} s wait would pass the {TimeoutSeconds} s limit.",
                         settings.Model, wait.TotalSeconds, settings.TimeoutSeconds);
-                    throw;
+                    break;
                 }
 
                 logger.LogInformation("Gemini {Model} is overloaded; trying again in {WaitSeconds} s (retry {Retry} of {Retries}).",
@@ -100,14 +108,23 @@ public sealed class GeminiClient(HttpClient http, GeminiOptions settings, ILogge
                 }
             }
         }
+
+        // Still overloaded: one try with the fallback model, in what is left of the same timeout.
+        var fallback = settings.FallbackModel?.Trim();
+        if (string.IsNullOrEmpty(fallback) || string.Equals(fallback, settings.Model, StringComparison.OrdinalIgnoreCase))
+            throw overloaded;
+
+        logger.LogWarning("Gemini {Model} is still overloaded after {Tries} tries; using the fallback model {FallbackModel} once.",
+            settings.Model, tries, fallback);
+        return await SendOnceAsync(call, json, fallback, timeout.Token, cancellationToken, watch);
     }
 
-    /// <summary>One try: sends the request and reads the answer, or throws what went wrong.</summary>
-    private async Task<string> SendOnceAsync(GeminiRequest call, string json, CancellationToken token, CancellationToken userToken, Stopwatch watch)
+    /// <summary>One try with one model: sends the request and reads the answer, or throws what went wrong.</summary>
+    private async Task<string> SendOnceAsync(GeminiRequest call, string json, string model, CancellationToken token, CancellationToken userToken, Stopwatch watch)
     {
         // A request message can be sent only once, so every try gets its own.
         using var request = new HttpRequestMessage(HttpMethod.Post,
-            $"{settings.BaseUrl.TrimEnd('/')}/models/{Uri.EscapeDataString(settings.Model)}:generateContent");
+            $"{settings.BaseUrl.TrimEnd('/')}/models/{Uri.EscapeDataString(model)}:generateContent");
         request.Headers.Add("x-goog-api-key", settings.ApiKey);
         request.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -126,17 +143,17 @@ public sealed class GeminiClient(HttpClient http, GeminiOptions settings, ILogge
         catch (OperationCanceledException) when (!userToken.IsCancellationRequested)
         {
             logger.LogWarning("Gemini {Model} gave no answer within {TimeoutSeconds} s ({ElapsedMs} ms; thinking {Thinking}; {Input}).",
-                settings.Model, settings.TimeoutSeconds, watch.ElapsedMilliseconds, thinking, input);
+                model, settings.TimeoutSeconds, watch.ElapsedMilliseconds, thinking, input);
             throw new GeminiCallException(GeminiFailure.Timeout, $"No answer within {settings.TimeoutSeconds} s.");
         }
         catch (OperationCanceledException)
         {
-            logger.LogInformation("Gemini {Model} request cancelled by the user after {ElapsedMs} ms.", settings.Model, watch.ElapsedMilliseconds);
+            logger.LogInformation("Gemini {Model} request cancelled by the user after {ElapsedMs} ms.", model, watch.ElapsedMilliseconds);
             throw;
         }
         catch (HttpRequestException e)
         {
-            logger.LogWarning("Gemini {Model} could not be reached after {ElapsedMs} ms: {Error}", settings.Model, watch.ElapsedMilliseconds, e.Message);
+            logger.LogWarning("Gemini {Model} could not be reached after {ElapsedMs} ms: {Error}", model, watch.ElapsedMilliseconds, e.Message);
             throw new GeminiCallException(GeminiFailure.ServiceUnavailable, e.Message);
         }
 
@@ -145,7 +162,7 @@ public sealed class GeminiClient(HttpClient http, GeminiOptions settings, ILogge
             var error = FromStatus(status, body);
             // The body of an error holds Google's explanation, never the input or the key.
             logger.LogWarning("Gemini {Model} answered HTTP {Status} in {ElapsedMs} ms ({Kind}; thinking {Thinking}; {Input}): {Body}",
-                settings.Model, (int)status, watch.ElapsedMilliseconds, error.Failure, thinking, input, Truncate(body));
+                model, (int)status, watch.ElapsedMilliseconds, error.Failure, thinking, input, Truncate(body));
             throw error;
         }
 
@@ -154,7 +171,7 @@ public sealed class GeminiClient(HttpClient http, GeminiOptions settings, ILogge
         logger.LogInformation(
             "Gemini {Model} answered HTTP {Status} in {ElapsedMs} ms (thinking {Thinking}; {Input}; finish {FinishReason}; " +
             "tokens: prompt {PromptTokens}, answer {AnswerTokens}, thinking {ThoughtTokens}).",
-            settings.Model, (int)status, watch.ElapsedMilliseconds, thinking, input,
+            model, (int)status, watch.ElapsedMilliseconds, thinking, input,
             envelope.Candidates?.FirstOrDefault()?.FinishReason ?? "-",
             usage?.PromptTokenCount, usage?.CandidatesTokenCount, usage?.ThoughtsTokenCount);
 

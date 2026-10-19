@@ -20,7 +20,8 @@ public class GeminiClientTests
     private static GeminiClient Client(FakeHttpHandler handler, ListLogger<GeminiClientTests>? logger = null,
         Action<GeminiOptions>? configure = null, List<TimeSpan>? waits = null)
     {
-        var options = new GeminiOptions { ApiKey = Key, TimeoutSeconds = 5 };
+        // The retry tests look at the main model alone; the fallback has its own tests below.
+        var options = new GeminiOptions { ApiKey = Key, TimeoutSeconds = 5, FallbackModel = "" };
         configure?.Invoke(options);
         // Records the waits instead of waiting.
         return new(new HttpClient(handler), options, logger ?? new ListLogger<GeminiClientTests>(),
@@ -160,7 +161,7 @@ public class GeminiClientTests
         // Real waits: 2 x 0,3 s would end after the 0,4 s limit, so the second wait is never started.
         var handler = Sequence(HttpStatusCode.ServiceUnavailable);
         var client = new GeminiClient(new HttpClient(handler),
-            new GeminiOptions { ApiKey = Key, TimeoutSeconds = 0.4, RetryDelaysSeconds = [0.3, 0.3] }, new ListLogger<GeminiClientTests>());
+            new GeminiOptions { ApiKey = Key, TimeoutSeconds = 0.4, RetryDelaysSeconds = [0.3, 0.3], FallbackModel = "" }, new ListLogger<GeminiClientTests>());
         var watch = System.Diagnostics.Stopwatch.StartNew();
 
         await Assert.ThrowsAsync<GeminiCallException>(() => client.GenerateAsync(Request, default));
@@ -213,4 +214,147 @@ public class GeminiClientTests
     [Fact]
     public void Options_RetryAfterOneAndThenTwoSecondsByDefault() =>
         Assert.Equal([1d, 2d], new GeminiOptions().RetryDelaysSeconds);
+
+    // ---------- the fallback model, once, when the main one stays overloaded ----------
+
+    /// <summary>Answers per model: the main model with <paramref name="main"/>, the others with <paramref name="others"/>; remembers which models were asked.</summary>
+    private static FakeHttpHandler ByModel(List<string> asked, HttpStatusCode main, HttpStatusCode others) =>
+        new((request, _) =>
+        {
+            var model = request.RequestUri!.AbsolutePath.Split('/').Last().Split(':')[0];
+            asked.Add(model);
+            var status = model == "gemini-3.8-flash" ? main : others;
+            var body = status == HttpStatusCode.OK ? Envelope("""{"model":"answered"}""") : status == HttpStatusCode.ServiceUnavailable ? Busy : """{"error":{"message":"x"}}""";
+            return Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json") });
+        });
+
+    private static GeminiClient WithFallback(FakeHttpHandler handler, ListLogger<GeminiClientTests>? logger = null, Action<GeminiOptions>? configure = null) =>
+        Client(handler, logger, o => { o.Model = "gemini-3.8-flash"; o.FallbackModel = "gemini-3.5-flash-lite"; configure?.Invoke(o); });
+
+    [Fact]
+    public async Task GenerateAsync_AsksTheFallbackModelOnceWhenTheMainOneStaysOverloaded()
+    {
+        var asked = new List<string>();
+        var logger = new ListLogger<GeminiClientTests>();
+
+        var answer = await WithFallback(ByModel(asked, HttpStatusCode.ServiceUnavailable, HttpStatusCode.OK), logger).GenerateAsync(Request, default);
+
+        Assert.Equal("""{"model":"answered"}""", answer);
+        Assert.Equal(["gemini-3.8-flash", "gemini-3.8-flash", "gemini-3.8-flash", "gemini-3.5-flash-lite"], asked);
+        Assert.Contains(logger.Entries, e => e.Message.Contains("gemini-3.8-flash is still overloaded after 3 tries; using the fallback model gemini-3.5-flash-lite once"));
+        Assert.Contains(logger.Entries, e => e.Message.Contains("Gemini gemini-3.5-flash-lite answered HTTP 200"));
+    }
+
+    [Fact]
+    public async Task GenerateAsync_TheFallbackIsAskedOnlyOnceAndItsBusyAnswerIsReported()
+    {
+        var asked = new List<string>();
+
+        var e = await Assert.ThrowsAsync<GeminiCallException>(() =>
+            WithFallback(ByModel(asked, HttpStatusCode.ServiceUnavailable, HttpStatusCode.ServiceUnavailable)).GenerateAsync(Request, default));
+
+        Assert.Equal(GeminiFailure.Overloaded, e.Failure);
+        Assert.Equal(1, asked.Count(m => m == "gemini-3.5-flash-lite"));
+    }
+
+    [Fact]
+    public async Task GenerateAsync_AnErrorOfTheFallbackIsReportedAsItIs()
+    {
+        var e = await Assert.ThrowsAsync<GeminiCallException>(() =>
+            WithFallback(ByModel([], HttpStatusCode.ServiceUnavailable, HttpStatusCode.NotFound)).GenerateAsync(Request, default));
+
+        Assert.Equal(GeminiFailure.Misconfigured, e.Failure);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_TheMainModelAnsweringMeansNoFallback()
+    {
+        var asked = new List<string>();
+
+        await WithFallback(ByModel(asked, HttpStatusCode.OK, HttpStatusCode.OK)).GenerateAsync(Request, default);
+
+        Assert.Equal(["gemini-3.8-flash"], asked);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.TooManyRequests)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    [InlineData(HttpStatusCode.BadRequest)]
+    public async Task GenerateAsync_OnlyAnOverloadedModelSwitchesToTheFallback(HttpStatusCode status)
+    {
+        var asked = new List<string>();
+
+        await Assert.ThrowsAsync<GeminiCallException>(() => WithFallback(ByModel(asked, status, HttpStatusCode.OK)).GenerateAsync(Request, default));
+
+        Assert.Equal(["gemini-3.8-flash"], asked);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    [InlineData("gemini-3.8-flash")]   // the same model is no fallback
+    public async Task GenerateAsync_WithoutAFallbackModelTheOverloadIsReported(string? fallback)
+    {
+        var asked = new List<string>();
+
+        var e = await Assert.ThrowsAsync<GeminiCallException>(() =>
+            WithFallback(ByModel(asked, HttpStatusCode.ServiceUnavailable, HttpStatusCode.OK), configure: o => o.FallbackModel = fallback).GenerateAsync(Request, default));
+
+        Assert.Equal(GeminiFailure.Overloaded, e.Failure);
+        Assert.All(asked, m => Assert.Equal("gemini-3.8-flash", m));
+    }
+
+    [Fact]
+    public async Task GenerateAsync_UsesTheConfiguredFallbackModel()
+    {
+        var asked = new List<string>();
+
+        await WithFallback(ByModel(asked, HttpStatusCode.ServiceUnavailable, HttpStatusCode.OK), configure: o => o.FallbackModel = "gemini-3.6-flash")
+            .GenerateAsync(Request, default);
+
+        Assert.Equal("gemini-3.6-flash", asked.Last());
+    }
+
+    [Fact]
+    public async Task GenerateAsync_FallsBackStraightAwayWhenTheNextWaitWouldPassTheTimeout()
+    {
+        var asked = new List<string>();
+        var waits = new List<TimeSpan>();
+
+        var answer = await Client(ByModel(asked, HttpStatusCode.ServiceUnavailable, HttpStatusCode.OK), configure: o =>
+        {
+            o.Model = "gemini-3.8-flash"; o.FallbackModel = "gemini-3.5-flash-lite"; o.TimeoutSeconds = 1.5;
+        }, waits: waits).GenerateAsync(Request, default);
+
+        Assert.Equal("""{"model":"answered"}""", answer);
+        Assert.Equal([TimeSpan.FromSeconds(1)], waits);          // the 2 s wait would pass 1,5 s: no third try, the fallback instead
+        Assert.Equal(["gemini-3.8-flash", "gemini-3.8-flash", "gemini-3.5-flash-lite"], asked);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_TheFallbackStaysWithinTheSameTimeout()
+    {
+        // Real waits; the fallback hangs: the whole call still ends at the 0,5 s limit, as a timeout.
+        var handler = new FakeHttpHandler(async (request, token) =>
+        {
+            if (request.RequestUri!.AbsolutePath.Contains("flash-lite"))
+                await Task.Delay(Timeout.Infinite, token);
+            return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable) { Content = new StringContent(Busy) };
+        });
+        var client = new GeminiClient(new HttpClient(handler), new GeminiOptions
+        {
+            ApiKey = Key, Model = "gemini-3.8-flash", FallbackModel = "gemini-3.5-flash-lite", TimeoutSeconds = 0.5, RetryDelaysSeconds = [0.1]
+        }, new ListLogger<GeminiClientTests>());
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+
+        var e = await Assert.ThrowsAsync<GeminiCallException>(() => client.GenerateAsync(Request, default));
+
+        Assert.Equal(GeminiFailure.Timeout, e.Failure);
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(2), watch.Elapsed.ToString());
+    }
+
+    [Fact]
+    public void Options_FallBackToGemini35FlashLiteByDefault() =>
+        Assert.Equal("gemini-3.5-flash-lite", new GeminiOptions().FallbackModel);
 }

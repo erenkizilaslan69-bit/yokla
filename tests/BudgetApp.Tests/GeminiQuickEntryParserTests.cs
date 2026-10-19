@@ -179,4 +179,24 @@ public class GeminiQuickEntryParserTests
         var parser = Parser(FakeHttpHandler.Returning(HttpStatusCode.OK, "{}"));
         Assert.Equal(("gemini", false), (parser.Provider, parser.IsDemo));
     }
+
+    [Fact]
+    public async Task ParseAsync_ReadsTheFallbackModelsAnswerWhenTheMainModelStaysOverloaded()
+    {
+        var asked = new List<string>();
+        var handler = new FakeHttpHandler((request, _) =>
+        {
+            asked.Add(request.RequestUri!.AbsolutePath);
+            var lite = request.RequestUri.AbsolutePath.Contains("gemini-3.5-flash-lite");
+            return Task.FromResult(new HttpResponseMessage(lite ? HttpStatusCode.OK : HttpStatusCode.ServiceUnavailable)
+            {
+                Content = new StringContent(lite ? Envelope(ThreeLines) : """{"error":{"code":503,"status":"UNAVAILABLE"}}""")
+            });
+        });
+
+        var result = await Parse(handler);
+
+        Assert.Equal(3, result.Items.Count);
+        Assert.EndsWith("/models/gemini-3.5-flash-lite:generateContent", asked[^1]);
+    }
 }
